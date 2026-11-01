@@ -11,4 +11,6 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Project overview: Rust, TUI-only, modular learning (verbs, vocab, …), Japanese text support on all platforms.
 - Single-file distribution, SSH support, Japanese (IME) and romaji input requirements.
 - Commitizen (`.cz.toml`) and pre-commit hooks (`.pre-commit-config.yaml`).
+- Rust project scaffold (Cargo, edition 2024) with a size-optimized release profile.
+- `cargo fmt` and `cargo clippy` pre-commit hooks; Commitizen reads the version from `Cargo.toml`.
 - `VERSION` file and this changelog.

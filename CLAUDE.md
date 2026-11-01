@@ -62,7 +62,7 @@ Never merge, tag, push, or delete a branch without the user's explicit approval 
 
 ## 4. Versioning — Semantic Versioning `vMAJOR.MINOR.PATCH`
 
-- The current version lives in the `VERSION` file (without the `v` prefix, e.g. `0.1.0`).
+- The source of truth for the version is `version` in `Cargo.toml`. `VERSION` mirrors it (without the `v` prefix, e.g. `0.1.0`). Commitizen updates both; never edit them by hand.
 - Releases are marked with annotated Git tags prefixed with `v`, e.g. `v0.1.0`.
 - Bump rules:
   - **MAJOR** — incompatible/breaking changes (e.g. save-data or config format changes users must migrate).
@@ -72,7 +72,7 @@ Never merge, tag, push, or delete a branch without the user's explicit approval 
 - While the version is `0.x.y`, the project is in initial development; breaking changes may bump MINOR instead of MAJOR.
 - `1.0.0` marks the first stable release — only when the user decides.
 
-- Version bumps are done with Commitizen: `cz bump` (on the branch, before asking to merge). It computes the bump from the commit history, updates `VERSION`, updates `CHANGELOG.md` and creates the `vX.Y.Z` tag. Use `cz bump --dry-run` first to show the proposed version in the merge summary.
+- Version bumps are done with Commitizen: `cz bump` (on the branch, before asking to merge). It computes the bump from the commit history, updates `VERSION`, updates `CHANGELOG.md` and creates the `vX.Y.Z` tag. Use `cz bump --dry-run --yes` first to show the proposed version in the merge summary (`--yes` avoids an interactive prompt that otherwise hangs non-interactive shells, e.g. before the first tag exists).
 
 ## 5. Commits — Commitizen (`cz`)
 
@@ -81,4 +81,11 @@ Never merge, tag, push, or delete a branch without the user's explicit approval 
 - Commitizen config lives in `.cz.toml`; hooks live in `.pre-commit-config.yaml`.
   - After cloning, run `pre-commit install --hook-type commit-msg --hook-type pre-commit`.
   - The hooks also block commits directly on `main`.
+  - For Rust files, the hooks run `cargo fmt --check` and `cargo clippy -D warnings`. Code must be formatted and free of warnings to commit.
+
+## 6. Building and checking
+
+- `cargo run` to run, `cargo test` to test, `cargo build --release` for a release binary in `target/release/`.
+- The release profile (LTO, strip, `panic = "abort"`) keeps the output a single small executable.
+- Before asking to merge, all of these must pass: `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
 - Small, focused commits with messages that explain *why*, not just *what*.
