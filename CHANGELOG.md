@@ -17,7 +17,7 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - License: GPL-3.0-or-later (`LICENSE`, SPDX headers, `Cargo.toml`), license rules for dependencies and learning content, and `ATTRIBUTION.md`.
 - `README.md` and `CONTRIBUTING.md`.
 - Project hosted on GitHub (PandaCubGames/LearnJapaneseTui); merges into `main` go through pull requests.
-- Only the repository owner merges pull requests (GitHub ruleset + branch protection on `main`).
+- Only the repository owner merges pull requests (sole write access); `main` protected by branch protection and the "Protect main" ruleset (PRs, signed commits, no force-push or deletion).
 - Signed commits: SSH commit and tag signing (shown as Verified on GitHub); documented for contributors.
 - Commit identity and attribution rules: GitHub noreply author, Claude co-author trailer only.
 - CI: GitHub Actions workflow that checks every commit merged to `main` (and PR titles) against Conventional Commits.

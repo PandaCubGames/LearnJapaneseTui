@@ -116,7 +116,7 @@ cargo test
 - The **PR title must also follow Conventional Commits**, e.g. `feat(vocab): add JLPT N5 word list`.
 - CI checks every commit in the PR and the title. The PR can't be merged until it passes.
 - Describe what changed and why, and how you tested it.
-- **Only the project owner can merge pull requests into `main`.** This is enforced by GitHub rules. The owner reviews your PR and merges it with a merge commit, so keep your commits clean and meaningful.
+- **Only the project owner can merge pull requests into `main`.** The owner is the only one with write access. `main` is protected: it only accepts pull requests with signed commits and a passing CI check, and can't be force-pushed or deleted. The owner reviews your PR and merges it with a merge commit, so keep your commits clean and meaningful.
 
 ## Versioning and releases
 

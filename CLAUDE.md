@@ -40,10 +40,17 @@ These rules apply to every change in this repository, by humans and agents alike
     - The rules also apply to admins.
     - No force-pushes and no deletion.
     - PR conversations must be resolved before merging.
-  - **Ruleset "Only the owner can merge into main":**
-    - Updates to `main` are blocked for everyone except the admin role (the owner), and the owner can only bypass through PRs.
-    - The owner merges by ticking "bypass rules" on the PR.
+  - **Ruleset "Protect main":**
+    - Requires a pull request.
+    - Requires signed commits.
+    - Blocks force-pushes and deletion.
+    - The admin role (the owner) is on its bypass list ("Always allow"). Branch protection still requires PRs and passing CI for admins.
+  - **Who can merge:** only people with write access can merge PRs, and the owner is the only one.
+    - The owner sees the normal "Merge pull request" button once CI passes. No bypass needed.
+    - Everyone else can open PRs and comment, but can't merge.
+    - Personal accounts can only give collaborators full write access, which includes merging. So don't add collaborators without moving the repo to a GitHub organization first, where roles can restrict merging.
   - **Repo settings:** merge commits only (no squash or rebase), and branches are deleted automatically after merge.
+  - **Web merges:** when merging on GitHub, the owner chooses the **noreply email** in the "Commit email" dropdown, never a personal address. The merge commit uses the GitHub profile name (the owner's real name), which is acceptable. GitHub signs it, so it shows as Verified.
 
 ## 2. Branching — every change gets its own branch
 
@@ -66,7 +73,7 @@ These rules apply to every change in this repository, by humans and agents alike
 - no `gh pr merge`, with or without `--admin`,
 - not even after the owner says "approved" in chat.
 
-GitHub enforces this for other people through the ruleset described in §1. Agents use the owner's `gh` login, so GitHub can't stop them, and this rule is what applies.
+GitHub enforces this for other people because the owner is the only one with write access (see §1). Agents use the owner's `gh` login, so GitHub can't stop them, and this rule is what applies.
 
 When the tasks on a branch are done:
 
@@ -118,7 +125,7 @@ This project will be published as open source. Treat everything committed, inclu
 
 - **Never commit:**
   - secrets: private keys, API tokens, passwords, `.env` files, certificates,
-  - personal data: real names, emails, addresses, machine-specific paths like `/home/<user>/...`,
+  - personal data: emails, addresses, machine-specific paths like `/home/<user>/...`. The owner's real name may appear (e.g. on GitHub merge commits); that's accepted. Never add other people's personal data.
   - anything copied from private sources.
 - **Configuration that needs secrets** reads them from environment variables or local files listed in `.gitignore`. Document the variable name, never the value.
 - **Automatic checks:** the `gitleaks`, `detect-private-key` and `check-added-large-files` hooks scan every commit. Never bypass them on regular commits. If a hook flags something, remove it; don't silence the rule.
@@ -130,7 +137,7 @@ This project will be published as open source. Treat everything committed, inclu
 - The project's code is licensed under the **GNU GPL v3.0 or later** (SPDX: `GPL-3.0-or-later`).
   - Full text in `LICENSE`. Never edit it.
   - `Cargo.toml` declares `license = "GPL-3.0-or-later"`.
-- Copyright holder: **PandaCubGames** (the GitHub account), not a real name. See "Never commit" above.
+- Copyright holder: **PandaCubGames** (the GitHub account). Keep using it in headers and notices for consistency.
 - **Every source file starts with an SPDX header:**
   ```rust
   // SPDX-License-Identifier: GPL-3.0-or-later
