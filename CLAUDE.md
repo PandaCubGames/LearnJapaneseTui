@@ -94,8 +94,29 @@ This project will be published as open source. Treat everything committed, inclu
 - **Configuration that needs secrets** reads them from environment variables or local files listed in `.gitignore`. Document the variable name, never the value.
 - **Automatic checks:** the `gitleaks`, `detect-private-key` and `check-added-large-files` hooks scan every commit. Never bypass them on regular commits. If a hook flags something, remove it; don't silence the rule.
 - **If a secret is ever committed:** stop, tell the user, and treat the secret as compromised (rotate it). Deleting it in a later commit is not enough, because it stays in history.
-- **Content licensing:** only include learning content (vocabulary lists, example sentences, dictionaries) whose license allows redistribution, and record its source and license.
 - **Before the first public push:** scan the full history with `gitleaks git .` and review commit author emails.
+
+### License — GPL-3.0-or-later
+
+- The project's code is licensed under the **GNU GPL v3.0 or later** (SPDX: `GPL-3.0-or-later`).
+  - Full text in `LICENSE`. Never edit it.
+  - `Cargo.toml` declares `license = "GPL-3.0-or-later"`.
+- Copyright holder: **PandaCubGames** (the GitHub account), not a real name. See "Never commit" above.
+- **Every source file starts with an SPDX header:**
+  ```rust
+  // SPDX-License-Identifier: GPL-3.0-or-later
+  // Copyright (C) 2026 PandaCubGames
+  ```
+- **Contributions:** by submitting code, contributors agree it's licensed under GPL-3.0-or-later. No CLA (contributor license agreement).
+- **Dependencies** must be GPL-3.0-compatible.
+  - OK: MIT, Apache-2.0, BSD-2/3-Clause, ISC, Zlib, Unicode-3.0, MPL-2.0, LGPL, GPL-3.0.
+  - Not allowed: GPL-2.0-only, proprietary or "non-commercial" licenses, SSPL, or no license at all.
+  - Check a crate's license before adding it.
+- **Learning content** (vocabulary, example sentences, dictionaries, kanji data) is tracked separately from code.
+  - Only include content whose license allows redistribution and is compatible with GPL-3.0, e.g. CC0, CC BY, CC BY-SA 4.0. Examples of such sources: JMdict and KANJIDIC2 (CC BY-SA 4.0), Tatoeba (CC BY 2.0 FR).
+  - Record each source's origin, license and required attribution in `ATTRIBUTION.md`, and show attribution in the app's About screen.
+  - Never use content from commercial textbooks, paid courses or scraped websites.
+  - Content written for this project is GPL-3.0-or-later, like the code.
 
 ## 7. Building and checking
 
