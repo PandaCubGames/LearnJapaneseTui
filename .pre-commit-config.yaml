@@ -2,13 +2,13 @@
 #   pre-commit install --hook-type commit-msg --hook-type pre-commit
 repos:
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.8.3
+    rev: v4.19.3
     hooks:
       - id: commitizen # validates commit messages (Conventional Commits)
         stages: [commit-msg]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: no-commit-to-branch # blocks commits directly on main
         args: [--branch, main]
