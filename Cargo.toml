@@ -1,0 +1,16 @@
+[package]
+name = "tui-learnjapanese"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Learn Japanese in the terminal: a modular TUI app (verbs, vocabulary, ...)"
+publish = false
+
+[dependencies]
+
+# Release builds: one small, self-contained executable.
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
