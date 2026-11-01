@@ -74,6 +74,18 @@ docs: explain how to install a Japanese font
 - Mark breaking changes with `!` (e.g. `feat!: change save file format`) or a `BREAKING CHANGE:` footer.
 - The easiest way to get this right is `cz commit`, which asks you for each part. Plain `git commit` works too, as long as the message follows the format.
 
+**Signed commits are encouraged.** Signing shows your commits as "Verified" on GitHub. The simplest way is with an SSH key:
+1. Create a key: `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_github_signing`.
+2. Add the `.pub` file on GitHub under Settings → SSH and GPG keys, with key type **Signing Key**.
+3. Turn on signing in your clone:
+   ```sh
+   git config gpg.format ssh
+   git config user.signingkey ~/.ssh/id_ed25519_github_signing.pub
+   git config commit.gpgsign true
+   ```
+
+See [GitHub's guide](https://docs.github.com/en/authentication/managing-commit-signature-verification) for details.
+
 ### 3. Automatic checks
 
 These run on every commit through pre-commit:

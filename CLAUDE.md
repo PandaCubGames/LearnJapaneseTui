@@ -153,6 +153,12 @@ This project will be published as open source. Treat everything committed, inclu
 - Before asking to merge, all of these must pass: `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
 - Small, focused commits with messages that explain *why*, not just *what*.
 - **Author identity:** all commits use the GitHub noreply address, `PandaCubGames <38363869+PandaCubGames@users.noreply.github.com>`, set in the repo's local git config. Never commit with a personal email.
+- **Signed commits:** every commit and tag is signed with an SSH signing key registered on GitHub, so it shows as **Verified**.
+  - The repo's local git config sets `gpg.format=ssh`, `user.signingkey`, `commit.gpgsign=true` and `tag.gpgsign=true`.
+  - The private key lives outside the repo, in `~/.ssh/`, and is never committed.
+  - Check a signature with `git log --format='%h %G? %s'`: `G` means a good signature.
+  - Never disable signing. If signing fails, stop and tell the user.
+  - Commits already on `main` from before 2026-11-01 are unsigned and stay that way.
 - **AI attribution:** commits made with Claude end with the co-author trailer only:
   ```
   Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

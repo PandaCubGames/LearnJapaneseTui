@@ -18,5 +18,6 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `README.md` and `CONTRIBUTING.md`.
 - Project hosted on GitHub (PandaCubGames/LearnJapaneseTui); merges into `main` go through pull requests.
 - Only the repository owner merges pull requests (GitHub ruleset + branch protection on `main`).
+- Signed commits: SSH commit and tag signing (shown as Verified on GitHub); documented for contributors.
 - Commit identity and attribution rules: GitHub noreply author, Claude co-author trailer only.
 - `VERSION` file and this changelog.
