@@ -13,3 +13,14 @@ tmp/
 
 # Rust
 /target/
+
+# Secrets and local environment — never commit
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+secrets.*
