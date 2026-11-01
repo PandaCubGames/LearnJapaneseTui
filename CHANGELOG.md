@@ -20,4 +20,5 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Only the repository owner merges pull requests (GitHub ruleset + branch protection on `main`).
 - Signed commits: SSH commit and tag signing (shown as Verified on GitHub); documented for contributors.
 - Commit identity and attribution rules: GitHub noreply author, Claude co-author trailer only.
+- CI: GitHub Actions workflow that checks every commit merged to `main` (and PR titles) against Conventional Commits.
 - `VERSION` file and this changelog.
