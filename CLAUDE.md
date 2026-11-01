@@ -2,6 +2,8 @@
 
 These rules apply to every change in this repository, by humans and agents alike.
 
+`README.md` (for users) and `CONTRIBUTING.md` (for human contributors) summarize these rules publicly. When a rule here changes, update those files in the same branch so they never contradict this file.
+
 ## 0. Project overview
 
 - **What:** an application for learning Japanese.
