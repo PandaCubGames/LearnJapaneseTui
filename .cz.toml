@@ -1,0 +1,11 @@
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.0.0"
+version_scheme = "semver2"
+tag_format = "v$version"
+version_files = ["VERSION"]
+update_changelog_on_bump = true
+changelog_incremental = true
+major_version_zero = true
+# Once Cargo.toml exists, switch to: version_provider = "cargo"
+# and add "Cargo.toml:^version" handling via the provider instead of version_files.

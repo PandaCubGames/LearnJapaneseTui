@@ -2,6 +2,30 @@
 
 These rules apply to every change in this repository, by humans and agents alike.
 
+## 0. Project overview
+
+- **What:** an application for learning Japanese.
+- **Language:** Rust (stable toolchain, Cargo).
+- **Interface:** TUI only, running in the terminal. No GUI and no web frontend.
+- **Modular:** learning content is organized into independent modules the user picks from, for example:
+  - Verbs (planned)
+  - Vocabulary (planned)
+  - More modules to be defined later.
+  Adding a new module must not require changes to existing modules.
+- **Japanese text everywhere:** the app must display and accept Japanese (kana, kanji) on any PC (Linux, macOS, Windows):
+  - All text is UTF-8 internally.
+  - Layout uses terminal display width, not byte or `char` count, because CJK characters take two columns.
+  - Fonts are up to the user's terminal; the app can't bundle them.
+- **Single-file distribution:** each release is one self-contained executable per platform. Users don't install anything else (no runtime, no separate data files, no installer).
+  - Learning content and assets are embedded in the binary.
+  - Linux builds are statically linked (`musl`), so they run on any distro.
+  - Release targets: Linux x86_64/aarch64, macOS x86_64/aarch64, Windows x86_64.
+- **Works over SSH:** the app relies only on standard terminal features: no mouse requirement, no image protocols, no local GUI or clipboard dependencies. It must handle resizes and terminals with limited color.
+- **Input:** answers can be typed either way:
+  - **Japanese** through the user's own IME (kana/kanji arrive as normal UTF-8 text).
+  - **Romaji**, which the app converts to kana itself (e.g. `taberu` → `たべる`).
+  Both are accepted wherever the app asks for Japanese.
+
 ## 1. Repository
 
 - This project is a Git repository. The default branch is `main`.
@@ -30,7 +54,7 @@ When the tasks on a branch are done:
 2. Bump the version (see §4) and update `CHANGELOG.md` on the branch.
 3. **Ask the user for approval to merge into `main`.** Present a short summary: what changed, the proposed version bump, and test results.
 4. Only after the user approves:
-   - **Now (no remote):** `git checkout main && git merge --no-ff <branch>`, then tag the release.
+   - **Now (no remote):** `git checkout main && git merge --no-ff --no-verify <branch>`, then tag the release. `--no-verify` is needed because the `no-commit-to-branch` hook blocks every commit on `main`, merge commits included. Use it **only** for user-approved merges, never to skip hooks on regular commits.
    - **Later (with remote):** push the branch and open a PR/MR to `main`; the user merges it.
 5. Delete the branch after it has been merged.
 
@@ -48,7 +72,13 @@ Never merge, tag, push, or delete a branch without the user's explicit approval 
 - While the version is `0.x.y`, the project is in initial development; breaking changes may bump MINOR instead of MAJOR.
 - `1.0.0` marks the first stable release — only when the user decides.
 
-## 5. Commits
+- Version bumps are done with Commitizen: `cz bump` (on the branch, before asking to merge). It computes the bump from the commit history, updates `VERSION`, updates `CHANGELOG.md` and creates the `vX.Y.Z` tag. Use `cz bump --dry-run` first to show the proposed version in the merge summary.
 
-- Use Conventional Commits: `type(scope): summary` — e.g. `feat(quiz): add katakana mode`.
+## 5. Commits — Commitizen (`cz`)
+
+- Commit messages follow Conventional Commits: `type(scope): summary`, e.g. `feat(quiz): add katakana mode`. Commitizen enforces this.
+- Write commits with `cz commit` (interactive), or with `git commit` using a valid message. The `commit-msg` hook rejects messages that don't follow the format.
+- Commitizen config lives in `.cz.toml`; hooks live in `.pre-commit-config.yaml`.
+  - After cloning, run `pre-commit install --hook-type commit-msg --hook-type pre-commit`.
+  - The hooks also block commits directly on `main`.
 - Small, focused commits with messages that explain *why*, not just *what*.
