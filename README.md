@@ -35,8 +35,8 @@
 You need [Rust](https://www.rust-lang.org/tools/install) **1.85 or newer**.
 
 ```sh
-git clone <repository-url>
-cd tui-learnjapanese
+git clone https://github.com/PandaCubGames/LearnJapaneseTui.git
+cd LearnJapaneseTui
 cargo run                # run a debug build
 cargo build --release    # optimized binary in target/release/
 ```

@@ -16,5 +16,6 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Secret scanning (gitleaks, private-key and large-file hooks), secret ignore patterns, and open source hygiene rules.
 - License: GPL-3.0-or-later (`LICENSE`, SPDX headers, `Cargo.toml`), license rules for dependencies and learning content, and `ATTRIBUTION.md`.
 - `README.md` and `CONTRIBUTING.md`.
+- Project hosted on GitHub (PandaCubGames/LearnJapaneseTui); merges into `main` go through pull requests.
 - Commit identity and attribution rules: GitHub noreply author, Claude co-author trailer only.
 - `VERSION` file and this changelog.

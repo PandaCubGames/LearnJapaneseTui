@@ -31,8 +31,8 @@ These rules apply to every change in this repository, by humans and agents alike
 ## 1. Repository
 
 - This project is a Git repository. The default branch is `main`.
-- A remote (GitHub or Forgejo — not decided yet) will be added later. Until then, all work is local.
-- Once a remote exists, merges into `main` go through a Pull Request / Merge Request.
+- Hosted on GitHub as a **public** repository: https://github.com/PandaCubGames/LearnJapaneseTui (remote `origin`). Everything pushed is public immediately.
+- All merges into `main` go through a Pull Request on GitHub. Use the `gh` CLI (logged in as PandaCubGames).
 
 ## 2. Branching — every change gets its own branch
 
@@ -56,8 +56,11 @@ When the tasks on a branch are done:
 2. Bump the version (see §4) and update `CHANGELOG.md` on the branch.
 3. **Ask the user for approval to merge into `main`.** Present a short summary: what changed, the proposed version bump, and test results.
 4. Only after the user approves:
-   - **Now (no remote):** `git checkout main && git merge --no-ff --no-verify <branch>`, then tag the release. `--no-verify` is needed because the `no-commit-to-branch` hook blocks every commit on `main`, merge commits included. Use it **only** for user-approved merges, never to skip hooks on regular commits.
-   - **Later (with remote):** push the branch and open a PR/MR to `main`; the user merges it.
+   - Push the branch (`git push -u origin <branch>`) and open a PR to `main` with `gh pr create`. The PR title must follow Conventional Commits; the body ends with the attribution line and never includes session links.
+   - Wait for CI to pass (`gh pr checks <n> --watch`), then ask the user for approval to merge.
+   - Merge with a merge commit: `gh pr merge <n> --merge --delete-branch`, or the user merges it on GitHub.
+   - Update local `main` with `git switch main && git pull --ff-only`. If the branch was bumped, push its tag: `git push origin vX.Y.Z`.
+   - Never merge locally into `main` and never push directly to `main`; local `main` only moves by pulling.
 5. Delete the branch after it has been merged.
 
 Never merge, tag, push, or delete a branch without the user's explicit approval for that specific branch.
