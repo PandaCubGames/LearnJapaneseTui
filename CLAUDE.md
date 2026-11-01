@@ -2,6 +2,8 @@
 
 These rules apply to every change in this repository, by humans and agents alike.
 
+`README.md` (for users) and `CONTRIBUTING.md` (for human contributors) summarize these rules publicly. When a rule here changes, update those files in the same branch so they never contradict this file.
+
 ## 0. Project overview
 
 - **What:** an application for learning Japanese.
@@ -29,8 +31,26 @@ These rules apply to every change in this repository, by humans and agents alike
 ## 1. Repository
 
 - This project is a Git repository. The default branch is `main`.
-- A remote (GitHub or Forgejo — not decided yet) will be added later. Until then, all work is local.
-- Once a remote exists, merges into `main` go through a Pull Request / Merge Request.
+- Hosted on GitHub as a **public** repository: https://github.com/PandaCubGames/LearnJapaneseTui (remote `origin`). Everything pushed is public immediately.
+- All merges into `main` go through a Pull Request on GitHub. Use the `gh` CLI (logged in as PandaCubGames).
+- **Protection on `main`:**
+  - **Branch protection:**
+    - PRs are required (0 approvals).
+    - The "Conventional commits" check must pass.
+    - The rules also apply to admins.
+    - No force-pushes and no deletion.
+    - PR conversations must be resolved before merging.
+  - **Ruleset "Protect main":**
+    - Requires a pull request.
+    - Requires signed commits.
+    - Blocks force-pushes and deletion.
+    - The admin role (the owner) is on its bypass list ("Always allow"). Branch protection still requires PRs and passing CI for admins.
+  - **Who can merge:** only people with write access can merge PRs, and the owner is the only one.
+    - The owner sees the normal "Merge pull request" button once CI passes. No bypass needed.
+    - Everyone else can open PRs and comment, but can't merge.
+    - Personal accounts can only give collaborators full write access, which includes merging. So don't add collaborators without moving the repo to a GitHub organization first, where roles can restrict merging.
+  - **Repo settings:** merge commits only (no squash or rebase), and branches are deleted automatically after merge.
+  - **Web merges:** when merging on GitHub, the owner chooses the **noreply email** in the "Commit email" dropdown, never a personal address. The merge commit uses the GitHub profile name (the owner's real name), which is acceptable. GitHub signs it, so it shows as Verified.
 
 ## 2. Branching — every change gets its own branch
 
@@ -47,19 +67,34 @@ These rules apply to every change in this repository, by humans and agents alike
   - Example: `feat/hiragana-quiz`, `fix/romaji-input-crash`
 - Keep one logical change per branch. Unrelated work goes on a separate branch.
 
-## 3. Finishing a branch — ask before merging
+## 3. Finishing a branch — only the owner merges
+
+**Only the repository owner (PandaCubGames) merges pull requests.** Agents, including Claude, never merge a PR:
+- no `gh pr merge`, with or without `--admin`,
+- not even after the owner says "approved" in chat.
+
+GitHub enforces this for other people because the owner is the only one with write access (see §1). Agents use the owner's `gh` login, so GitHub can't stop them, and this rule is what applies.
 
 When the tasks on a branch are done:
 
-1. Make sure all tests pass and the working tree is clean.
-2. Bump the version (see §4) and update `CHANGELOG.md` on the branch.
-3. **Ask the user for approval to merge into `main`.** Present a short summary: what changed, the proposed version bump, and test results.
-4. Only after the user approves:
-   - **Now (no remote):** `git checkout main && git merge --no-ff --no-verify <branch>`, then tag the release. `--no-verify` is needed because the `no-commit-to-branch` hook blocks every commit on `main`, merge commits included. Use it **only** for user-approved merges, never to skip hooks on regular commits.
-   - **Later (with remote):** push the branch and open a PR/MR to `main`; the user merges it.
-5. Delete the branch after it has been merged.
+1. **Check:** all tests pass, the working tree is clean, and the hooks passed on every commit.
+2. **Version:** bump it (see §4) and update `CHANGELOG.md` on the branch.
+3. **Ask the user for approval to push.** Present a short summary: what changed, the proposed version bump and test results.
+4. **Only after approval, publish:**
+   - Push the branch: `git push -u origin <branch>`.
+   - Open a PR: `gh pr create`.
+     - The title follows Conventional Commits.
+     - The body ends with the attribution line and never includes session links.
+   - Wait for CI: `gh pr checks <n> --watch`.
+5. **Report the PR as ready** (link and CI result). The owner reviews and merges it on GitHub.
+6. **After the owner has merged:**
+   - Update local `main`: `git switch main && git pull --ff-only`.
+   - Delete the local branch. GitHub deletes the remote branch automatically.
+   - If the branch was bumped, ask before pushing its tag: `git push origin vX.Y.Z`.
 
-Never merge, tag, push, or delete a branch without the user's explicit approval for that specific branch.
+**Never merge locally into `main` and never push to `main`.** Local `main` only moves by pulling.
+
+Never push, tag, close a PR, or delete a remote branch without the user's explicit approval for that specific branch.
 
 ## 4. Versioning — Semantic Versioning `vMAJOR.MINOR.PATCH`
 
@@ -90,7 +125,7 @@ This project will be published as open source. Treat everything committed, inclu
 
 - **Never commit:**
   - secrets: private keys, API tokens, passwords, `.env` files, certificates,
-  - personal data: real names, emails, addresses, machine-specific paths like `/home/<user>/...`,
+  - personal data: emails, addresses, machine-specific paths like `/home/<user>/...`. The owner's real name may appear (e.g. on GitHub merge commits); that's accepted. Never add other people's personal data.
   - anything copied from private sources.
 - **Configuration that needs secrets** reads them from environment variables or local files listed in `.gitignore`. Document the variable name, never the value.
 - **Automatic checks:** the `gitleaks`, `detect-private-key` and `check-added-large-files` hooks scan every commit. Never bypass them on regular commits. If a hook flags something, remove it; don't silence the rule.
@@ -102,7 +137,7 @@ This project will be published as open source. Treat everything committed, inclu
 - The project's code is licensed under the **GNU GPL v3.0 or later** (SPDX: `GPL-3.0-or-later`).
   - Full text in `LICENSE`. Never edit it.
   - `Cargo.toml` declares `license = "GPL-3.0-or-later"`.
-- Copyright holder: **PandaCubGames** (the GitHub account), not a real name. See "Never commit" above.
+- Copyright holder: **PandaCubGames** (the GitHub account). Keep using it in headers and notices for consistency.
 - **Every source file starts with an SPDX header:**
   ```rust
   // SPDX-License-Identifier: GPL-3.0-or-later
@@ -143,6 +178,12 @@ Workflows live in `.github/workflows/`.
   - Pin tool versions, e.g. `commitizen==x.y.z`, and keep them in sync with `.pre-commit-config.yaml`.
 - Small, focused commits with messages that explain *why*, not just *what*.
 - **Author identity:** all commits use the GitHub noreply address, `PandaCubGames <38363869+PandaCubGames@users.noreply.github.com>`, set in the repo's local git config. Never commit with a personal email.
+- **Signed commits:** every commit and tag is signed with an SSH signing key registered on GitHub, so it shows as **Verified**.
+  - The repo's local git config sets `gpg.format=ssh`, `user.signingkey`, `commit.gpgsign=true` and `tag.gpgsign=true`.
+  - The private key lives outside the repo, in `~/.ssh/`, and is never committed.
+  - Check a signature with `git log --format='%h %G? %s'`: `G` means a good signature.
+  - Never disable signing. If signing fails, stop and tell the user.
+  - Commits already on `main` from before 2026-11-01 are unsigned and stay that way.
 - **AI attribution:** commits made with Claude end with the co-author trailer only:
   ```
   Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
