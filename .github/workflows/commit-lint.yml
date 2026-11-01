@@ -1,0 +1,71 @@
+# Ensures every commit that reaches `main` follows Conventional Commits,
+# validated by Commitizen with the rules in .cz.toml.
+#
+# - pull_request: checks every commit in the PR and the PR title.
+#   Make this job a required status check on `main` (branch protection),
+#   so a PR can't be merged until it passes.
+# - push to main: checks the pushed commits as a safety net.
+#
+# Merge commits ("Merge branch ...", "Merge pull request ...") are allowed
+# by Commitizen's default `allowed_prefixes`.
+name: Commit lint
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commit-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conventional-commits:
+    name: Conventional commits
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+
+      - name: Install Commitizen
+        run: pip install "commitizen==4.19.3"
+
+      - name: Check PR title
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: cz check --message "$PR_TITLE"
+
+      - name: Check commit messages
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.event.after }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            range="$PR_BASE..$PR_HEAD"
+          elif [ -z "$PUSH_BEFORE" ] || [ "$PUSH_BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            # First push of the branch: check the whole history.
+            range="$PUSH_AFTER"
+          else
+            range="$PUSH_BEFORE..$PUSH_AFTER"
+          fi
+          echo "Checking commits in: $range"
+          git log --format='  %h %s' "$range"
+          cz check --rev-range "$range"
