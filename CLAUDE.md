@@ -54,7 +54,7 @@ When the tasks on a branch are done:
 2. Bump the version (see §4) and update `CHANGELOG.md` on the branch.
 3. **Ask the user for approval to merge into `main`.** Present a short summary: what changed, the proposed version bump, and test results.
 4. Only after the user approves:
-   - **Now (no remote):** `git checkout main && git merge --no-ff <branch>`, then tag the release.
+   - **Now (no remote):** `git checkout main && git merge --no-ff --no-verify <branch>`, then tag the release. `--no-verify` is needed because the `no-commit-to-branch` hook blocks every commit on `main`, merge commits included. Use it **only** for user-approved merges, never to skip hooks on regular commits.
    - **Later (with remote):** push the branch and open a PR/MR to `main`; the user merges it.
 5. Delete the branch after it has been merged.
 
