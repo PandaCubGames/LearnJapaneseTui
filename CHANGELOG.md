@@ -8,4 +8,5 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 - Project rules (`CLAUDE.md`): branch-per-change workflow, merge approval, SemVer.
+- Project overview: Rust, TUI-only, modular learning (verbs, vocab, …), Japanese text support on all platforms.
 - `VERSION` file and this changelog.

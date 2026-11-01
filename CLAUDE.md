@@ -2,6 +2,21 @@
 
 These rules apply to every change in this repository, by humans and agents alike.
 
+## 0. Project overview
+
+- **What:** an application for learning Japanese.
+- **Language:** Rust (stable toolchain, Cargo).
+- **Interface:** TUI only, running in the terminal. No GUI and no web frontend.
+- **Modular:** learning content is organized into independent modules the user picks from, for example:
+  - Verbs (planned)
+  - Vocabulary (planned)
+  - More modules to be defined later.
+  Adding a new module must not require changes to existing modules.
+- **Japanese text everywhere:** the app must display and accept Japanese (kana, kanji) on any PC (Linux, macOS, Windows):
+  - All text is UTF-8 internally.
+  - Layout uses terminal display width, not byte or `char` count, because CJK characters take two columns.
+  - Fonts are up to the user's terminal; the app can't bundle them.
+
 ## 1. Repository
 
 - This project is a Git repository. The default branch is `main`.
