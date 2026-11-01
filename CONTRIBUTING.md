@@ -104,7 +104,7 @@ cargo test
 - The **PR title must also follow Conventional Commits**, e.g. `feat(vocab): add JLPT N5 word list`.
 - CI checks every commit in the PR and the title. The PR can't be merged until it passes.
 - Describe what changed and why, and how you tested it.
-- A maintainer reviews and merges the PR. Pull requests are merged with a merge commit, so keep your commits clean and meaningful.
+- **Only the project owner can merge pull requests into `main`.** This is enforced by GitHub rules. The owner reviews your PR and merges it with a merge commit, so keep your commits clean and meaningful.
 
 ## Versioning and releases
 
@@ -116,7 +116,7 @@ The project uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH
 
 While the version is `0.x`, breaking changes bump MINOR.
 
-**Don't change the version yourself.** Maintainers run `cz bump` when releasing. It calculates the next version from the commit types, updates `Cargo.toml`, `VERSION` and `CHANGELOG.md`, and creates the `vX.Y.Z` tag. This is why correct commit types matter.
+**Don't change the version yourself.** The owner runs `cz bump` when releasing. It calculates the next version from the commit types, updates `Cargo.toml`, `VERSION` and `CHANGELOG.md`, and creates the `vX.Y.Z` tag. This is why correct commit types matter.
 
 ## Code guidelines
 

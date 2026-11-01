@@ -33,6 +33,17 @@ These rules apply to every change in this repository, by humans and agents alike
 - This project is a Git repository. The default branch is `main`.
 - Hosted on GitHub as a **public** repository: https://github.com/PandaCubGames/LearnJapaneseTui (remote `origin`). Everything pushed is public immediately.
 - All merges into `main` go through a Pull Request on GitHub. Use the `gh` CLI (logged in as PandaCubGames).
+- **Protection on `main`:**
+  - **Branch protection:**
+    - PRs are required (0 approvals).
+    - The "Conventional commits" check must pass.
+    - The rules also apply to admins.
+    - No force-pushes and no deletion.
+    - PR conversations must be resolved before merging.
+  - **Ruleset "Only the owner can merge into main":**
+    - Updates to `main` are blocked for everyone except the admin role (the owner), and the owner can only bypass through PRs.
+    - The owner merges by ticking "bypass rules" on the PR.
+  - **Repo settings:** merge commits only (no squash or rebase), and branches are deleted automatically after merge.
 
 ## 2. Branching — every change gets its own branch
 
@@ -48,22 +59,34 @@ These rules apply to every change in this repository, by humans and agents alike
   - Example: `feat/hiragana-quiz`, `fix/romaji-input-crash`
 - Keep one logical change per branch. Unrelated work goes on a separate branch.
 
-## 3. Finishing a branch — ask before merging
+## 3. Finishing a branch — only the owner merges
+
+**Only the repository owner (PandaCubGames) merges pull requests.** Agents, including Claude, never merge a PR:
+- no `gh pr merge`, with or without `--admin`,
+- not even after the owner says "approved" in chat.
+
+GitHub enforces this for other people through the ruleset described in §1. Agents use the owner's `gh` login, so GitHub can't stop them, and this rule is what applies.
 
 When the tasks on a branch are done:
 
-1. Make sure all tests pass and the working tree is clean.
-2. Bump the version (see §4) and update `CHANGELOG.md` on the branch.
-3. **Ask the user for approval to merge into `main`.** Present a short summary: what changed, the proposed version bump, and test results.
-4. Only after the user approves:
-   - Push the branch (`git push -u origin <branch>`) and open a PR to `main` with `gh pr create`. The PR title must follow Conventional Commits; the body ends with the attribution line and never includes session links.
-   - Wait for CI to pass (`gh pr checks <n> --watch`), then ask the user for approval to merge.
-   - Merge with a merge commit: `gh pr merge <n> --merge --delete-branch`, or the user merges it on GitHub.
-   - Update local `main` with `git switch main && git pull --ff-only`. If the branch was bumped, push its tag: `git push origin vX.Y.Z`.
-   - Never merge locally into `main` and never push directly to `main`; local `main` only moves by pulling.
-5. Delete the branch after it has been merged.
+1. **Check:** all tests pass, the working tree is clean, and the hooks passed on every commit.
+2. **Version:** bump it (see §4) and update `CHANGELOG.md` on the branch.
+3. **Ask the user for approval to push.** Present a short summary: what changed, the proposed version bump and test results.
+4. **Only after approval, publish:**
+   - Push the branch: `git push -u origin <branch>`.
+   - Open a PR: `gh pr create`.
+     - The title follows Conventional Commits.
+     - The body ends with the attribution line and never includes session links.
+   - Wait for CI: `gh pr checks <n> --watch`.
+5. **Report the PR as ready** (link and CI result). The owner reviews and merges it on GitHub.
+6. **After the owner has merged:**
+   - Update local `main`: `git switch main && git pull --ff-only`.
+   - Delete the local branch. GitHub deletes the remote branch automatically.
+   - If the branch was bumped, ask before pushing its tag: `git push origin vX.Y.Z`.
 
-Never merge, tag, push, or delete a branch without the user's explicit approval for that specific branch.
+**Never merge locally into `main` and never push to `main`.** Local `main` only moves by pulling.
+
+Never push, tag, close a PR, or delete a remote branch without the user's explicit approval for that specific branch.
 
 ## 4. Versioning — Semantic Versioning `vMAJOR.MINOR.PATCH`
 
