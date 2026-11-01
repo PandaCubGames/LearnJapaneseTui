@@ -72,7 +72,7 @@ Never merge, tag, push, or delete a branch without the user's explicit approval 
 - While the version is `0.x.y`, the project is in initial development; breaking changes may bump MINOR instead of MAJOR.
 - `1.0.0` marks the first stable release — only when the user decides.
 
-- Version bumps are done with Commitizen: `cz bump` (on the branch, before asking to merge). It computes the bump from the commit history, updates `VERSION`, updates `CHANGELOG.md` and creates the `vX.Y.Z` tag. Use `cz bump --dry-run` first to show the proposed version in the merge summary.
+- Version bumps are done with Commitizen: `cz bump` (on the branch, before asking to merge). It computes the bump from the commit history, updates `VERSION`, updates `CHANGELOG.md` and creates the `vX.Y.Z` tag. Use `cz bump --dry-run --yes` first to show the proposed version in the merge summary (`--yes` avoids an interactive prompt that otherwise hangs non-interactive shells, e.g. before the first tag exists).
 
 ## 5. Commits — Commitizen (`cz`)
 
