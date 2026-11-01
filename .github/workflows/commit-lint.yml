@@ -1,7 +1,8 @@
 # Ensures every commit that reaches `main` follows Conventional Commits,
 # validated by Commitizen with the rules in .cz.toml.
 #
-# - pull_request: checks every commit in the PR and the PR title.
+# - pull_request (any target branch): checks every commit in the PR and
+#   the PR title. All branches end up in `main`, so every PR is checked.
 #   Make this job a required status check on `main` (branch protection),
 #   so a PR can't be merged until it passes.
 # - push to main: checks the pushed commits as a safety net.
@@ -12,7 +13,6 @@ name: Commit lint
 
 on:
   pull_request:
-    branches: [main]
     types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]

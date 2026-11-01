@@ -109,7 +109,7 @@ This project will be published as open source. Treat everything committed, inclu
 Workflows live in `.github/workflows/`.
 
 - **`commit-lint.yml`** uses Commitizen (with `.cz.toml`) to check that every commit reaching `main` follows Conventional Commits:
-  - **On pull requests to `main`:** checks every commit in the PR and the PR title. It re-runs when the title is edited.
+  - **On every pull request** (any target branch): checks every commit in the PR and the PR title. It re-runs when the title is edited.
   - **On pushes to `main`:** checks the pushed commits, as a safety net.
   - Merge commits (`Merge branch …`, `Merge pull request …`) are allowed.
 - **Once the GitHub repo exists**, set up branch protection on `main`:
