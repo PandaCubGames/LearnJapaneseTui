@@ -14,4 +14,5 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Rust project scaffold (Cargo, edition 2024) with a size-optimized release profile.
 - `cargo fmt` and `cargo clippy` pre-commit hooks; Commitizen reads the version from `Cargo.toml`.
 - Secret scanning (gitleaks, private-key and large-file hooks), secret ignore patterns, and open source hygiene rules.
+- Commit identity and attribution rules: GitHub noreply author, Claude co-author trailer only.
 - `VERSION` file and this changelog.

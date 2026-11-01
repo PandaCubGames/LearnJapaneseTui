@@ -103,3 +103,9 @@ This project will be published as open source. Treat everything committed, inclu
 - The release profile (LTO, strip, `panic = "abort"`) keeps the output a single small executable.
 - Before asking to merge, all of these must pass: `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
 - Small, focused commits with messages that explain *why*, not just *what*.
+- **Author identity:** all commits use the GitHub noreply address, `PandaCubGames <38363869+PandaCubGames@users.noreply.github.com>`, set in the repo's local git config. Never commit with a personal email.
+- **AI attribution:** commits made with Claude end with the co-author trailer only:
+  ```
+  Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+  ```
+  **Never add `Claude-Session:` lines or any other links to private sessions.**
