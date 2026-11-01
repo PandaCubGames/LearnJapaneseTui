@@ -43,6 +43,7 @@ These rules apply to every change in this repository, by humans and agents alike
   - `docs/` documentation only
   - `refactor/` code restructuring with no behavior change
   - `chore/` tooling, config, dependencies
+  - `ci/` CI pipelines (GitHub Actions)
   - Example: `feat/hiragana-quiz`, `fix/romaji-input-crash`
 - Keep one logical change per branch. Unrelated work goes on a separate branch.
 
@@ -123,6 +124,23 @@ This project will be published as open source. Treat everything committed, inclu
 - `cargo run` to run, `cargo test` to test, `cargo build --release` for a release binary in `target/release/`.
 - The release profile (LTO, strip, `panic = "abort"`) keeps the output a single small executable.
 - Before asking to merge, all of these must pass: `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
+
+## 8. CI (GitHub Actions)
+
+Workflows live in `.github/workflows/`.
+
+- **`commit-lint.yml`** uses Commitizen (with `.cz.toml`) to check that every commit reaching `main` follows Conventional Commits:
+  - **On every pull request** (any target branch): checks every commit in the PR and the PR title. It re-runs when the title is edited.
+  - **On pushes to `main`:** checks the pushed commits, as a safety net.
+  - Merge commits (`Merge branch …`, `Merge pull request …`) are allowed.
+- **Once the GitHub repo exists**, set up branch protection on `main`:
+  - Require the **"Conventional commits"** check to pass before merging.
+  - Allow **merge commits** (matches the local `--no-ff` flow). If squash merging is ever enabled, the PR title becomes the commit message, which is why the title is checked too.
+- **Workflow security:**
+  - Pin third-party actions to a full commit SHA, with the version in a comment.
+  - Grant minimal `permissions`.
+  - Pass event data through `env:`, never by interpolating `${{ }}` into `run:` scripts.
+  - Pin tool versions, e.g. `commitizen==x.y.z`, and keep them in sync with `.pre-commit-config.yaml`.
 - Small, focused commits with messages that explain *why*, not just *what*.
 - **Author identity:** all commits use the GitHub noreply address, `PandaCubGames <38363869+PandaCubGames@users.noreply.github.com>`, set in the repo's local git config. Never commit with a personal email.
 - **AI attribution:** commits made with Claude end with the co-author trailer only:

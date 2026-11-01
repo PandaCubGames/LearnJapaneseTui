@@ -16,4 +16,5 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Secret scanning (gitleaks, private-key and large-file hooks), secret ignore patterns, and open source hygiene rules.
 - License: GPL-3.0-or-later (`LICENSE`, SPDX headers, `Cargo.toml`), license rules for dependencies and learning content, and `ATTRIBUTION.md`.
 - Commit identity and attribution rules: GitHub noreply author, Claude co-author trailer only.
+- CI: GitHub Actions workflow that checks every commit merged to `main` (and PR titles) against Conventional Commits.
 - `VERSION` file and this changelog.
