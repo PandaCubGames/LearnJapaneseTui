@@ -13,4 +13,5 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Commitizen (`.cz.toml`) and pre-commit hooks (`.pre-commit-config.yaml`).
 - Rust project scaffold (Cargo, edition 2024) with a size-optimized release profile.
 - `cargo fmt` and `cargo clippy` pre-commit hooks; Commitizen reads the version from `Cargo.toml`.
+- Secret scanning (gitleaks, private-key and large-file hooks), secret ignore patterns, and open source hygiene rules.
 - `VERSION` file and this changelog.

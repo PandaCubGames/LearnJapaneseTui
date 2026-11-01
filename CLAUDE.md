@@ -83,7 +83,21 @@ Never merge, tag, push, or delete a branch without the user's explicit approval 
   - The hooks also block commits directly on `main`.
   - For Rust files, the hooks run `cargo fmt --check` and `cargo clippy -D warnings`. Code must be formatted and free of warnings to commit.
 
-## 6. Building and checking
+## 6. Open source hygiene — no secrets, no private data
+
+This project will be published as open source. Treat everything committed, including history, as public forever.
+
+- **Never commit:**
+  - secrets: private keys, API tokens, passwords, `.env` files, certificates,
+  - personal data: real names, emails, addresses, machine-specific paths like `/home/<user>/...`,
+  - anything copied from private sources.
+- **Configuration that needs secrets** reads them from environment variables or local files listed in `.gitignore`. Document the variable name, never the value.
+- **Automatic checks:** the `gitleaks`, `detect-private-key` and `check-added-large-files` hooks scan every commit. Never bypass them on regular commits. If a hook flags something, remove it; don't silence the rule.
+- **If a secret is ever committed:** stop, tell the user, and treat the secret as compromised (rotate it). Deleting it in a later commit is not enough, because it stays in history.
+- **Content licensing:** only include learning content (vocabulary lists, example sentences, dictionaries) whose license allows redistribution, and record its source and license.
+- **Before the first public push:** scan the full history with `gitleaks git .` and review commit author emails.
+
+## 7. Building and checking
 
 - `cargo run` to run, `cargo test` to test, `cargo build --release` for a release binary in `target/release/`.
 - The release profile (LTO, strip, `panic = "abort"`) keeps the output a single small executable.
