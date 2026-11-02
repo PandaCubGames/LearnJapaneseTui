@@ -29,13 +29,14 @@ stateDiagram-v2
     [*] --> Menu: no argument
     [*] --> Session: CLI argument (g / v / k, optional --level)
     Menu --> Session: choose mode
-    Session --> Summary: Esc / Ctrl+C
-    Summary --> Menu: back
+    Session --> Menu: Esc (back to menu, any time)
+    Session --> Summary: Ctrl+C
     Summary --> [*]: quit
     Menu --> [*]: quit
 
     note right of Session
         Repeats questions until the user leaves.
+        Esc works even mid-answer.
         A window resize redraws any screen.
     end note
 ```
@@ -54,9 +55,16 @@ flowchart TD
     F -->|Wrong + expected answer| G
     G --> H[Record result in Scheduler<br/>update score and streak]
     H --> A
-    C -. Esc / Ctrl+C .-> S([Summary screen])
-    D -. Esc / Ctrl+C .-> S
+    C -. Esc .-> M([Back to menu])
+    D -. Esc .-> M
+    C -. Ctrl+C .-> S([Summary, then quit])
+    D -. Ctrl+C .-> S
 ```
+
+**Leaving a session:** `Esc` returns to the menu at any time, even while typing
+an answer (the unfinished answer is dropped). `Ctrl+C` shows the session summary
+and quits the app. Letter keys like `q` don't quit, because they can be part of a
+typed answer.
 
 ## 3. Components
 
