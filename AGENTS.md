@@ -101,8 +101,8 @@ GitHub enforces this for other people because the owner is the only one with wri
 When the tasks on a branch are done:
 
 1. **Check:** all tests pass, the working tree is clean, and the hooks passed on every commit.
-2. **Version:** bump it (see §4) and update `CHANGELOG.md` on the branch.
-3. **Ask the user for approval to push.** Present a short summary: what changed, the proposed version bump and test results.
+2. **Version:** leave the project version unchanged. Only the owner changes it manually (see §4). Update `CHANGELOG.md` for the change without creating a release or choosing a new version.
+3. **Ask the user for approval to push.** Present a short summary: what changed, the unchanged version and test results.
 4. **Only after approval, publish:**
    - Push the branch: `git push -u origin <branch>`.
    - Open a PR: `gh pr create`.
@@ -113,7 +113,7 @@ When the tasks on a branch are done:
 6. **After the owner has merged:**
    - Update local `main`: `git switch main && git pull --ff-only`.
    - Delete the local branch. GitHub deletes the remote branch automatically.
-   - If the branch was bumped, ask before pushing its tag: `git push origin vX.Y.Z`.
+   - Publishing a release tag requires separate explicit approval for that exact tag; follow §4.
 
 **Never merge locally into `main` and never push to `main`.** Local `main` only moves by pulling.
 
@@ -121,17 +121,23 @@ Never push, tag, close a PR, or delete a remote branch without the user's explic
 
 ## 4. Versioning — Semantic Versioning `vMAJOR.MINOR.PATCH`
 
-- The source of truth for the version is `version` in `Cargo.toml`. `VERSION` mirrors it (without the `v` prefix, e.g. `0.1.0`). Commitizen updates both; never edit them by hand.
+- The source of truth for the version is `version` in `Cargo.toml`. `VERSION` mirrors it (without the `v` prefix, e.g. `0.1.0`). For now, only the owner changes the project version, by hand, keeping these files and the root package version in `Cargo.lock` consistent. Agents and automation must not change the project version.
 - Releases are marked with annotated Git tags prefixed with `v`, e.g. `v0.1.0`.
-- Bump rules:
+- Semantic version meanings for the owner's manual decisions:
   - **MAJOR** — incompatible/breaking changes (e.g. save-data or config format changes users must migrate).
   - **MINOR** — new backward-compatible functionality.
   - **PATCH** — backward-compatible bug fixes.
-  - Docs/chore/test-only branches don't require a bump unless the user asks for one.
 - While the version is `0.x.y`, the project is in initial development; breaking changes may bump MINOR instead of MAJOR.
 - `1.0.0` marks the first stable release — only when the user decides.
 
-- Version bumps are done with Commitizen: `cz bump` (on the branch, before asking to merge). It computes the bump from the commit history, updates `VERSION`, updates `CHANGELOG.md` and creates the `vX.Y.Z` tag. Use `cz bump --dry-run --yes` first to show the proposed version in the merge summary (`--yes` avoids an interactive prompt that otherwise hangs non-interactive shells, e.g. before the first tag exists).
+- Do not run `cz bump` or any automatic version/release bump command. Commitizen remains available for commit-message validation.
+- An agent may create a release tag only when all of these conditions hold:
+  - The owner explicitly approves creating that exact tag at that exact commit. Approval to edit, commit, push a branch, or merge is not tag approval.
+  - The owner has already set the version manually, and `Cargo.toml`, `VERSION`, and the root package version in `Cargo.lock` agree with the requested `vX.Y.Z` tag.
+  - The intended commit exists, the tag does not already exist locally or remotely, and those checks can be completed successfully.
+  - The environment supports creating an annotated, signed tag with the configured signing identity. Never disable signing or substitute an unsigned tag.
+- If any prerequisite is missing, cannot be verified, or signing fails, leave the tag uncreated and report the specific blocker. Do not modify the version to make tagging possible, overwrite an existing tag, or publish a tag as an access test.
+- Creating a local tag and publishing it are separate actions. Push only the exact tag the owner explicitly approves publishing; never use a blanket `git push --tags`.
 
 ## 5. Commits — Commitizen (`cz`)
 
