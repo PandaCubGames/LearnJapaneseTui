@@ -7,7 +7,7 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
-- Project rules (`CLAUDE.md`): branch-per-change workflow, merge approval, SemVer.
+- Project rules (`AGENTS.md`, formerly `CLAUDE.md`): branch-per-change workflow, merge approval, SemVer.
 - Project overview: Rust, TUI-only, modular learning (verbs, vocab, …), Japanese text support on all platforms.
 - Single-file distribution, SSH support, Japanese (IME) and romaji input requirements.
 - Commitizen (`.cz.toml`) and pre-commit hooks (`.pre-commit-config.yaml`).
@@ -22,3 +22,8 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Commit identity and attribution rules: GitHub noreply author, Claude co-author trailer only.
 - CI: GitHub Actions workflow that checks every commit merged to `main` (and PR titles) against Conventional Commits.
 - `VERSION` file and this changelog.
+- Codex support: project rules moved to `AGENTS.md` (shared by all agents; `CLAUDE.md` imports it), Codex subagents in `.codex/agents/`, and tool-neutral merge and attribution rules.
+- Codex model pins for the subagents (`gpt-6-astra` for planning, `gpt-6.1-terra` for implementation), Codex setup guide (`docs/codex-setup.md`), and permission for the spec-writer roles to run OpenSpec planning commands inside `openspec/`.
+
+### Changed
+- Versioning is manual and owner-only for now: agents and automation never change the version or run `cz bump`; release tags need explicit owner approval for the exact tag and commit, plus working signing, and publishing a tag needs separate approval.
