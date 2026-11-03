@@ -43,6 +43,10 @@ cargo build --release    # optimized binary in target/release/
 
 Prebuilt releases will be available once the first version is published. For now, only the owner changes the version manually. Release tags require explicit owner approval and working signing support; see [the release rules](CONTRIBUTING.md#versioning-and-releases).
 
+## Design
+
+The planned architecture is drafted in [docs/architecture.md](docs/architecture.md).
+
 ## Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first. It covers the branch workflow, the commit message format, the automatic checks, and the licensing rules.
