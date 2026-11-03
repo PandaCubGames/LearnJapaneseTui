@@ -13,58 +13,79 @@ To edit one visually, paste its code into Excalidraw (*More tools → Mermaid to
 
 ## Core idea
 
-You pick a study mode (Grammar, Vocabulary or Kanji) and keep answering questions
-until you quit. **One shared session engine runs the loop.** Each module only answers
-two things: *what's the next item?* and *is this answer correct?* Input handling,
-romaji conversion, scoring and the quit key live in one place, and adding a module
-doesn't touch the others.
+The app is for **practice**. You pick a category (Grammar, Vocabulary or Kanji),
+choose how many questions you want, and answer them one by one. Each answer gets
+feedback, and at the end you see your results and can practise again.
 
 ## 1. Screen flow
 
-The app is one TUI event loop (draw → read key → update). "Studying" is a screen
-state, not a blocking loop, so resizes and quit keys always work.
-
-```mermaid
-stateDiagram-v2
-    [*] --> Menu: no argument
-    [*] --> Session: CLI argument (g / v / k, optional --level)
-    Menu --> Session: choose mode
-    Session --> Menu: Esc (back to menu, any time)
-    Session --> Summary: Ctrl+C
-    Summary --> [*]: quit
-    Menu --> [*]: quit
-
-    note right of Session
-        Repeats questions until the user leaves.
-        Esc works even mid-answer.
-        A window resize redraws any screen.
-    end note
-```
-
-## 2. The study loop inside a session
-
 ```mermaid
 flowchart TD
-    A[Scheduler picks next item] --> B[Module builds the prompt]
-    B --> C[Render question]
-    C --> D[/User types the answer<br/>IME kana/kanji or romaji/]
-    D --> E[input: romaji → kana<br/>+ normalize]
-    E --> F{Module check}
-    F -->|Correct| G[Feedback]
-    F -->|Close| G
-    F -->|Wrong + expected answer| G
-    G --> H[Record result in Scheduler<br/>update score and streak]
-    H --> A
-    C -. Esc .-> M([Back to menu])
-    D -. Esc .-> M
-    C -. Ctrl+C .-> S([Summary, then quit])
-    D -. Ctrl+C .-> S
+    W[Welcome] -->|Enter| C[Select category]
+    C -->|Arrows to browse, Enter to confirm| E{Category has questions?}
+    E -->|No| M[No questions in this category yet]
+    M -->|Enter| C
+    E -->|Yes| N[Choose question count<br/>default 10 · 0 = unlimited]
+    C -->|Esc| T[Thank you]
+    N -->|Enter| Q[Show question and accept input]
+    N -->|Esc| C
+    Q -->|Enter: submit| F[Show feedback and wait]
+    F -->|Enter: continue| D{Limit reached?<br/>limit > 0 and answered >= limit}
+    D -->|No| Q
+    D -->|Yes| A[Show results<br/>Practise again?]
+    A -->|Yes| C
+    A -->|Esc| C
+    A -->|No| T
+    T --> X([Exit])
+    Q -->|Esc| C
+    F -->|Esc| C
 ```
 
-**Leaving a session:** `Esc` returns to the menu at any time, even while typing
-an answer (the unfinished answer is dropped). `Ctrl+C` shows the session summary
-and quits the app. Letter keys like `q` don't quit, because they can be part of a
-typed answer.
+Welcome and Thank you are ordinary screens at the start and the end. There is no
+fixed header or footer, and no separate logout.
+
+## 2. Decisions
+
+### Scope
+- **Practice only for now.** A broader study system (saved history, spaced repetition,
+  detailed grading and explanation rules) is out of scope.
+
+### Categories
+- Vocabulary, kanji and grammar each have **their own model**.
+- **Empty category:** it can still be selected. It shows "No questions in this category
+  yet", and Enter goes back to category selection.
+
+### Question count
+- Chosen before practice starts. The default is `10`, and `0` means **unlimited**.
+- Stored as a `u8`. Input is **clamped**, not rejected: anything above `255` becomes
+  `255`, and anything below `0` becomes `0` (unlimited).
+- The session ends when `limit > 0 && answered >= limit`. Unlimited mode never counts
+  down, so an unsigned zero is never decremented.
+
+### Answering and feedback
+- **Input rules belong to the kind of exercise**, not to each exercise and not to one
+  shared conversion step:
+  - Japanese reading: accepts kana (from the user's IME) or romaji, converted to kana.
+  - Meaning: plain text, never converted to kana.
+  - Choice: picked with a selection control.
+- Enter submits the answer. **Feedback is a waiting step:** it stays until the next Enter,
+  including after the last question, before the results appear.
+- Each submitted answer is **counted once**, correct or not. Continuing from feedback
+  doesn't count it again.
+
+### Keys
+- Keys depend on the current screen:
+  - Category selection: arrows and Enter.
+  - Question: input suited to the exercise kind.
+  - Feedback: waits for Enter.
+- **Esc:**
+  - While answering, on feedback, on the question count and on results: goes back to
+    category selection. An unfinished answer is dropped and not counted as a mistake.
+  - On category selection: goes to Thank you, then the app exits.
+- **Practise again:** Yes goes back to category selection (so you can pick another
+  category). No goes to Thank you, then exits.
+- Terminal key handling is kept separate from session actions and drawing, so the
+  screen changes can be tested without an interactive terminal.
 
 ## 3. Components
 
@@ -73,89 +94,40 @@ flowchart LR
     main[main.rs<br/>parse CLI args] --> app
 
     subgraph core[Core]
-        app[app<br/>event loop + screen state]
-        session[session engine<br/>score, streak, loop]
-        scheduler[scheduler<br/>trait: next item, record result]
-        input[input<br/>romaji → kana, normalize]
-        ui[ui<br/>ratatui widgets, display width]
+        app[app<br/>event loop + current screen]
+        keys[keys<br/>terminal key → action,<br/>per screen]
+        session[session<br/>count, limit, answered]
+        ui[ui<br/>draws each screen,<br/>display width]
     end
 
-    subgraph modules[Modules]
-        registry[registry<br/>the only list of modules]
+    subgraph kinds[Exercise kinds and their input]
+        reading[Japanese reading<br/>kana or romaji → kana]
+        meaning[Meaning<br/>plain text]
+        choice[Choice<br/>selection control]
+    end
+
+    subgraph categories[Categories, each with its own model]
         vocab[vocabulary]
         kanji[kanji]
-        grammar[grammar<br/>conjugation, particles,<br/>multiple choice]
+        grammar[grammar]
     end
 
-    subgraph content[Embedded content]
-        cv[(content/vocab.toml)]
-        ck[(content/kanji.toml)]
-        cg[(content/grammar.toml)]
-    end
+    content[(Embedded content<br/>include_str!)]
 
-    progress[(progress file<br/>OS data dir)]
-
-    app --> session
+    app --> keys
+    keys --> session
     app --> ui
-    session --> scheduler
-    session --> input
-    session --> registry
-    registry --> vocab & kanji & grammar
-    vocab --> cv
-    kanji --> ck
-    grammar --> cg
-    scheduler -. later .-> progress
-
-    classDef future stroke-dasharray: 5 5
-    class progress future
+    session --> categories
+    categories --> kinds
+    vocab & kanji & grammar --> content
 ```
 
-- **Scheduler:** the first version is a shuffle that shows missed items more often,
-  in memory only. Spaced repetition and saved progress come later (dashed).
-- **Content** is embedded in the binary with `include_str!`, so the release stays
-  a single file. Sources and licenses go in `ATTRIBUTION.md`.
+- `keys` turns a terminal key into an action for the current screen, and `session`
+  applies it. Neither draws anything, so the flow can be unit tested.
+- **Content** is embedded in the binary, so the release stays a single file. Sources and
+  licenses go in `ATTRIBUTION.md`.
 
-## 4. Module contract
+## 4. Still open
 
-```mermaid
-classDiagram
-    class StudyModule {
-        <<trait>>
-        +id() str
-        +name() str
-        +items(level) Vec~Item~
-        +prompt(item) Prompt
-        +check(item, answer) Verdict
-    }
-    class Item {
-        +id: stable key, e.g. kanji:日
-        +level: e.g. N5
-    }
-    class Prompt {
-        +text
-        +hint: optional furigana
-        +choices: optional
-    }
-    class Verdict {
-        <<enum>>
-        Correct
-        Close
-        Wrong(expected)
-    }
-    StudyModule <|.. Vocabulary
-    StudyModule <|.. Kanji
-    StudyModule <|.. Grammar
-    StudyModule ..> Item
-    StudyModule ..> Prompt
-    StudyModule ..> Verdict
-```
-
-**Adding a module** = one new file in `modules/`, one line in the registry, and one
-content file. Nothing else changes.
-
-## Build order
-
-1. Session engine, Menu → Session → Summary, romaji input, and **Vocabulary**.
-2. **Kanji** (reuses the typed-answer flow: reading / meaning).
-3. **Grammar** (exercise types: conjugation, particle fill-in, multiple choice).
-4. Saved progress and spaced repetition.
+- The exact screens and data for each category's model.
+- How grammar questions map onto the three exercise kinds.
