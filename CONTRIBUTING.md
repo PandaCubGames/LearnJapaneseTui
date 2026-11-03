@@ -4,6 +4,8 @@ Thanks for your interest in helping! This guide explains how changes are made in
 
 ## Quick start
 
+Codex users should also read [Codex setup](docs/codex-setup.md).
+
 1. **Install the tools:**
    - [Rust](https://www.rust-lang.org/tools/install) 1.85+ with `rustfmt` and `clippy`:
      ```sh

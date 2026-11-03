@@ -23,3 +23,4 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - CI: GitHub Actions workflow that checks every commit merged to `main` (and PR titles) against Conventional Commits.
 - `VERSION` file and this changelog.
 - Codex support: project rules moved to `AGENTS.md` (shared by all agents; `CLAUDE.md` imports it), Codex subagents in `.codex/agents/`, and tool-neutral merge and attribution rules.
+- Codex model pins for the subagents (`gpt-6-astra` for planning, `gpt-6.1-terra` for implementation), Codex setup guide (`docs/codex-setup.md`), and permission for the spec-writer roles to run OpenSpec planning commands inside `openspec/`.

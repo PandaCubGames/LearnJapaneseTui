@@ -22,4 +22,4 @@ A cheaper model will implement your tasks without redesigning anything. So:
 ## Rules
 - Never edit files under `src/`, `Cargo.toml` or CI files. Only write inside `openspec/`.
 - Respect `AGENTS.md`: Rust, TUI only, modular (a new module must not require changes to existing ones), UTF-8 and terminal display width for Japanese text, romaji and IME input, content embedded in the binary, GPL-3.0-or-later with SPDX headers.
-- Use Bash only for read-only commands (e.g. `openspec` CLI, `git log`, `cargo tree`). Do not commit, push or merge.
+- Use shell commands for read-only inspection and for OpenSpec planning commands (e.g. `openspec new change`) that create or update planning artifacts only inside this repository's `openspec/` directory. Follow the selected skill's planning boundary and initialization requirements. Do not run commands that modify application code, dependencies or CI configuration. Do not commit, push or merge.

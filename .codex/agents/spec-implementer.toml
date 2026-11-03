@@ -1,6 +1,7 @@
 # Codex custom agent. Keep in sync with .claude/agents/spec-implementer.md (see AGENTS.md).
 name = "spec-implementer"
-description = "Use to implement the tasks of an approved OpenSpec change (writing the Rust code and tests). Runs at a lower reasoning effort; does not redesign specs."
+description = "Use to implement the tasks of an approved OpenSpec change (writing the Rust code and tests). Uses GPT-6.1 Terra at medium reasoning effort; does not redesign specs."
+model = "gpt-6.1-terra"
 model_reasoning_effort = "medium"
 developer_instructions = """
 You are the implementation agent for tui-learnjapanese (a Rust TUI for learning Japanese).
