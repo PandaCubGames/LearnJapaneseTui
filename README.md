@@ -41,7 +41,7 @@ cargo run                # run a debug build
 cargo build --release    # optimized binary in target/release/
 ```
 
-Prebuilt releases will be available once the first version is published.
+Prebuilt releases will be available once the first version is published. For now, only the owner changes the version manually. Release tags require explicit owner approval and working signing support; see [the release rules](CONTRIBUTING.md#versioning-and-releases).
 
 ## Contributing
 

@@ -11,7 +11,7 @@ Codex users should also read [Codex setup](docs/codex-setup.md).
      ```sh
      rustup component add rustfmt clippy
      ```
-   - [Commitizen](https://commitizen-tools.github.io/commitizen/), for commit messages and versioning:
+   - [Commitizen](https://commitizen-tools.github.io/commitizen/), for commit messages and validation:
      ```sh
      pipx install commitizen
      ```
@@ -130,7 +130,9 @@ The project uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH
 
 While the version is `0.x`, breaking changes bump MINOR.
 
-**Don't change the version yourself.** The owner runs `cz bump` when releasing. It calculates the next version from the commit types, updates `Cargo.toml`, `VERSION` and `CHANGELOG.md`, and creates the `vX.Y.Z` tag. This is why correct commit types matter.
+**Only the owner changes the project version, by hand, for now.** Keep `Cargo.toml`, `VERSION`, and the root package version in `Cargo.lock` consistent. Agents and automation must leave the version unchanged and must not run `cz bump` or other automatic bump commands. Commitizen is used for commit messages and validation.
+
+Agents may create an annotated, signed release tag only after the owner explicitly approves the exact tag and target commit, the manually set version matches, the tag is confirmed absent locally and remotely, and signing is available. If any prerequisite cannot be verified, leave the tag uncreated and report the blocker. Publishing the tag requires separate explicit approval. See `AGENTS.md` §4 for the complete rule.
 
 ## Code guidelines
 
