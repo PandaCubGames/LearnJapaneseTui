@@ -2,12 +2,13 @@
 name = "tui-learnjapanese"
 version = "0.0.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.88"
 description = "Learn Japanese in the terminal: a modular TUI app (verbs, vocabulary, ...)"
 license = "GPL-3.0-or-later"
 publish = false
 
 [dependencies]
+ratatui = { version = "0.30", default-features = false, features = ["crossterm", "layout-cache"] }
 
 # Release builds: one small, self-contained executable.
 [profile.release]
