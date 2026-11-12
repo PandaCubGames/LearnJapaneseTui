@@ -5,7 +5,7 @@ Every new `.rs` file starts with the SPDX header from `AGENTS.md` §6. Type name
 ## 1. Dependency and toolchain
 
 - [x] 1.1 In `Cargo.toml`, change `rust-version` to `"1.88"` and add the `ratatui` line from D1 under `[dependencies]`. Verify `cargo build` succeeds and `cargo tree -d` reports no duplicate `crossterm`. If the build fails because of the feature list, stop and report the error.
-- [ ] 1.2 List every licence in the dependency tree with `cargo metadata --format-version 1 | jq -r '.packages[] | "\(.name) \(.version): \(.license)"' | sort -u`. Verify each expression offers at least one licence allowed by `AGENTS.md` §6 (MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, Unicode-3.0, MPL-2.0, LGPL, GPL-3.0). If any crate has none, or no licence at all, stop and report it. Put the resulting list in the report back to the owner.
+- [x] 1.2 List every licence in the dependency tree with `cargo metadata --format-version 1 | jq -r '.packages[] | "\(.name) \(.version): \(.license)"' | sort -u`. Verify each expression offers at least one licence allowed by `AGENTS.md` §6 (MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, Unicode-3.0, MPL-2.0, LGPL, GPL-3.0). If any crate has none, or no licence at all, stop and report it. Put the resulting list in the report back to the owner.
 - [ ] 1.3 Update the minimum Rust version from 1.85 to 1.88 in `README.md` (line 35) and `CONTRIBUTING.md` (line 10). Verify `grep -rn "1\.85" README.md CONTRIBUTING.md Cargo.toml` prints nothing.
 
 ## 2. Session state (`src/session.rs`)
