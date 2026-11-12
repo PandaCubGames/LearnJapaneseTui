@@ -24,6 +24,7 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `VERSION` file and this changelog.
 - Codex support: project rules moved to `AGENTS.md` (shared by all agents; `CLAUDE.md` imports it), Codex subagents in `.codex/agents/`, and tool-neutral merge and attribution rules.
 - Codex model pins for the subagents (`gpt-6-astra` for planning, `gpt-6.1-terra` for implementation), Codex setup guide (`docs/codex-setup.md`), and permission for the spec-writer roles to run OpenSpec planning commands inside `openspec/`.
+- Draft architecture document (`docs/architecture.md`, linked from `README.md`): screen flow with a JLPT level picker, design decisions, the Vocabulary, Kanji and Grammar data models, rule-based conjugation, and the component layout. Design only; no code yet.
 
 ### Changed
 - Versioning is manual and owner-only for now: agents and automation never change the version or run `cz bump`; release tags need explicit owner approval for the exact tag and commit, plus working signing, and publishing a tag needs separate approval.
