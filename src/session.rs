@@ -81,3 +81,65 @@ impl Session {
         (self.width, self.height)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_session_starts_on_welcome_with_nothing_recorded() {
+        let session = Session::new(80, 24);
+        assert_eq!(session.screen(), Screen::Welcome);
+        assert_eq!(session.elapsed(), Duration::ZERO);
+        assert_eq!(session.last_char(), None);
+        assert_eq!(session.size(), (80, 24));
+        assert!(!session.should_quit());
+    }
+
+    #[test]
+    fn quit_sets_should_quit() {
+        let mut session = Session::new(80, 24);
+        session.apply(Action::Quit);
+        assert!(session.should_quit());
+    }
+
+    #[test]
+    fn typed_keeps_the_last_character() {
+        let mut session = Session::new(80, 24);
+        session.apply(Action::Typed('あ'));
+        assert_eq!(session.last_char(), Some('あ'));
+        session.apply(Action::Typed('a'));
+        assert_eq!(session.last_char(), Some('a'));
+    }
+
+    #[test]
+    fn resized_updates_the_size() {
+        let mut session = Session::new(80, 24);
+        session.apply(Action::Resized {
+            width: 100,
+            height: 30,
+        });
+        assert_eq!(session.size(), (100, 30));
+    }
+
+    #[test]
+    fn ticks_advance_elapsed_time() {
+        let mut session = Session::new(80, 24);
+        for _ in 0..25 {
+            session.apply(Action::Tick);
+        }
+        assert_eq!(session.elapsed(), Duration::from_millis(2500));
+    }
+
+    #[test]
+    fn only_quit_sets_should_quit() {
+        let mut session = Session::new(80, 24);
+        session.apply(Action::Tick);
+        session.apply(Action::Typed('q'));
+        session.apply(Action::Resized {
+            width: 1,
+            height: 1,
+        });
+        assert!(!session.should_quit());
+    }
+}

@@ -11,7 +11,7 @@ Every new `.rs` file starts with the SPDX header from `AGENTS.md` §6. Type name
 ## 2. Session state (`src/session.rs`)
 
 - [x] 2.1 Create `src/session.rs` with `Screen`, `Action` and `Session` as in D4. Derive `Debug, Clone, Copy, PartialEq, Eq` on `Screen` and `Action`. `apply` does: `Quit` → `should_quit()` becomes true; `Typed(c)` → `last_char()` becomes `Some(c)`; `Resized` → `size()` becomes the new size; `Tick` → the tick count goes up by one (use `saturating_add`). Add `pub const TICK_INTERVAL: Duration = Duration::from_millis(100);` in a new `src/app.rs` (header plus this constant only, for now) so `elapsed()` can return `TICK_INTERVAL * ticks`. Declare `mod app; mod session;` in `src/main.rs`. Verify `cargo build` succeeds.
-- [ ] 2.2 Add tests in `src/session.rs`: a new session is on `Screen::Welcome`, has zero elapsed time, no last character, the size it was given, and does not want to quit; `Quit` sets `should_quit`; `Typed('あ')` then `Typed('a')` leaves `last_char() == Some('a')`; `Resized { width: 100, height: 30 }` gives `size() == (100, 30)`; 25 `Tick`s give `elapsed() == Duration::from_millis(2500)`; `Tick`, `Typed` and `Resized` never set `should_quit`. Verify `cargo test session` passes.
+- [x] 2.2 Add tests in `src/session.rs`: a new session is on `Screen::Welcome`, has zero elapsed time, no last character, the size it was given, and does not want to quit; `Quit` sets `should_quit`; `Typed('あ')` then `Typed('a')` leaves `last_char() == Some('a')`; `Resized { width: 100, height: 30 }` gives `size() == (100, 30)`; 25 `Tick`s give `elapsed() == Duration::from_millis(2500)`; `Tick`, `Typed` and `Resized` never set `should_quit`. Verify `cargo test session` passes.
 
 ## 3. Key table (`src/keys.rs`)
 
