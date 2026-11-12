@@ -8,6 +8,8 @@ mod app;
 mod keys;
 #[allow(dead_code)]
 mod session;
+#[allow(dead_code)]
+mod ui;
 
 fn main() {
     println!(
