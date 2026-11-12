@@ -147,6 +147,12 @@ Never push, tag, close a PR, or delete a remote branch without the user's explic
   - After cloning, run `pre-commit install --hook-type commit-msg --hook-type pre-commit`.
   - The hooks also block commits directly on `main`.
   - For Rust files, the hooks run `cargo fmt --check` and `cargo clippy -D warnings`. Code must be formatted and free of warnings to commit.
+- **AI agents commit after every task.** When an agent works through an OpenSpec change's `tasks.md`, it commits as soon as each checkbox task is done, before starting the next one. It doesn't wait to be asked.
+  - **One task, one commit.** The commit is atomic: it holds everything that task needed (code, tests, docs and the ticked checkbox in `tasks.md`) and nothing from any other task.
+  - **Every commit stands on its own.** The project builds, the tests pass and the hooks pass at each commit. A task isn't done, and isn't committed, until they do.
+  - **The message follows Conventional Commits** and says what the task achieved, e.g. `feat(session): add the session state`. Don't use the task number as the summary.
+  - **A task that changes no files** (a manual check, for example) is committed as its ticked checkbox alone, e.g. `chore(openspec): record the manual terminal checks`.
+  - **Committing is not pushing.** §3 still applies: push only with the owner's approval for that branch.
 
 ## 6. Open source hygiene — no secrets, no private data
 
