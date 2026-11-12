@@ -26,7 +26,7 @@ Every new `.rs` file starts with the SPDX header from `AGENTS.md` §6. Type name
 ## 5. Loop and terminal lifecycle (`src/app.rs`, `src/main.rs`)
 
 - [x] 5.1 Add `Ticker` to `src/app.rs` as in D6. Add tests using one base `Instant::now()` plus made-up offsets, with a 100 ms interval: `timeout` at the start is 100 ms; `timeout` 30 ms later is 70 ms; `timeout` after the deadline is zero; `due` is false at 99 ms and true at 100 ms; after that `due`, `timeout` at 100 ms is 100 ms again; `due` at 100, 200 and 300 ms returns true three times (no drift); after a stall, `due` at 1000 ms returns true once, an immediate second call returns false, and the next deadline is 1100 ms. Verify `cargo test app` passes.
-- [ ] 5.2 Add `run` and `run_loop` to `src/app.rs` exactly as in D3 and D6. Verify `cargo build` succeeds with no warnings.
+- [x] 5.2 Add `run` and `run_loop` to `src/app.rs` exactly as in D3 and D6. Verify `cargo build` succeeds with no warnings.
 - [ ] 5.3 Rewrite `src/main.rs`: keep the SPDX header, declare the four modules, and make `main` return `std::process::ExitCode`. It calls `app::run()`; on `Err(error)` it runs `eprintln!("tui-learnjapanese: {error}")` and returns `ExitCode::FAILURE`, otherwise `ExitCode::SUCCESS`. Remove the old banner `println!`. Verify that `setsid cargo run </dev/null >/dev/null 2>&1; echo $?` prints a non-zero status (no terminal available), and that `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` all pass.
 
 ## 6. Documentation and integration checks

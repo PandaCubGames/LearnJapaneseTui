@@ -63,6 +63,7 @@ pub fn run() -> io::Result<()> {
 ```
 
 - `try_init` enables raw mode, enters the alternate screen and installs a panic hook that restores the terminal and then calls the previous hook. This covers the panic case under `panic = "abort"` (see Context).
+- `try_init`'s hook does not show the cursor again; `ratatui` leaves that to the terminal's destructor, which never runs under `panic = "abort"`. So `run` adds one more hook, `show_cursor_on_panic`, right after `try_init` succeeds. (Found during implementation; the code block above omits that one call.)
 - `restore` is called on the single path out of `run_loop`, whether it returned `Ok` or `Err`. That covers normal exit and errors.
 - `main` returns `ExitCode`. On `Err` it prints `tui-learnjapanese: {error}` to standard error **after** `run` has returned, so the message lands on the normal screen, and returns `ExitCode::FAILURE`.
 - **Alternative considered:** a hand-written guard type with `Drop`. Rejected because of `panic = "abort"`, and because it duplicates what `ratatui` already provides.
