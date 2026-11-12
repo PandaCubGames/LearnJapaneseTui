@@ -42,3 +42,105 @@ pub fn action_for(screen: Screen, event: &Event) -> Option<Action> {
         },
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use ratatui::crossterm::event::KeyEvent;
+
+    use super::*;
+
+    fn press(code: KeyCode, modifiers: KeyModifiers) -> Event {
+        Event::Key(KeyEvent::new(code, modifiers))
+    }
+
+    fn with_kind(code: KeyCode, kind: KeyEventKind) -> Event {
+        Event::Key(KeyEvent::new_with_kind(code, KeyModifiers::NONE, kind))
+    }
+
+    fn on_welcome(event: Event) -> Option<Action> {
+        action_for(Screen::Welcome, &event)
+    }
+
+    #[test]
+    fn resize_becomes_resized() {
+        assert_eq!(
+            on_welcome(Event::Resize(100, 30)),
+            Some(Action::Resized {
+                width: 100,
+                height: 30
+            })
+        );
+    }
+
+    #[test]
+    fn ctrl_c_quits() {
+        assert_eq!(
+            on_welcome(press(KeyCode::Char('c'), KeyModifiers::CONTROL)),
+            Some(Action::Quit)
+        );
+    }
+
+    #[test]
+    fn q_quits_on_welcome() {
+        assert_eq!(
+            on_welcome(press(KeyCode::Char('q'), KeyModifiers::NONE)),
+            Some(Action::Quit)
+        );
+    }
+
+    #[test]
+    fn releases_are_ignored() {
+        assert_eq!(
+            on_welcome(with_kind(KeyCode::Char('q'), KeyEventKind::Release)),
+            None
+        );
+        assert_eq!(
+            on_welcome(with_kind(KeyCode::Char('a'), KeyEventKind::Release)),
+            None
+        );
+    }
+
+    #[test]
+    fn characters_are_typed() {
+        assert_eq!(
+            on_welcome(press(KeyCode::Char('a'), KeyModifiers::NONE)),
+            Some(Action::Typed('a'))
+        );
+        assert_eq!(
+            on_welcome(press(KeyCode::Char('A'), KeyModifiers::SHIFT)),
+            Some(Action::Typed('A'))
+        );
+        assert_eq!(
+            on_welcome(press(KeyCode::Char('あ'), KeyModifiers::NONE)),
+            Some(Action::Typed('あ'))
+        );
+    }
+
+    #[test]
+    fn a_held_key_repeats() {
+        assert_eq!(
+            on_welcome(with_kind(KeyCode::Char('a'), KeyEventKind::Repeat)),
+            Some(Action::Typed('a'))
+        );
+    }
+
+    #[test]
+    fn other_modifiers_do_nothing() {
+        assert_eq!(
+            on_welcome(press(KeyCode::Char('q'), KeyModifiers::CONTROL)),
+            None
+        );
+        assert_eq!(
+            on_welcome(press(KeyCode::Char('a'), KeyModifiers::ALT)),
+            None
+        );
+    }
+
+    #[test]
+    fn other_keys_and_events_do_nothing() {
+        for code in [KeyCode::Enter, KeyCode::Esc, KeyCode::Up] {
+            assert_eq!(on_welcome(press(code, KeyModifiers::NONE)), None);
+        }
+        assert_eq!(on_welcome(Event::FocusGained), None);
+    }
+}

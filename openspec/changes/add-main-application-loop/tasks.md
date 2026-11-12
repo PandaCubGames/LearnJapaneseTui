@@ -16,7 +16,7 @@ Every new `.rs` file starts with the SPDX header from `AGENTS.md` §6. Type name
 ## 3. Key table (`src/keys.rs`)
 
 - [x] 3.1 Create `src/keys.rs` with `pub fn action_for(screen: Screen, event: &Event) -> Option<Action>` implementing the five rules of D5 in that order. Import crossterm types from `ratatui::crossterm::event`. Declare `mod keys;` in `src/main.rs`. Verify `cargo build` succeeds.
-- [ ] 3.2 Add tests in `src/keys.rs`, building events by hand with `KeyEvent::new` and `KeyEvent::new_with_kind`: `Event::Resize(100, 30)` → `Resized { width: 100, height: 30 }`; `Ctrl+C` press → `Quit`; `q` press → `Quit`; `q` release → `None`; `a` release → `None`; `a` press → `Typed('a')`; `A` with `SHIFT` → `Typed('A')`; `あ` press → `Typed('あ')`; `Ctrl+Q` → `None`; `Alt+a` → `None`; `Enter`, `Esc` and `Up` → `None`; a `Repeat` of `a` → `Typed('a')`; `Event::FocusGained` → `None`. Verify `cargo test keys` passes.
+- [x] 3.2 Add tests in `src/keys.rs`, building events by hand with `KeyEvent::new` and `KeyEvent::new_with_kind`: `Event::Resize(100, 30)` → `Resized { width: 100, height: 30 }`; `Ctrl+C` press → `Quit`; `q` press → `Quit`; `q` release → `None`; `a` release → `None`; `a` press → `Typed('a')`; `A` with `SHIFT` → `Typed('A')`; `あ` press → `Typed('あ')`; `Ctrl+Q` → `None`; `Alt+a` → `None`; `Enter`, `Esc` and `Up` → `None`; a `Repeat` of `a` → `Typed('a')`; `Event::FocusGained` → `None`. Verify `cargo test keys` passes.
 
 ## 4. Drawing (`src/ui.rs`)
 
