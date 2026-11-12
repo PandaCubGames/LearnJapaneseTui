@@ -5,6 +5,8 @@
 #[allow(dead_code)]
 mod app;
 #[allow(dead_code)]
+mod keys;
+#[allow(dead_code)]
 mod session;
 
 fn main() {
