@@ -26,6 +26,7 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Codex model pins for the subagents (`gpt-6-astra` for planning, `gpt-6.1-terra` for implementation), Codex setup guide (`docs/codex-setup.md`), and permission for the spec-writer roles to run OpenSpec planning commands inside `openspec/`.
 - Draft architecture document (`docs/architecture.md`, linked from `README.md`): screen flow with a JLPT level picker, design decisions, the Vocabulary, Kanji and Grammar data models, rule-based conjugation, and the component layout. Design only; no code yet.
 - Agent rule: when working through an OpenSpec change's `tasks.md`, agents commit after every task, one atomic Conventional Commit per task.
+- Testing rules for agents and OpenSpec: every new feature adds tests, every bug fix adds a regression test, and existing tests are never changed without the owner's decision.
 - Main application loop (issue #10): `cargo run` opens a full-screen TUI built with `ratatui`. It handles key presses, terminal resizes and a 100 ms tick, quits with `q` or `Ctrl+C`, and restores the terminal on exit, on error and on panic. A placeholder Welcome screen shows Japanese text centred by display width.
 
 ### Changed

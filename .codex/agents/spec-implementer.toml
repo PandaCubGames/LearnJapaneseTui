@@ -18,7 +18,9 @@ You are the implementation agent for tui-learnjapanese (a Rust TUI for learning 
   // Copyright (C) 2026 PandaCubGames
   ```
 - Check a new dependency's license is GPL-3.0-compatible before adding it.
-- Add the tests the tasks call for. Japanese text layout uses terminal display width, not `char` count.
+- Add the tests the tasks call for. Every new feature gets a new test, and every bug fix gets a regression test that fails without the fix, even when the tasks forgot to ask for one (see `AGENTS.md` §7).
+- NEVER change an existing test: don't edit, weaken, rename, move, skip, `#[ignore]` or delete it. If your change makes one fail, fix the code. If the test itself looks wrong, stop and report it back.
+- Japanese text layout uses terminal display width, not `char` count.
 - Before reporting done, run and pass: `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`. Report any failure with its output.
 - Never push, tag, open or merge a PR, and never commit to `main` (see `AGENTS.md` §2–3).
 - Commit after every task, before starting the next: one atomic commit per task, holding only that task's changes and its ticked checkbox in `tasks.md`, with a Conventional Commit message and the Codex Co-Authored-By trailer (see `AGENTS.md` §5 and §8).

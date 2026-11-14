@@ -195,6 +195,16 @@ This project will be published as open source. Treat everything committed, inclu
 - The release profile (LTO, strip, `panic = "abort"`) keeps the output a single small executable.
 - Before asking to merge, all of these must pass: `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
 
+### Tests
+
+- **Every new feature comes with new tests.** A change that adds behavior adds at least one test that fails without it. The test goes in the same commit as the code it covers (see §5).
+- **Every bug fix comes with a regression test.** The test reproduces the bug: it fails before the fix and passes after it. Check that it fails first.
+- **NEVER change an existing test.** A test that is already on `main` is not edited, weakened, renamed, moved, skipped, marked `#[ignore]` or deleted. This holds when a test fails, and when a requirement changes.
+  - If a new change makes an existing test fail, the change is wrong until proven otherwise. Fix the code, not the test.
+  - If an existing test looks wrong, or a requirement really has changed so the test can't pass any more, stop and ask the owner. Only the owner decides to change or remove a test, for that specific test.
+  - Adding new tests next to old ones, in the same file or test module, is fine. So is adding a shared test helper, as long as no existing test is touched.
+- Tests don't need a real terminal, the network or the user's files, so they run the same everywhere.
+
 ## 8. CI (GitHub Actions)
 
 Workflows live in `.github/workflows/`.

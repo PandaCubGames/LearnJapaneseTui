@@ -112,6 +112,11 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
+**Tests:**
+- A new feature comes with new tests for it.
+- A bug fix comes with a regression test that fails without the fix.
+- Don't change, skip or delete existing tests. If one fails, fix the code. If you think a test is wrong or a requirement has changed, say so in the pull request and let the owner decide.
+
 ### 4. Open a pull request
 
 - Push your branch and open a pull request against `main`.
