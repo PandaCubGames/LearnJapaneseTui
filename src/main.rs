@@ -6,6 +6,7 @@ use std::process::ExitCode;
 mod app;
 mod keys;
 mod session;
+mod text;
 mod ui;
 
 fn main() -> ExitCode {
@@ -14,7 +15,7 @@ fn main() -> ExitCode {
     match app::run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("tui-learnjapanese: {error}");
+            eprintln!("{}", text::fatal_error(error));
             ExitCode::FAILURE
         }
     }

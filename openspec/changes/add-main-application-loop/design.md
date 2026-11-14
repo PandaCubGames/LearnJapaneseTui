@@ -76,7 +76,8 @@ pub fn run() -> io::Result<()> {
 | `src/app.rs` | `TICK_INTERVAL`, `Ticker`, `run`, `run_loop` | `run` and `run_loop` only |
 | `src/keys.rs` | `action_for` | no |
 | `src/session.rs` | `Screen`, `Action`, `Session` | no |
-| `src/ui.rs` | `draw`, `GREETING` | no (draws into a `Frame`) |
+| `src/ui.rs` | `draw` | no (draws into a `Frame`) |
+| `src/text.rs` | every message shown to the user (see D9) | no |
 
 ```rust
 // session.rs
@@ -200,6 +201,14 @@ All tests are `#[cfg(test)] mod tests` inside the file they test. None opens a t
 - `keys.rs`: every row of the key table in D5, built from hand-made `Event` values.
 - `app.rs`: `Ticker` with made-up `Instant`s.
 - `ui.rs`: `draw` into `Terminal::new(TestBackend::new(w, h))`, then assertions on the buffer.
+
+### D9. All user-facing text lives in `src/text.rs`
+
+Added at the owner's request after the first review. Every message the user can see is defined in `src/text.rs`: fixed messages as constants (`APP_NAME`, `TITLE`, `GREETING`, `QUIT_HINT`, `NO_KEY`), and messages with values in them as functions that return the finished text (`status`, `last_key`, `fatal_error`). `ui` and `main` only place that text; they hold no wording of their own. This supersedes the `GREETING` constant shown under `ui.rs` in D4.
+
+- **Why:** wording can be reviewed, corrected and later translated in one file, and the rule against ambiguous-width characters (D7) has one place to be checked.
+- **Why functions for some messages:** a Rust constant cannot be a format template, so a message with values in it needs a function. Splitting it into label constants would spread one sentence over several names and fix the word order, which gets in the way of translation.
+- **Not covered:** panic messages and text that comes from the operating system (the reason inside an I/O error). They are not written by this project.
 
 ## Risks / Trade-offs
 

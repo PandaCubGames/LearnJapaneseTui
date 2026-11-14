@@ -35,6 +35,10 @@ Every new `.rs` file starts with the SPDX header from `AGENTS.md` §6. Type name
 - [x] 6.2 Check by hand in a real terminal with `cargo run --release`, and record each result in the report: the Welcome screen fills the terminal; the elapsed time advances with no input and while a key is held down; resizing redraws and updates the size line; shrinking to a few columns and rows does not crash; typing `a` and, when an IME is available, `あ` updates the last-key line; `q` quits and the shell works normally afterwards; a second run quits with `Ctrl+C` the same way. Then add a temporary `panic!("test")` to the `Typed` arm of `Session::apply`, run `cargo run --release`, press a key, and confirm the panic message is readable and the shell works normally. Remove the temporary panic and verify `git diff src/session.rs` shows no trace of it. *(Done by script in a pseudo-terminal, not by a person in a terminal window: every check passed, with `あ` sent as UTF-8 bytes in place of an IME. See the follow-up below.)*
 - [x] 6.3 Verify the static build: `rustup target add x86_64-unknown-linux-musl`, then `cargo build --release --target x86_64-unknown-linux-musl` succeeds, and `file target/x86_64-unknown-linux-musl/release/tui-learnjapanese` reports a statically linked executable. If the target cannot be installed in this environment, say so in the report instead of skipping silently.
 
+## 7. Central text file
+
+- [x] 7.1 Create `src/text.rs` as in D9 and move every user-facing message into it: the Welcome screen's title, greeting, status line, last-key line and quit hint from `src/ui.rs`, and the error line from `src/main.rs`. Add tests in `src/text.rs` for `TITLE`, `status`, `last_key` and `fatal_error`. Do not change any existing test. Verify `grep -n '"' src/ui.rs src/main.rs src/app.rs src/keys.rs src/session.rs` shows no user-facing wording outside test modules, and that `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` pass.
+
 ## Workflow follow-up
 
 - The owner runs `cargo run --release` once in a real terminal window, with an IME, to confirm by eye what task 6.2 checked by script.
