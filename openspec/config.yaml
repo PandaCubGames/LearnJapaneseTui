@@ -8,6 +8,13 @@ schema: spec-driven
 #   context: |
 #     Designs and tasks must cover Windows, macOS, and Linux
 #     Write all artifacts in Spanish
+#
+# Keep this in step with AGENTS.md §7 (Tests), which is the source of truth.
+context: |
+  Testing rules (AGENTS.md §7):
+  - Every new feature comes with new tests that fail without it.
+  - Every bug fix comes with a regression test that fails before the fix and passes after it.
+  - NEVER change an existing test: no editing, weakening, renaming, moving, skipping, #[ignore] or deleting. If a change makes an existing test fail, fix the code. If a test looks wrong or a requirement has changed, stop and ask the owner.
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.
@@ -18,6 +25,15 @@ schema: spec-driven
 #       - Always state what is out of scope
 #     tasks:
 #       - Break tasks into chunks of max 2 hours
+rules:
+  specs:
+    - Every requirement has at least one scenario that can be checked by an automated test.
+  design:
+    - If the change cannot be made without changing an existing test, list that test under Open Questions for the owner. Do not plan around it.
+  tasks:
+    - Every task that adds a feature names the new tests to add for it, in the same task or the same task group.
+    - Every task that fixes a bug includes a regression test, and says to check that the test fails before the fix.
+    - "No task may change, skip, #[ignore] or delete an existing test."
 
 # Per-operation guidance (optional)
 # Add advisory guidance for how apply and archive work should be conducted.
@@ -30,3 +46,8 @@ schema: spec-driven
 #     archive:
 #       guidance:
 #         - Summarize the archive outcome before finishing
+operations:
+  apply:
+    guidance:
+      - Add a new test for every feature and a regression test for every bug fix, in the same commit as the code.
+      - Never change an existing test. If one fails, fix the code. If the test itself looks wrong, stop and ask the owner.
