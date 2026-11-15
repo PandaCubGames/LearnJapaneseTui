@@ -26,6 +26,8 @@ pub enum Group {
     /// いい: non-past いい or よい, other forms on よ, and each よ form also
     /// written with 良.
     Ii,
+    /// な-adjectives, stored without だ or な: 静か.
+    NaAdjective,
 }
 
 /// The five forms asked of a word.
@@ -244,6 +246,45 @@ fn endings(
             )?;
             Some((
                 "い",
+                endings
+                    .into_iter()
+                    .map(|ending| ending.to_string())
+                    .collect(),
+            ))
+        }
+        Group::NaAdjective => {
+            if text.is_empty() {
+                return None;
+            }
+            let endings = pick(
+                form,
+                formality,
+                [
+                    vec!["だ"],
+                    vec!["じゃない", "ではない"],
+                    vec!["だった"],
+                    vec!["じゃなかった", "ではなかった"],
+                    vec!["で"],
+                ],
+                [
+                    vec!["です"],
+                    vec![
+                        "じゃないです",
+                        "じゃありません",
+                        "ではないです",
+                        "ではありません",
+                    ],
+                    vec!["でした"],
+                    vec![
+                        "じゃなかったです",
+                        "じゃありませんでした",
+                        "ではなかったです",
+                        "ではありませんでした",
+                    ],
+                ],
+            )?;
+            Some((
+                "",
                 endings
                     .into_iter()
                     .map(|ending| ending.to_string())
@@ -972,5 +1013,128 @@ mod tests {
             )
             .is_empty()
         );
+    }
+
+    /// The nine forms of a na-adjective written in kana only, one list of
+    /// variants per form, as in design.md Appendix B.
+    fn kana_forms(lists: [&[&str]; 9]) -> Vec<Vec<Answer>> {
+        lists
+            .iter()
+            .map(|list| list.iter().map(|form| a(form, form)).collect())
+            .collect()
+    }
+
+    #[test]
+    fn na_adjective_never_gives_dewa() {
+        for answers in nine("静か", "しずか", Group::NaAdjective) {
+            for answer in answers {
+                assert!(!answer.written.contains("でわ"), "{}", answer.written);
+                assert!(!answer.reading.contains("でわ"), "{}", answer.reading);
+            }
+        }
+    }
+
+    #[test]
+    fn na_adjective_plain_forms() {
+        assert_eq!(
+            nine("静か", "しずか", Group::NaAdjective)[..5],
+            [
+                vec![a("静かだ", "しずかだ")],
+                vec![
+                    a("静かじゃない", "しずかじゃない"),
+                    a("静かではない", "しずかではない"),
+                ],
+                vec![a("静かだった", "しずかだった")],
+                vec![
+                    a("静かじゃなかった", "しずかじゃなかった"),
+                    a("静かではなかった", "しずかではなかった"),
+                ],
+                vec![a("静かで", "しずかで")],
+            ]
+        );
+    }
+
+    #[test]
+    fn na_adjective_polite_forms_and_variants() {
+        assert_eq!(
+            nine("静か", "しずか", Group::NaAdjective)[5..],
+            [
+                vec![a("静かです", "しずかです")],
+                vec![
+                    a("静かじゃないです", "しずかじゃないです"),
+                    a("静かじゃありません", "しずかじゃありません"),
+                    a("静かではないです", "しずかではないです"),
+                    a("静かではありません", "しずかではありません"),
+                ],
+                vec![a("静かでした", "しずかでした")],
+                vec![
+                    a("静かじゃなかったです", "しずかじゃなかったです"),
+                    a("静かじゃありませんでした", "しずかじゃありませんでした"),
+                    a("静かではなかったです", "しずかではなかったです"),
+                    a("静かではありませんでした", "しずかではありませんでした"),
+                ],
+            ]
+        );
+    }
+
+    #[test]
+    fn na_adjective_plain_non_past_has_da() {
+        assert_eq!(
+            conjugate(
+                "静か",
+                "しずか",
+                Group::NaAdjective,
+                Form::NonPast,
+                Formality::Plain
+            ),
+            vec![a("静かだ", "しずかだ")]
+        );
+    }
+
+    #[test]
+    fn na_adjective_ending_in_i_is_not_an_i_adjective() {
+        assert_eq!(
+            nine("きれい", "きれい", Group::NaAdjective),
+            kana_forms([
+                &["きれいだ"],
+                &["きれいじゃない", "きれいではない"],
+                &["きれいだった"],
+                &["きれいじゃなかった", "きれいではなかった"],
+                &["きれいで"],
+                &["きれいです"],
+                &[
+                    "きれいじゃないです",
+                    "きれいじゃありません",
+                    "きれいではないです",
+                    "きれいではありません",
+                ],
+                &["きれいでした"],
+                &[
+                    "きれいじゃなかったです",
+                    "きれいじゃありませんでした",
+                    "きれいではなかったです",
+                    "きれいではありませんでした",
+                ],
+            ])
+        );
+    }
+
+    #[test]
+    fn na_adjective_has_no_polite_te_form() {
+        assert!(
+            conjugate(
+                "静か",
+                "しずか",
+                Group::NaAdjective,
+                Form::Te,
+                Formality::Polite
+            )
+            .is_empty()
+        );
+    }
+
+    #[test]
+    fn empty_na_adjective_gives_nothing() {
+        assert!(conjugate("", "", Group::NaAdjective, Form::NonPast, Formality::Plain).is_empty());
     }
 }

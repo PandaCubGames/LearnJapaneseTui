@@ -115,6 +115,25 @@ const WORDS: &[Word] = &[
     word("いい", "いい", "good", Group::Ii, Level::N5),
     word("優しい", "やさしい", "kind", Group::IAdjective, Level::N4),
     word("悲しい", "かなしい", "sad", Group::IAdjective, Level::N4),
+    word("静か", "しずか", "quiet", Group::NaAdjective, Level::N5),
+    word("きれい", "きれい", "pretty", Group::NaAdjective, Level::N5),
+    word("元気", "げんき", "healthy", Group::NaAdjective, Level::N5),
+    word("好き", "すき", "liked", Group::NaAdjective, Level::N5),
+    word(
+        "便利",
+        "べんり",
+        "convenient",
+        Group::NaAdjective,
+        Level::N4,
+    ),
+    word("簡単", "かんたん", "easy", Group::NaAdjective, Level::N4),
+    word(
+        "大切",
+        "たいせつ",
+        "important",
+        Group::NaAdjective,
+        Level::N4,
+    ),
 ];
 
 /// The Grammar area.
@@ -204,6 +223,12 @@ mod tests {
             grading::check(typed, &accepted, &shown),
             Outcome::Correct { .. }
         )
+    }
+
+    fn outcome(question: &Question, typed: &str) -> Outcome {
+        let accepted: Vec<&str> = question.accepted.iter().map(|s| s.as_str()).collect();
+        let shown: Vec<&str> = question.shown.iter().map(|s| s.as_str()).collect();
+        grading::check(typed, &accepted, &shown)
     }
 
     #[test]
@@ -533,5 +558,135 @@ mod tests {
         for (&(form, formality), list) in ASKED.iter().zip(expected) {
             assert_eq!(ask("いい", form, formality).accepted, strings(list));
         }
+    }
+
+    #[test]
+    fn na_adjective_polite_negative_accepts_four_variants() {
+        let question = ask("静か", Form::Negative, Formality::Polite);
+        assert_eq!(
+            question.accepted,
+            strings(&[
+                "静かじゃないです",
+                "しずかじゃないです",
+                "静かじゃありません",
+                "しずかじゃありません",
+                "静かではないです",
+                "しずかではないです",
+                "静かではありません",
+                "しずかではありません",
+            ])
+        );
+        for typed in [
+            "shizukadehaarimasen",
+            "shizukadewaarimasen",
+            "shizukajaarimasen",
+            "shizukajanaidesu",
+            "しずかではありません",
+        ] {
+            assert!(is_correct(&question, typed), "{typed}");
+        }
+        assert!(!is_correct(&question, "しずかでわありません"));
+    }
+
+    #[test]
+    fn the_plain_negative_of_shizuka_typed_six_ways() {
+        let question = ask("静か", Form::Negative, Formality::Plain);
+        assert_eq!(
+            question.accepted,
+            strings(&[
+                "静かじゃない",
+                "しずかじゃない",
+                "静かではない",
+                "しずかではない"
+            ])
+        );
+        let correct = |read_as: &str| Outcome::Correct {
+            read_as: read_as.to_string(),
+        };
+        for typed in ["shizukadehanai", "shizukadewanai", "しずかではない"] {
+            assert_eq!(
+                outcome(&question, typed),
+                correct("しずかではない"),
+                "{typed}"
+            );
+        }
+        assert_eq!(outcome(&question, "静かではない"), correct("静かではない"));
+        assert_eq!(
+            outcome(&question, "しずかでわない"),
+            Outcome::Wrong {
+                read_as: Some("しずかでわない".to_string())
+            }
+        );
+        assert_eq!(
+            outcome(&question, "shizukajanai"),
+            correct("しずかじゃない")
+        );
+    }
+
+    #[test]
+    fn dewa_in_the_polite_past_negative() {
+        let question = ask("静か", Form::PastNegative, Formality::Polite);
+        assert_eq!(
+            outcome(&question, "shizukadewaarimasendeshita"),
+            Outcome::Correct {
+                read_as: "しずかではありませんでした".to_string()
+            }
+        );
+        assert_eq!(
+            outcome(&question, "shizukadewanakattadesu"),
+            Outcome::Correct {
+                read_as: "しずかではなかったです".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn no_accepted_answer_spells_dewa() {
+        for entry in Grammar.questions(Levels::ALL) {
+            for question in entry.questions {
+                for text in &question.accepted {
+                    assert!(!text.contains("でわ"), "{text}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn na_adjective_plain_non_past_needs_da() {
+        let question = ask("静か", Form::NonPast, Formality::Plain);
+        assert!(is_correct(&question, "shizukada"));
+        assert!(is_correct(&question, "しずかだ"));
+        assert!(!is_correct(&question, "しずか"));
+        assert!(!is_correct(&question, "shizuka"));
+    }
+
+    #[test]
+    fn the_word_list_covers_every_group() {
+        for group in [
+            Group::Ichidan,
+            Group::Godan,
+            Group::Suru,
+            Group::Kuru,
+            Group::Iku,
+            Group::Aru,
+            Group::IAdjective,
+            Group::Ii,
+            Group::NaAdjective,
+        ] {
+            assert!(WORDS.iter().any(|word| word.group == group), "{group:?}");
+        }
+        for written in ["する", "来る", "行く", "ある", "いい"] {
+            assert!(
+                WORDS.iter().any(|word| word.written == written),
+                "{written}"
+            );
+        }
+        assert!(
+            WORDS
+                .iter()
+                .any(|word| word.group == Group::Suru && word.written != word.reading)
+        );
+        assert!(WORDS.iter().any(|word| word.level == Level::N5));
+        assert!(WORDS.iter().any(|word| word.level == Level::N4));
     }
 }
