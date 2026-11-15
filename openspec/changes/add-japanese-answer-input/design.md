@@ -21,7 +21,7 @@ See `proposal.md` for the motivation and the three specs (`romaji-conversion`, `
 **Non-Goals:**
 - The question screen, its wording (including the typo warning text), its key arm in `keys.rs`, new `Action` variants, counting answers, and showing feedback. All of that is #21.
 - Cursor movement inside the text, selection, delete-forward, word deletion, undo, and editing in the middle of the text. The field only appends and deletes at the end.
-- Enabling bracketed paste (Open Question 5).
+- Enabling bracketed paste (Open Question 4).
 - Kana to kanji conversion, live conversion while typing, English answers, half-width katakana, full-width Latin letters.
 
 ## Decisions
@@ -50,7 +50,7 @@ Alternatives considered:
 - **Defer the field to #21.** Does not solve the problem: the romaji and grading functions are just as unused. It also splits issue #18 across two changes.
 - **Plain `#[allow(dead_code)]`.** Works, but nothing removes it later; dead code could hide behind it for good.
 
-This needs no new rule, but it is the first lint suppression in the code base, so it is listed as Open Question 1 for the owner's agreement.
+**Owner decision (approved):** this is the first lint suppression in the code base, and the owner has approved it for now, as described above: the scoped `#[cfg_attr(not(test), expect(dead_code, reason = ...))]` on each new `mod` line in `src/main.rs`, nowhere else. Issue #21 removes each attribute when it first uses that module (clippy's `unfulfilled_lint_expectations` makes a forgotten one fail the build).
 
 ### D2. The public API for #21
 
@@ -58,8 +58,11 @@ Four new files. Every item below is `pub`; everything else is private.
 
 ```rust
 // src/romaji.rs
-/// Romaji to hiragana, letter for letter. `None` when any part cannot be read.
-pub fn to_hiragana(romaji: &str) -> Option<String>;
+/// Romaji to hiragana, letter for letter. Every valid reading, textbook
+/// reading first (D4): `nn` before a vowel can be read two ways. `None`
+/// when the text has no valid reading; `Some(v)` has 1 to 16 readings,
+/// all different.
+pub fn to_hiragana(romaji: &str) -> Option<Vec<String>>;
 
 // src/kana.rs
 /// Japanese characters: kana, kanji, CJK punctuation, variation selectors (D5).
@@ -76,9 +79,10 @@ pub enum Outcome {
     Empty,
     /// Cannot be read as Japanese. From `check`: always. From `TypoGuard`: first time only.
     LooksLikeTypo,
-    /// Matches an accepted answer. `read_as` is the answer's reading (D6).
+    /// Matches an accepted answer. `read_as` is the reading that matched (D6).
     Correct { read_as: String },
-    /// Counted wrong answer. `read_as` is `None` for mixed, macron or unreadable input.
+    /// Counted wrong answer. `read_as` is `None` for mixed, macron or unreadable
+    /// input; otherwise the reading to show in feedback (D6).
     Wrong { read_as: Option<String> },
 }
 
@@ -123,7 +127,9 @@ impl AnswerField {
 - Drawing: `if let Some(p) = field.render(area, frame.buffer_mut()) { frame.set_cursor_position(p) }`.
 - All wording (the typo warning, "correct", "wrong", the expected answers) in `src/text.rs`.
 
-**What #21 gets back:** an `Outcome`. It counts `Correct` and `Wrong`, never `Empty` or `LooksLikeTypo`. On `LooksLikeTypo` it shows the warning and keeps the field's text so the user can correct it. On `Empty` it does nothing. `read_as` is shown in feedback ("read as ときょ") when present; the expected answers come from #21's own `accepted` list.
+**What #21 gets back:** an `Outcome`. It counts `Correct` and `Wrong`, never `Empty` or `LooksLikeTypo`. On `LooksLikeTypo` it shows the warning and keeps the field's text so the user can correct it. On `Empty` it does nothing. `read_as` is shown in feedback ("read as ときょ") when present; the expected answers come from #21's own `accepted` list. When romaji has two readings (`nn` before a vowel, D4), `read_as` is the reading that matched, or the textbook reading for a wrong answer (D6); #21 never sees the list.
+
+**The two-readings rule (D4) changes no part of this API:** `check`, `TypoGuard::submit` and `Outcome` keep the signatures and variants above. Only `romaji::to_hiragana`, which #21 does not call, returns the list; `grading` consumes it internally.
 
 **Why the memory is a separate `TypoGuard`:** `check` stays a pure function that is easy to test exhaustively, and the only state the rule needs (the last warned text) is one `Option<String>` that #21 owns per question. #21 does not have to re-implement the rule.
 
@@ -179,24 +185,45 @@ There is deliberately **no** entry for a lone `n`, for `c` other than in `ch`, `
 
 **Algorithm**, `to_hiragana(romaji)`:
 
-1. Lower-case ASCII letters (`str::to_ascii_lowercase`). Non-ASCII characters stay as they are and will fail step 3.
-2. Walk the text left to right with a byte index `i` (all valid input is ASCII; if any character is not ASCII, return `None` at once). At each position, with `c` the current letter and `next` the following one (or none):
+1. If any character is not ASCII, return `None` at once (all valid input is ASCII). Lower-case the letters (`str::to_ascii_lowercase`).
+2. Start with `readings = vec![String::new()]` (one empty reading) and `forks = 0`. "Push `k`" below means: append `k` to **every** reading in `readings`.
+3. Walk the text left to right with a byte index `i`. At each position, with `c` the current letter and `next` the following one (or none):
    1. `c == '-'` → push `ー`, advance 1.
    2. `c == 'n'`:
-      - `next` is `n` or `'` → push `ん`, advance 2.
-      - `next` is none, or is neither a vowel (`a i u e o`) nor `y` → push `ん`, advance 1.
-      - otherwise fall through to the table lookup (step 3), which finds `na`, `nya`, ... or fails.
+      - `next` is `'` → push `ん`, advance 2. (`n'` never forks.)
+      - `next` is `n`: look at the text after the two `n`s. Let `w` = 1 if it starts with a vowel (`a i u e o`), `w` = 2 if it starts with `ya`, `yu` or `yo`, else `w` = 0.
+        - `w > 0` → **a two-reading spot** (see *Two readings of `nn`* below): `textbook` = `ん` + the kana of the table key `text[i+1 .. i+2+w]` (`na`…`no`, `nya`, `nyu`, `nyo`); `keyboard` = `ん` + the kana of the table key `text[i+2 .. i+2+w]` (`a`…`o`, `ya`, `yu`, `yo`). If `forks < MAX_FORKS`: `forks += 1` and replace `readings` by a new list that holds, for each old reading `r` in order, `r + textbook` and then `r + keyboard`. Otherwise push `textbook` only. Advance `2 + w`.
+        - `w == 0` → push `ん`, advance 2.
+      - `next` is none, or is neither a vowel nor `y` → push `ん`, advance 1.
+      - otherwise fall through to the table lookup (step 3.5), which finds `na`, `nya`, ... or fails.
    3. `c` is a consonant other than `n` (one of `b c d f g h j k l m p q r s t v w x y z`) and `next == c` → push `っ`, advance 1.
    4. `c == 't'` and the text continues with `ch` → push `っ`, advance 1.
    5. Otherwise look up the longest table key that the text continues with, trying 4, 3, 2 and then 1 letters. Found → push its kana and advance by the key length. Not found → return `None`.
-3. Return `Some(result)`. The empty text gives `Some(String::new())`.
+4. Return `Some(readings)`. The empty text gives `Some(vec![String::new()])`: one reading, empty.
 
-Decisions taken by this algorithm (the issue did not decide them; the ones a user would notice are Open Question 3):
+`MAX_FORKS` is a private `const MAX_FORKS: usize = 4;` in `src/romaji.rs`.
+
+**Two readings of `nn`** (owner decision). Learners type `nn` before a vowel in two ways: keyboard style, as a Japanese IME reads it (`nn` = ん, then the vowel: `konnichiha` → こんいちは), and textbook style, where `nn` is the ん plus the `n` of an `n`-row syllable (`konnichiha` → こんにちは). Both are accepted, so `konnichiha` and `konnnichiha` are both correct for こんにちは, and `onna` and `onnna` both correct for おんな.
+
+- **When a spot forks.** Exactly when `nn` is directly followed by a vowel or by `ya`, `yu` or `yo`, and the first of the two `n`s is not itself the second letter of an `nn` already read: the walk reaches a spot only at its first `n`. These are the only cases in which *both* readings exist (the table has `na`…`no` and `nya`/`nyu`/`nyo`, but no `nyi` or `nye`).
+- **No fork:** `nn` at the end or before a consonant, `-` or `'` (ん, both letters consumed); `nn` before `y` followed by anything other than `a`, `u`, `o` (ん, then the walk goes on as before: `onnye` おんいぇ, `konnyk` unreadable); `n'` (always ん); a single `n` (unchanged rules).
+- **Three `n`s** (`konnnichiha`): at the first `n` the walk sees `nn` followed by `n`, which is not a vowel, so it pushes ん and advances 2; the third `n` then starts `ni`. One reading, こんにちは. There is no こんんいちは-style reading: that would need the walk to stand on the second `n`, which it never does, because the first two `n`s are consumed together. This is also how IMEs read `nnn` + vowel, and two ん in a row before a vowel does not occur in real words. `onnna` gives おんな only; `nnnn` gives んん.
+- **Doubled consonants:** `n` is excluded from the っ rule (step 3.3), so `nn` is never read as っ + `n`-row.
+- **Capitals:** lower-cased first, so `KONNICHIHA` has the same two readings as `konnichiha`.
+- **Both readings consume the same letters** (`nn` + vowel = 3 letters, `nn` + `ya`/`yu`/`yo` = 4) and so continue from the same position: everything after a spot is read identically in both. Consequences: a spot never makes a text readable or unreadable (text is unreadable exactly when it has no reading at all, as before); the readings are all different (they differ in the kana right after the spot's ん); and with `k` forks there are exactly `2^k` readings.
+- **Bound.** At most `MAX_FORKS = 4` spots fork, so at most 16 readings. From the fifth spot on, only the textbook reading is pushed. Real answers have 0 to 2 spots; the cap exists because the answer is user text of any length, and `nna` repeated 20 times would otherwise produce 2^20 strings and freeze the app. Pushing the textbook reading beyond the cap keeps the first reading textbook-style at every spot.
+- **Order** (deterministic): by the choice made at each spot, the first spot most significant, textbook before keyboard. So `readings[0]` is the **textbook reading** (textbook at every spot), and with two spots the order is textbook-textbook, textbook-keyboard, keyboard-textbook, keyboard-keyboard. `kinnennen` → `きんねんねん`, `きんねんえん`, `きんえんねん`, `きんえんえん`.
+- **Signature:** `Option<Vec<String>>`. `None` = cannot be read; `Some(v)` = readable, with `v` non-empty, at most 16 entries, no duplicates, `v[0]` the textbook reading. A small newtype was considered and rejected: `grading` is the only caller, and every `pub` method of a newtype would need its own test under the D1 rule. The function keeps its name because it still converts romaji to hiragana.
+
+Prototype check (a throwaway Python version of this algorithm and table, outside the repository): `konnichiha` → [こんにちは, こんいちは]; `konnnichiha` → [こんにちは]; `onna` → [おんな, おんあ]; `onnna` → [おんな]; `kinnen` → [きんねん, きんえん]; `konnya` → [こんにゃ, こんや]; `kinen` → [きねん]; `kin'en` → [きんえん]; `nn` → [ん]; `honn` → [ほん]; `konnyk` → none; `nna` × 5 → 16 readings, first `んなんなんなんなんな`, last `んあんあんあんあんな`.
+
+Decisions taken by this algorithm (the issue did not decide them; the ones a user would notice are Open Question 2):
 
 | Case | Decision | Example |
 |---|---|---|
-| `nn` | Always `ん`, consuming both letters, as Japanese IMEs do. So `nn` before a vowel is ん + vowel, as the issue states. | `kinnen` きんえん, `konnichiha` こんいちは, `konnnichiha` こんにちは, `onnna` おんな |
-| `n'` | Always `ん`. The apostrophe is valid only right after a single `n`. | `kin'en` きんえん; `ta'kai`, `'takai`, `kan''i` unreadable |
+| `nn` before a vowel or `ya`/`yu`/`yo` | Two readings, textbook first, keyboard second (owner decision, above). | `konnichiha` こんにちは / こんいちは, `kinnen` きんねん / きんえん, `konnya` こんにゃ / こんや |
+| `nn` elsewhere | `ん`, consuming both letters, as Japanese IMEs do. One reading. | `honn` ほん, `nn` ん, `konnnichiha` こんにちは, `onnna` おんな, `onnye` おんいぇ |
+| `n'` | Always `ん`, one reading. The apostrophe is valid only right after a single `n`. | `kin'en` きんえん; `ta'kai`, `'takai`, `kan''i`, `nn'a` unreadable |
 | `n` before `y` | Starts `nya`/`nyu`/`nyo`; `ny` + anything else is unreadable. | `konya` こにゃ, `kon'ya` こんや |
 | `m` before `b`, `p`, `m` | Not `ん`. `mb` and `mp` spell nothing, so the text is unreadable; `mm` is a doubled consonant. | `shimbun` unreadable, `shinbun` しんぶん |
 | っ before `ch` | Both `tch` and `cch`. | `matcha`, `maccha` まっちゃ |
@@ -209,7 +236,7 @@ Decisions taken by this algorithm (the issue did not decide them; the ones a use
 | Other punctuation (`.`, `,`, `!`, `?`) | Not romaji: unreadable. | `taka.` unreadable |
 | Digits | Unreadable. | `taka1` |
 | Trailing lone consonant | Unreadable (no table key matches). | `tabek`, `kk`, `ky` |
-| Upper case | Lower-cased first. | `KIN'EN` きんえん |
+| Upper case | Lower-cased first. | `KIN'EN` きんえん, `KONNICHIHA` こんにちは / こんいちは |
 
 ### D5. Japanese characters, voicing and katakana folding (`kana.rs`)
 
@@ -252,15 +279,22 @@ A romaji character is an ASCII letter, `'`, `-` or a marked vowel. A Latin lette
 1. `text` = `typed` with every whitespace character removed (anywhere). If `text` is empty → `Outcome::Empty`.
 2. Classify `text`, in this order:
    1. **Mixed**: it contains at least one Japanese character (`kana::is_japanese`) **and** at least one Latin letter → `Wrong { read_as: None }`. (Owner decision: `食beru`, `たberu`.)
-   2. **Japanese**: every character is Japanese → `reading = normalise_japanese(text)`.
+   2. **Japanese**: every character is Japanese → `readings = vec![normalise_japanese(text)]` (always exactly one).
    3. **Romaji**: every character is a romaji character:
       - it contains a marked vowel → `Wrong { read_as: None }`. (Owner decision: `tōkyō` is wrong. It is not a typo warning, and it is never read with short vowels, because that would make `kōkō` correct for ここ.)
-      - otherwise `romaji::to_hiragana(text)`: `Some(r)` → `reading = r`; `None` → `LooksLikeTypo`.
+      - otherwise `romaji::to_hiragana(text)`: `Some(rs)` with `rs` non-empty → `readings = rs`; `None` → `LooksLikeTypo`. (`to_hiragana` never returns an empty list; if it ever did, treat it like `None`, so nothing indexes an empty list.)
    4. **Anything else** (a digit, full-width Latin, half-width katakana, `@`, a Japanese text with `-` or `'` in it, ...) → `LooksLikeTypo`.
-3. With a `reading`:
-   - if `reading` equals `normalise_japanese(s)` for any `s` in `shown` → `Wrong { read_as: Some(reading) }`;
-   - else if it equals `normalise_japanese(a)` for any `a` in `accepted` → `Correct { read_as: reading }`;
-   - else → `Wrong { read_as: Some(reading) }`.
+3. With `readings` (non-empty, in the order `to_hiragana` gives, so `readings[0]` is the textbook reading):
+   - if **any** reading equals `normalise_japanese(s)` for any `s` in `shown` → `Wrong { read_as: Some(r) }`, where `r` is the first reading, in list order, that equals a shown text;
+   - else if any reading equals `normalise_japanese(a)` for any `a` in `accepted` → `Correct { read_as: r }`, where `r` is the first reading, in list order, that equals an accepted answer;
+   - else → `Wrong { read_as: Some(readings[0]) }`: the textbook reading.
+
+**`read_as` with several readings** (owner preference for wrong answers):
+- **Correct:** the reading that matched. `konnya` against `["今夜", "こんや"]` is correct, read as こんや (its keyboard reading); `konnichiha` against `["こんにちは"]` is read as こんにちは.
+- **Wrong, not a repeat:** the textbook reading, `readings[0]`, so a learner who types `konnichiwa` for こんばんは sees `こんにちわ`, the kana they expect, not `こんいちわ`.
+- **Wrong because it repeats what is shown:** the reading that repeats it. This explains *why* it is wrong: with shown `こんや`, `konnya` shows `こんや`, not `こんにゃ`. This differs from the textbook choice only when the repeated reading is a keyboard reading.
+- **Why any reading counts as a repeat:** "what the question shows is never accepted" is the stronger rule. If one reading of the typed text is the shown text, the user may well have meant it, so the answer is not accepted even if another reading would match an accepted answer. This only matters when a shown text and an accepted answer differ exactly at an `nn` spot, which real content does not do.
+- **Japanese answers** have one reading, so nothing changes for them.
 
 Notes:
 - Comparison is exact string equality after normalisation. "Repeats what the question shows" means the whole normalised answer equals a whole normalised shown text; containing it is not enough (`食べる` is not rejected for showing `食`).
@@ -282,8 +316,9 @@ submit(typed, accepted, shown):
         other         -> warned = None; return other
 ```
 
+- The guard compares the **typed text**, never readings, so the two readings of `nn` (D4) change nothing here. A text is unreadable, and can get a warning, only when it has no reading at all (`to_hiragana` returns `None`).
 - "Same text" is the raw field text, compared exactly. `tabxru` and `tabxru ` are different texts, so the second gets its own warning. This is the literal rule of the issue and the simplest to explain.
-- **Undecided in the issue, default here:** a *different* unreadable text after a warning (`tabxru`, then `tabwru`) gets **another warning**, as the issue's rule "text changed: checked from the start" says. The user can always give up by submitting the same text twice. Open Question 2.
+- **Undecided in the issue, default here:** a *different* unreadable text after a warning (`tabxru`, then `tabwru`) gets **another warning**, as the issue's rule "text changed: checked from the start" says. The user can always give up by submitting the same text twice. Open Question 1.
 - An empty submit changes nothing, so `tabxru`, empty, `tabxru` is a counted wrong answer.
 - A readable submit clears the memory, but it ends the question anyway in #21's flow (it goes to feedback).
 
@@ -335,15 +370,16 @@ No colour or style is used. Only the first row is drawn. The field draws nothing
 Each task is one commit that builds and passes `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` on its own:
 
 - 1.1 `kana.rs` (no dependencies on other new modules).
-- 2.1 `romaji.rs`: table and basic syllables, `-`, upper case, unreadable input.
-- 2.2 `romaji.rs`: っ and ん rules.
+- 2.1 `romaji.rs`: table and basic syllables, `-`, upper case, unreadable input. Already returns `Option<Vec<String>>` (always one reading at this point).
+- 2.2 `romaji.rs`: っ and ん rules, with `nn` always read as ん (one reading).
+- 2.3 `romaji.rs`: the two readings of `nn` before a vowel or `ya`/`yu`/`yo`, their order and the `MAX_FORKS` bound.
 - 3.1 `grading.rs`: classification and `check`.
 - 3.2 `grading.rs`: `TypoGuard`, plus the `CHANGELOG.md` entry and the `docs/architecture.md` rules for checking.
 - 4.1 `answer_field.rs`: `Edit`, `edit_for`, `AnswerField` with `text` and `apply`.
 - 4.2 `answer_field.rs`: `render`, plus the docs for the field and the status note.
 - 5.1 Pseudo-terminal check that committed Japanese text arrives as typed characters (no file changes).
 
-Each module's `mod` line with the D1 attribute is added in the task that creates the file. Tasks 2.1 and 2.2 split `romaji` so each commit is reviewable; the っ and ん tests are new tests in 2.2, never edits of 2.1's tests. Documentation lands with the group whose behaviour it describes.
+Each module's `mod` line with the D1 attribute is added in the task that creates the file. Tasks 2.1, 2.2 and 2.3 split `romaji` so each commit is reviewable; the っ and ん tests are new tests in 2.2 and the two-readings tests are new tests in 2.3, never edits of earlier tests. To make that possible, 2.1 already uses the final signature, and 2.2's tests use only inputs whose result 2.3 does not change (no `nn` directly before a vowel or `ya`/`yu`/`yo`). Documentation lands with the group whose behaviour it describes.
 
 ### D11. Existing tests
 
@@ -356,11 +392,12 @@ None is changed, and none can be affected:
 
 ## Risks / Trade-offs
 
-- [**`nn` makes `konnichiha` read as こんいちは**, and `onna` as おんあ, which surprises learners who know Hepburn] → This follows the issue's rule and how Japanese IMEs behave; the reading shown in feedback (`こんいちは`) explains the mistake. Open Question 3 asks the owner to confirm.
-- [Strict romaji (`shimbun`, `tokyo`) frustrates users who learned other spellings] → Owner decision for long vowels. `shimbun` gets a typo warning first, so the user sees it was not read. Open Question 3.
-- [The lint expectation hides dead code until #21] → It is scoped to four modules, every item has tests, and it removes itself through `unfulfilled_lint_expectations`.
-- [A paste that contains a newline arrives as Enter and would submit in #21] → Bracketed paste is not enabled; Open Question 5.
-- [On Windows with some keyboard layouts, `AltGr` characters arrive with `CONTROL | ALT` modifiers and are not typed] → Romaji needs only `a`–`z`, `'` and `-`, which no common layout puts on `AltGr`; IME text arrives without modifiers. Checked by hand in Open Question 4.
+- [**Known cost of the two readings of `nn`:** `onna` is accepted for both おんな and おんあ, `kinnen` for both きんねん and きんえん, `konnya` for both こんにゃ and こんや] → Owner decision. It only matters if both readings were accepted answers to one question (or one shown and the other accepted, D6), which real content does not do. Romaji stays exact everywhere else: `kinen` is only きねん and `kin'en` only きんえん.
+- [Beyond four `nn` spots in one answer, only the textbook reading is read] → Needed to bound the work on arbitrary user text (D4). No real answer has more than two spots.
+- [Strict romaji (`shimbun`, `tokyo`) frustrates users who learned other spellings] → Owner decision for long vowels. `shimbun` gets a typo warning first, so the user sees it was not read. Open Question 2.
+- [The lint expectation hides dead code until #21] → Approved by the owner (D1). It is scoped to four modules, every item has tests, and it removes itself through `unfulfilled_lint_expectations`.
+- [A paste that contains a newline arrives as Enter and would submit in #21] → Bracketed paste is not enabled; Open Question 4.
+- [On Windows with some keyboard layouts, `AltGr` characters arrive with `CONTROL | ALT` modifiers and are not typed] → Romaji needs only `a`–`z`, `'` and `-`, which no common layout puts on `AltGr`; IME text arrives without modifiers. Checked by hand in Open Question 3.
 - [Answers with typos in content (romaji in `accepted`) never match] → Documented contract in D2; content checks belong to the content changes.
 - [ambiguous-width characters] → The field only displays what the user typed; it adds no text of its own, so `src/text.rs`'s ambiguous-width rule is not affected.
 
@@ -368,9 +405,10 @@ None is changed, and none can be affected:
 
 For the owner:
 
-1. **Landing unused code (D1).** The new modules are declared with `#[cfg_attr(not(test), expect(dead_code, reason = "..."))]` until #21 uses them; the attribute makes clippy fail once it is no longer needed, so #21 must remove it. This is the first lint suppression in the code base. Alternatives: a lib-plus-bin crate (bigger structural change) or a demo use on an existing screen (rejected in D1). Default: the scoped `expect`, as planned.
-2. **A different unreadable text after a warning** (`tabxru`, then `tabwru`). Default: another warning, as the issue's rule is written (D7). Alternative: any second unreadable submit in a row is a counted wrong answer. Changing this changes only `TypoGuard::submit` and the scenario *A different unreadable text*.
-3. **Romaji details not decided in the issue** (D4). Defaults: `nn` is always ん (`konnichiha` → こんいちは; こんにちは needs `konnnichiha`); `m` before `b`/`p` is not ん (`shimbun` unreadable); both `tch` and `cch` give っち; `wi`/`we` give うぃ/うぇ; `di` ぢ and `du`/`dzu` づ; whitespace is ignored anywhere; punctuation is not ignored (`takai.` unreadable, `たかい。` wrong); macron vowels are always wrong; an empty submit is ignored (`Outcome::Empty`, not counted). Please confirm or name the ones to change.
-4. **Checking IME input on real terminals.** It cannot be automated. Task 5.1 checks in a Linux pseudo-terminal that committed Japanese text (`たかい高い`, written as UTF-8 bytes) arrives as typed characters on today's Welcome screen. The real check (an actual IME on Linux, macOS and Windows terminals, and over SSH) needs a person and the answer field on screen, so it belongs to #21: the owner, or a contributor with that platform, types `たかい`, `タカイ`, `高い`, `takai` and Backspace into the question screen and records the terminal, OS and result in #21's PR. Default: done by the owner in #21; please confirm who.
-5. **Bracketed paste.** Not enabled here: today a paste arrives as typed characters (works), but a newline in it arrives as Enter. Enabling it needs `EnableBracketedPaste` in `src/app.rs` and handling `Event::Paste` in #21. Default: leave to #21.
-6. **Existing tests.** None is affected (D11); no owner decision is needed.
+Already decided by the owner, recorded here so they are not asked again: the scoped unused-code expectation (D1, approved) and both readings of `nn` before a vowel (D4).
+
+1. **A different unreadable text after a warning** (`tabxru`, then `tabwru`). Default: another warning, as the issue's rule is written (D7). Alternative: any second unreadable submit in a row is a counted wrong answer. Changing this changes only `TypoGuard::submit` and the scenario *A different unreadable text*.
+2. **Romaji details not decided in the issue** (D4). Defaults: `m` before `b`/`p` is not ん (`shimbun` unreadable); both `tch` and `cch` give っち; `wi`/`we` give うぃ/うぇ; `di` ぢ and `du`/`dzu` づ; whitespace is ignored anywhere; punctuation is not ignored (`takai.` unreadable, `たかい。` wrong); macron vowels are always wrong; an empty submit is ignored (`Outcome::Empty`, not counted). Please confirm or name the ones to change.
+3. **Checking IME input on real terminals.** It cannot be automated. Task 5.1 checks in a Linux pseudo-terminal that committed Japanese text (`たかい高い`, written as UTF-8 bytes) arrives as typed characters on today's Welcome screen. The real check (an actual IME on Linux, macOS and Windows terminals, and over SSH) needs a person and the answer field on screen, so it belongs to #21: the owner, or a contributor with that platform, types `たかい`, `タカイ`, `高い`, `takai` and Backspace into the question screen and records the terminal, OS and result in #21's PR. Default: done by the owner in #21; please confirm who.
+4. **Bracketed paste.** Not enabled here: today a paste arrives as typed characters (works), but a newline in it arrives as Enter. Enabling it needs `EnableBracketedPaste` in `src/app.rs` and handling `Event::Paste` in #21. Default: leave to #21.
+5. **Existing tests.** None is affected (D11); no owner decision is needed.

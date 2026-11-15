@@ -18,7 +18,7 @@ A Japanese answer SHALL be correct when it matches one of the question's accepte
 - **THEN** each answer is correct
 
 ### Requirement: Romaji is exact
-A romaji answer SHALL be correct only when its hiragana, read letter for letter, equals an accepted answer. Long vowels MUST be typed out as in kana. A romaji answer that contains a vowel with a macron or circumflex (`ō`, `ô` and the like) MUST be a wrong answer, never correct and never a typo warning.
+A romaji answer SHALL be correct only when one of its readings, read letter for letter, equals an accepted answer. Long vowels MUST be typed out as in kana. A romaji answer that contains a vowel with a macron or circumflex (`ō`, `ô` and the like) MUST be a wrong answer, never correct and never a typo warning.
 
 #### Scenario: Long vowel typed out
 - **WHEN** the accepted answers are `東京` and `とうきょう` and the answer is `toukyou`
@@ -32,6 +32,25 @@ A romaji answer SHALL be correct only when its hiragana, read letter for letter,
 - **WHEN** the accepted answers are `東京` and `とうきょう` and the answer is `tōkyō`
 - **THEN** the answer is wrong, without a typo warning
 
+### Requirement: Both readings of nn are accepted
+A romaji answer with `nn` before a vowel or `ya`/`yu`/`yo` SHALL be correct when either its textbook or its keyboard reading equals an accepted answer. Romaji without such an `nn` keeps its single reading.
+
+#### Scenario: Two spellings of こんにちは
+- **WHEN** the accepted answer is `こんにちは` and the answer is `konnichiha` or `konnnichiha`
+- **THEN** each answer is correct, read as `こんにちは`
+
+#### Scenario: Two spellings of おんな
+- **WHEN** the accepted answers are `女` and `おんな` and the answer is `onna` or `onnna`
+- **THEN** each answer is correct, read as `おんな`
+
+#### Scenario: Keyboard reading matches
+- **WHEN** the accepted answers are `今夜` and `こんや` and the answer is `konnya` or `kon'ya`
+- **THEN** each answer is correct, read as `こんや`, while `konya` is wrong, read as `こにゃ`
+
+#### Scenario: Single readings stay exact
+- **WHEN** the accepted answer is `きんえん` and the answer is `kinen`
+- **THEN** the answer is wrong, read as `きねん`, while `kin'en` is correct
+
 ### Requirement: Mixed scripts are wrong
 An answer that contains both Japanese characters and Latin letters SHALL be a wrong answer, with no typo warning.
 
@@ -44,7 +63,7 @@ An answer that contains both Japanese characters and Latin letters SHALL be a wr
 - **THEN** the answer is wrong, without a typo warning
 
 ### Requirement: What the question shows is never accepted
-An answer whose normalised form equals the normalised form of Japanese text the question already shows MUST be wrong, even when that text is also among the accepted answers.
+An answer any of whose readings equals the normalised form of Japanese text the question already shows MUST be wrong, even when that text is also among the accepted answers, and even when another reading of the answer equals an accepted answer.
 
 #### Scenario: Repeating the kanji asked about
 - **WHEN** the question shows `食`, the accepted answers are `食`, `しょく` and `たべる`, and the answer is `食`
@@ -53,6 +72,10 @@ An answer whose normalised form equals the normalised form of Japanese text the 
 #### Scenario: Repeating the shown reading in another script
 - **WHEN** the question shows `たかい`, the accepted answers are `高い` and `たかい`, and the answer is `takai` or `タカイ`
 - **THEN** the answer is wrong, while `高い` is correct
+
+#### Scenario: Repeating the shown text through one of two readings
+- **WHEN** the question shows `こんや`, the accepted answers are `今夜`, `こんや` and `こんにゃ`, and the answer is `konnya`
+- **THEN** the answer is wrong, read as `こんや`
 
 ### Requirement: Spaces are ignored
 Whitespace anywhere in an answer or an accepted answer, including the ideographic space, SHALL be ignored when checking.
@@ -69,7 +92,7 @@ An answer that is empty or only whitespace SHALL be reported as empty: neither c
 - **THEN** the result is empty
 
 ### Requirement: Unreadable answers look like a typo
-An answer that cannot be read as Japanese at all SHALL be reported as looking like a typo: romaji that cannot be converted, or an answer that is not mixed (see above) but contains a character that is neither romaji (Latin letters, `'`, `-`) nor Japanese, such as a digit, full-width Latin or half-width katakana.
+An answer that cannot be read as Japanese at all SHALL be reported as looking like a typo: romaji that has no valid reading, or an answer that is not mixed (see above) but contains a character that is neither romaji (Latin letters, `'`, `-`) nor Japanese, such as a digit, full-width Latin or half-width katakana.
 
 #### Scenario: Letters that spell no kana
 - **WHEN** the accepted answer is `たべる` and the answer is `tabxru`
@@ -83,8 +106,12 @@ An answer that cannot be read as Japanese at all SHALL be reported as looking li
 - **WHEN** the answer is `tabek`
 - **THEN** the result is a typo warning
 
+#### Scenario: An nn spot does not make text readable
+- **WHEN** the accepted answer is `こんにちは` and the answer is `konnichiq`
+- **THEN** the result is a typo warning
+
 ### Requirement: A typo warning is given once per text
-Within one question, the first submit of an unreadable text SHALL give a typo warning that is not counted. When the next non-empty submit is exactly the same text, it SHALL be a counted wrong answer. A different text SHALL be checked from the start, so a different unreadable text gets its own warning.
+Within one question, the first submit of an unreadable text SHALL give a typo warning that is not counted. When the next non-empty submit is exactly the same text, it SHALL be a counted wrong answer. A different text SHALL be checked from the start, so a different unreadable text gets its own warning. "The same text" compares the typed text exactly, never its readings.
 
 #### Scenario: Same text twice
 - **WHEN** `tabxru` is submitted, then `tabxru` is submitted again
@@ -116,6 +143,17 @@ A correct or wrong answer that could be read SHALL come with its reading: romaji
 #### Scenario: No reading
 - **WHEN** the answer `食beru` is checked
 - **THEN** it is wrong and has no reading
+
+### Requirement: Which reading is reported when romaji has several
+When a romaji answer has several readings, a correct answer SHALL come with the reading that matched, a wrong answer that repeats what the question shows with the reading that repeats it, and any other wrong answer with its textbook reading (`nn` before a vowel read as `ん` plus an `n`-row syllable).
+
+#### Scenario: Wrong answer with two readings
+- **WHEN** the accepted answer is `こんばんは` and the answer is `konnichiwa`
+- **THEN** the answer is wrong, read as `こんにちわ`
+
+#### Scenario: Correct through the keyboard reading
+- **WHEN** the accepted answer is `こんや` and the answer is `konnya`
+- **THEN** the answer is correct, read as `こんや`
 
 ### Requirement: Katakana folding
 Before comparing, every katakana that has a hiragana counterpart SHALL be turned into that hiragana, and a kana followed by a combining voiced or semi-voiced sound mark SHALL be read as the single voiced or semi-voiced kana. Kanji, `ー` and other characters stay as they are.

@@ -11,7 +11,7 @@ Types, signatures, tables and algorithms are in `design.md` (D-numbers point the
 
 **Existing tests:** do not change, rename, move, skip, `#[ignore]` or delete any existing test. None of `src/app.rs`, `src/keys.rs`, `src/session.rs`, `src/text.rs` and `src/ui.rs` is edited by this change. The baseline is 51 passing tests; after every task all 51 still pass, plus the new ones. If an existing test fails, fix the new code; if that is impossible, stop and report.
 
-**Unused-code rule (D1):** every `mod` line this change adds to `src/main.rs` carries this attribute and comment, with the module name changed:
+**Unused-code rule (D1, approved by the owner):** every `mod` line this change adds to `src/main.rs` carries this attribute and comment, with the module name changed:
 
 ```rust
 // No screen uses this module yet: the practice question screen (issue #21)
@@ -46,11 +46,13 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
 
 ## 2. Romaji to hiragana
 
-- [ ] 2.1 Add `src/romaji.rs` with the table and the basic conversion (D4 table; D4 algorithm steps 1, 2.1, 2.5 and 3 only).
+- [ ] 2.1 Add `src/romaji.rs` with the table and the basic conversion (D4 table; D4 algorithm steps 1, 2, 3.1, 3.5 and 4 only).
   - `src/main.rs`: add `mod romaji;` with the D1 attribute.
   - `const TABLE: &[(&str, &str)]`: every spelling of the D4 table as its own pair, 175 pairs, in the order of the D4 table. Keys are lower-case ASCII.
-  - `pub fn to_hiragana(romaji: &str) -> Option<String>`: return `None` if `!romaji.is_ascii()`; lower-case with `to_ascii_lowercase`; walk with a byte index; `-` pushes `ー`; otherwise try table keys of length 4, 3, 2, 1 at the current position (use `str::get(i..i + len)` so a short tail never panics) and push the first match; no match returns `None`. In this task there is **no** special `n` rule and **no** っ rule yet (task 2.2): a lone `n` and a doubled consonant simply find no key.
-  - New tests in `src/romaji.rs` `mod tests` (a helper `fn hira(romaji: &str) -> Option<String>` that calls `to_hiragana` is fine; compare with `Some("...".to_string())` or `None`):
+  - Private `fn kana_of(key: &str) -> Option<&'static str>`: the kana of the table entry whose key equals `key` exactly, or `None`. The longest-match lookup below calls it; task 2.3 calls it too.
+  - Private `fn push_all(readings: &mut [String], kana: &str)`: appends `kana` to every reading.
+  - `pub fn to_hiragana(romaji: &str) -> Option<Vec<String>>` (the final signature, D2; the list of readings): return `None` if `!romaji.is_ascii()`; lower-case with `to_ascii_lowercase`; start with `let mut readings = vec![String::new()];`; walk with a byte index; `-` pushes `ー` (with `push_all`); otherwise try table keys of length 4, 3, 2, 1 at the current position (use `str::get(i..i + len)` so a short tail never panics, then `kana_of`) and push the first match with `push_all`; no match returns `None`; at the end return `Some(readings)`. In this task the list always has exactly one reading. There is **no** special `n` rule and **no** っ rule yet (task 2.2): a lone `n` and a doubled consonant simply find no key.
+  - New tests in `src/romaji.rs` `mod tests` (helpers `fn hira(romaji: &str) -> Option<Vec<String>>` that calls `to_hiragana`, and `fn one(kana: &str) -> Option<Vec<String>> { Some(vec![kana.to_string()]) }`; below, `x`→`か` means `assert_eq!(hira("x"), one("か"))`, and `None` means `assert_eq!(hira("x"), None)`):
     - `table_has_every_spelling_once`: `TABLE.len() == 175`, and no key appears twice (collect keys into a `std::collections::HashSet` and compare its length with 175).
     - `plain_syllables`: `takai`→`たかい`, `taberu`→`たべる`, `sakana`→`さかな`, `hiragana`→`ひらがな`.
     - `every_row`: `aiueo`→`あいうえお`, `kakikukeko`→`かきくけこ`, `gagigugego`→`がぎぐげご`, `sashisuseso`→`さしすせそ`, `zajizuzezo`→`ざじずぜぞ`, `tachitsuteto`→`たちつてと`, `dadidudedo`→`だぢづでど`, `naninuneno`→`なにぬねの`, `hahifuheho`→`はひふへほ`, `babibubebo`→`ばびぶべぼ`, `papipupepo`→`ぱぴぷぺぽ`, `mamimumemo`→`まみむめも`, `yayuyo`→`やゆよ`, `rarirurero`→`らりるれろ`, `wawo`→`わを`.
@@ -62,30 +64,49 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
     - `small_kana_spelled_out`: `xa`→`ぁ`, `la`→`ぁ`, `xtu`→`っ`, `ltsu`→`っ`, `xya`→`ゃ`, `lyo`→`ょ`, `xwa`→`ゎ`, `xka`→`ゕ`, `lke`→`ゖ`.
     - `hyphen_is_the_long_vowel_mark`: `ko-hi-`→`こーひー`, `-`→`ー`.
     - `capitals_are_read_as_lower_case`: `TAKAI`→`たかい`, `Takai`→`たかい`, `ShI`→`し`.
-    - `empty_text_is_empty`: `""` → `Some(String::new())`.
+    - `empty_text_is_empty`: `""` → `Some(vec![String::new()])` (one reading, empty).
     - `letters_that_spell_no_kana`: `tabxru`, `tabwru`, `ca`, `qa`, `wu`, `yi`, `x`, `l` → `None`.
     - `trailing_lone_consonant`: `tabek`, `ky`, `k` → `None`.
     - `characters_that_are_not_romaji`: `taka1`, `taka i`, `taka.`, `tōkyō`, `たかい`, `ｔａｋａｉ` → `None`.
     - `apostrophe_not_after_n`: `'takai`, `ta'kai`, `'` → `None`.
   - Verify: the 16 new tests pass, all earlier tests pass, fmt and clippy are clean. Commit, e.g. `feat(romaji): convert romaji syllables to hiragana`.
 
-- [ ] 2.2 Add the っ and ん rules to `to_hiragana` (D4 algorithm steps 2.2, 2.3 and 2.4, checked in that order before the table lookup).
-  - `n`: next is `n` or `'` → `ん`, advance 2; next is none, or not one of `a i u e o y` → `ん`, advance 1; otherwise fall through to the table lookup.
-  - Doubled consonant: current is one of `bcdfghjklmpqrstvwxyz` (not `n`, not a vowel) and next is the same letter → `っ`, advance 1.
-  - `t` followed by `ch` → `っ`, advance 1.
+- [ ] 2.2 Add the っ and ん rules to `to_hiragana` (D4 algorithm steps 3.2 **without** the two-reading spot, 3.3 and 3.4, checked in that order before the table lookup). Every result still has exactly one reading.
+  - `n`: next is `'` → push `ん`, advance 2; next is `n` → push `ん`, advance 2 (in this task always; task 2.3 adds the two-reading spot); next is none, or not one of `a i u e o y` → push `ん`, advance 1; otherwise fall through to the table lookup.
+  - Doubled consonant: current is one of `bcdfghjklmpqrstvwxyz` (not `n`, not a vowel) and next is the same letter → push `っ`, advance 1.
+  - `t` followed by `ch` → push `っ`, advance 1.
   - Do not edit any test from task 2.1; they must all still pass.
-  - New tests in `src/romaji.rs` `mod tests`:
+  - New tests in `src/romaji.rs` `mod tests`, same notation as 2.1 (`x`→`か` means `hira("x") == one("か")`). On purpose, none of them uses `nn` directly before a vowel or `ya`/`yu`/`yo`: task 2.3 gives those two readings, and a test must never need changing.
     - `doubled_consonant_gives_small_tsu`: `kitte`→`きって`, `zasshi`→`ざっし`, `ippai`→`いっぱい`, `motto`→`もっと`, `gakkou`→`がっこう`.
     - `small_tsu_before_ch`: `matcha`→`まっちゃ`, `maccha`→`まっちゃ`.
     - `doubled_consonant_needs_a_syllable`: `kk`, `tt`, `kkx` → `None`.
     - `n_before_a_consonant_and_at_the_end`: `shinbun`→`しんぶん`, `hon`→`ほん`, `kantan`→`かんたん`, `byouin`→`びょういん`, `ra-men`→`らーめん`, `n`→`ん`, `n-`→`んー`, `vaiorin`→`ゔぁいおりん`.
     - `n_before_a_vowel_starts_a_syllable`: `kinen`→`きねん`, `konya`→`こにゃ`.
-    - `nn_and_apostrophe_give_n`: `kin'en`→`きんえん`, `kinnen`→`きんえん`, `kon'ya`→`こんや`, `konnya`→`こんや`, `KIN'EN`→`きんえん`, `nn`→`ん`, `n'`→`ん`.
-    - `nn_always_closes_a_syllabic_n`: `konnichiha`→`こんいちは`, `konnnichiha`→`こんにちは`, `onnna`→`おんな`.
+    - `apostrophe_gives_n`: `kin'en`→`きんえん`, `kon'ya`→`こんや`, `KIN'EN`→`きんえん`, `n'`→`ん`.
+    - `nn_without_a_vowel_after_it`: `nn`→`ん`, `honn`→`ほん`, `nnnn`→`んん`, `shinnbun`→`しんぶん`, `onnye`→`おんいぇ`.
+    - `three_n_before_a_vowel`: `konnnichiha`→`こんにちは`, `onnna`→`おんな`, `konnnya`→`こんにゃ`.
     - `apostrophe_in_the_wrong_place_after_n`: `kan''i`, `nn'a` → `None`.
     - `m_is_not_a_syllabic_n`: `shimbun`, `sempai` → `None`.
-    - `ny_without_a_vowel`: `ny`, `nyk` → `None`.
-  - Verify: the 10 new tests pass, all earlier tests (including every test of 2.1, unchanged) pass, fmt and clippy are clean. Commit, e.g. `feat(romaji): read small tsu and syllabic n`.
+    - `ny_without_a_vowel`: `ny`, `nyk`, `konnyk`, `onnx` → `None`.
+  - Verify: the 11 new tests pass, all earlier tests (including every test of 2.1, unchanged) pass, fmt and clippy are clean. Commit, e.g. `feat(romaji): read small tsu and syllabic n`.
+
+- [ ] 2.3 Give `nn` before a vowel or `ya`/`yu`/`yo` both readings (owner decision; D4 algorithm step 3.2, the two-reading spot, *Two readings of `nn`*, order and bound).
+  - `src/romaji.rs`: add `const MAX_FORKS: usize = 4;` and a `let mut forks = 0;` counter in `to_hiragana`.
+  - In the `n` + `n` branch from 2.2, before pushing `ん`: let `w` be 1 if the byte at `i + 2` is one of `a i u e o`, 2 if `text.get(i + 2..i + 4)` is `Some("ya")`, `Some("yu")` or `Some("yo")`, else 0. If `w == 0`, keep 2.2's behaviour (push `ん`, advance 2). If `w > 0`:
+    - `textbook` = `"ん"` followed by `kana_of(&text[i + 1..i + 2 + w])`; `keyboard` = `"ん"` followed by `kana_of(&text[i + 2..i + 2 + w])`. Both keys are always in the table; if `kana_of` ever returns `None`, return `None` (no `unwrap`, no panic).
+    - If `forks < MAX_FORKS`: `forks += 1`, and build a new `Vec<String>` with capacity `readings.len() * 2` that holds, for each old reading `r` in order, `r + textbook` then `r + keyboard`; it replaces `readings`. Otherwise `push_all(&mut readings, &textbook)` only.
+    - Advance `2 + w`.
+  - Update the doc comment of `to_hiragana` to the D2 text.
+  - Do not edit any test from tasks 2.1 and 2.2; they must all still pass.
+  - New tests in `src/romaji.rs` `mod tests` (helper `fn many(kana: &[&str]) -> Option<Vec<String>>` that maps each to `String` and wraps in `Some`; compare with `assert_eq!`):
+    - `nn_before_a_vowel_has_two_readings`: `konnichiha` → `many(&["こんにちは", "こんいちは"])`; `KONNICHIHA` → the same; `onna` → `many(&["おんな", "おんあ"])`; `kinnen` → `many(&["きんねん", "きんえん"])`.
+    - `nn_before_ya_yu_yo_has_two_readings`: `konnya` → `many(&["こんにゃ", "こんや"])`; `onnyu` → `many(&["おんにゅ", "おんゆ"])`; `konnyo` → `many(&["こんにょ", "こんよ"])`.
+    - `single_n_and_apostrophe_keep_one_reading`: `kinen` → `one("きねん")`; `kin'en` → `one("きんえん")`; `kon'ya` → `one("こんや")`; `konnnichiha` → `one("こんにちは")`; `onnna` → `one("おんな")`.
+    - `two_spots_are_ordered_textbook_first`: `kinnennen` → `many(&["きんねんねん", "きんねんえん", "きんえんねん", "きんえんえん"])`.
+    - `readings_are_bounded`: for `"nna".repeat(4)`: 16 readings, the first `んなんなんなんな`, the last `んあんあんあんあ`; for `"nna".repeat(5)`: 16 readings, the first `んなんなんなんなんな`, the last `んあんあんあんあんな`; for `"nna".repeat(30)`: 16 readings. In each case, collecting the readings into a `HashSet` gives 16 (all different).
+    - `nn_spot_does_not_make_text_readable`: `konnichiq` → `None`.
+    - `nn_is_never_small_tsu`: `onna` → readings contain no `っ` (`!r.contains('っ')` for every reading), and `nn` → `one("ん")`.
+  - Verify: the 7 new tests pass (at least `nn_before_a_vowel_has_two_readings`, `nn_before_ya_yu_yo_has_two_readings`, `two_spots_are_ordered_textbook_first` and `readings_are_bounded` fail without this task's code), all earlier tests pass unchanged, fmt and clippy are clean. Commit, e.g. `feat(romaji): accept both readings of nn before a vowel`.
 
 ## 3. Answer checking
 
@@ -93,7 +114,7 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
   - `src/main.rs`: add `mod grading;` with the D1 attribute.
   - `Outcome` exactly as in D2, with its derives and doc comments.
   - Private helpers: `fn normalise_japanese(text: &str) -> String` and `fn is_marked_vowel(c: char) -> bool` as in D6. Remove whitespace with `text.chars().filter(|c| !c.is_whitespace())`.
-  - `pub fn check(typed: &str, accepted: &[&str], shown: &[&str]) -> Outcome`: steps 1 to 3 of D6, in that order. Use `crate::kana` and `crate::romaji`.
+  - `pub fn check(typed: &str, accepted: &[&str], shown: &[&str]) -> Outcome`: steps 1 to 3 of D6, in that order. Use `crate::kana` and `crate::romaji`. Work with a `Vec<String>` of readings: one for a Japanese answer, the list from `romaji::to_hiragana` for romaji (an empty list is treated like `None`). Step 3 checks `shown` against **every** reading first (a repeat through any reading is wrong, `read_as` = the first reading in list order that repeats it), then `accepted` (correct, `read_as` = the first reading in list order that matches), and otherwise returns `Wrong { read_as: Some(first reading) }`, the textbook reading. Take the first reading with `readings.first()` or `into_iter().next()`, never by indexing.
   - New tests in `src/grading.rs` `mod tests` (define `const NOTHING: &[&str] = &[];` and helpers `fn correct(r: &str) -> Outcome { Outcome::Correct { read_as: r.to_string() } }` and `fn wrong(r: &str) -> Outcome { Outcome::Wrong { read_as: Some(r.to_string()) } }`; `const UNREAD: Outcome = Outcome::Wrong { read_as: None };` will not compile because of `String`, so write `Outcome::Wrong { read_as: None }` in full):
     - `four_ways_to_answer_takai`: accepted `["高い", "たかい"]`, shown `NOTHING`: `takai`→`correct("たかい")`, `たかい`→`correct("たかい")`, `タカイ`→`correct("たかい")`, `高い`→`correct("高い")`.
     - `katakana_accepted_answer`: accepted `["ショク"]`: `しょく`, `ショク`, `shoku` → `correct("しょく")`.
@@ -111,7 +132,14 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
     - `readings_for_feedback`: accepted `["たかい"]`: `tokyo` → `wrong("ときょ")`, `タカイ` → `correct("たかい")`, `高い` → `wrong("高い")`, `yasui` → `wrong("やすい")`.
     - `combining_marks_are_composed`: accepted `["がい"]`: `"か\u{3099}い"` → `correct("がい")`; accepted `["ぱ"]`: `"ハ\u{309A}"` → `correct("ぱ")`.
     - `check_remembers_nothing`: `check("tabxru", &["たべる"], NOTHING)` twice → `Outcome::LooksLikeTypo` both times.
-  - Verify: the 16 new tests pass, all earlier tests pass, fmt and clippy are clean. Commit, e.g. `feat(grading): check Japanese answers in any script`.
+    - `both_spellings_of_konnichiha_are_correct`: accepted `["こんにちは"]`: `konnichiha`, `konnnichiha` and `KONNICHIHA` → `correct("こんにちは")`.
+    - `both_spellings_of_onna_are_correct`: accepted `["女", "おんな"]`: `onna` and `onnna` → `correct("おんな")`.
+    - `keyboard_reading_can_be_correct`: accepted `["今夜", "こんや"]`: `konnya` and `kon'ya` → `correct("こんや")`, `konya` → `wrong("こにゃ")`; accepted `["きんえん"]`: `kinnen` → `correct("きんえん")`; accepted `["おんあ"]`: `onna` → `correct("おんあ")` (the known cost in design *Risks*).
+    - `single_readings_stay_exact`: accepted `["きんえん"]`: `kinen` → `wrong("きねん")`, `kin'en` → `correct("きんえん")`.
+    - `wrong_answer_shows_the_textbook_reading`: accepted `["こんばんは"]`: `konnichiwa` → `wrong("こんにちわ")`, `konnichiha` → `wrong("こんにちは")`; accepted `["おとこ"]`: `onna` → `wrong("おんな")`.
+    - `repeat_through_either_reading_is_wrong`: shown `["こんや"]`, accepted `["今夜", "こんや", "こんにゃ"]`: `konnya` → `wrong("こんや")` (even though its other reading こんにゃ is accepted); `今夜` → `correct("今夜")`.
+    - `unreadable_text_with_an_nn_spot_is_a_typo`: accepted `["こんにちは"]`: `konnichiq` → `Outcome::LooksLikeTypo`.
+  - Verify: the 23 new tests pass, all earlier tests pass, fmt and clippy are clean. Commit, e.g. `feat(grading): check Japanese answers in any script`.
 
 - [ ] 3.2 Add `TypoGuard` (D2, D7) and document the checking rules.
   - `src/grading.rs`: `TypoGuard` with its derives and `submit` exactly as the D7 pseudocode. Compare `self.warned.as_deref() == Some(typed)`.
@@ -124,16 +152,17 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
     - `same_text_means_exactly_the_same`: `tabxru` → `LooksLikeTypo`; `"tabxru "` → `LooksLikeTypo`; `"tabxru "` → `Wrong { read_as: None }`.
     - `a_readable_submit_clears_the_memory`: `tabxru` → `LooksLikeTypo`; `tokyo` → `wrong("ときょ")`; `tabxru` → `LooksLikeTypo`.
     - `mixed_answer_is_wrong_at_once`: accepted `["食べる"]`: `食beru` → `Wrong { read_as: None }` on the first submit.
+    - `two_readings_are_never_a_warning`: accepted `["こんばんは"]`: `konnichiha` → `wrong("こんにちは")` on the first submit; then `konnichiq` → `LooksLikeTypo`; then `konnichiq` → `Wrong { read_as: None }`.
   - `CHANGELOG.md`, *Unreleased* / *Added*: add this entry as the **last** item of the *Added* list (after whatever is last there now):
-    `- Japanese answer checking (issue #18): romaji is read letter for letter into hiragana (\`shi\`/\`si\`, \`kitte\` → きって, \`kin'en\` → きんえん, \`-\` → ー) and katakana is folded to hiragana, so \`takai\`, \`たかい\`, \`タカイ\` and \`高い\` all match \`高い\`. Long vowels must be typed out (\`toukyou\`), mixed romaji and Japanese is wrong, and text that cannot be read gets one typo warning before it counts as wrong. No screen uses it yet; the practice screen is issue #21.`
+    `- Japanese answer checking (issue #18): romaji is read letter for letter into hiragana (\`shi\`/\`si\`, \`kitte\` → きって, \`kin'en\` → きんえん, \`-\` → ー; \`nn\` before a vowel is accepted both ways, so \`konnichiha\` and \`konnnichiha\` both match こんにちは) and katakana is folded to hiragana, so \`takai\`, \`たかい\`, \`タカイ\` and \`高い\` all match \`高い\`. Long vowels must be typed out (\`toukyou\`), mixed romaji and Japanese is wrong, and text that cannot be read gets one typo warning before it counts as wrong. No screen uses it yet; the practice screen is issue #21.`
     (without the backslashes; they only escape the backticks here).
   - `docs/architecture.md`, section *Checking answers*: after the bullet that ends with `"How do you read 食?" does not accept \`食\`.`, insert three bullets, wrapped like the surrounding text:
-    - `- **Romaji is exact.** It is read letter for letter, the way it is typed into a Japanese IME: long vowels are typed out (\`とうきょう\` is \`toukyou\`; \`tokyo\` and \`tōkyō\` are wrong), \`nn\` or \`n'\` gives ん before a vowel, and a doubled consonant gives っ.`
+    - `- **Romaji is exact.** It is read letter for letter, the way it is typed into a Japanese IME: long vowels are typed out (\`とうきょう\` is \`toukyou\`; \`tokyo\` and \`tōkyō\` are wrong), \`n'\` gives ん before a vowel, and a doubled consonant gives っ. \`nn\` before a vowel is accepted both ways, as an IME reads it and as textbooks write it: \`konnichiha\` and \`konnnichiha\` both give こんにちは, and wrong answers are shown with the textbook reading.`
     - `- **One script per answer.** An answer is all romaji or all Japanese. \`食beru\` is wrong.`
     - `- **Typos.** Text that cannot be read as Japanese at all (\`tabxru\`) gets a warning and is not counted. Submitting the same text again counts it as wrong. A readable but wrong word, such as \`tokyo\`, is simply wrong.`
   - `docs/architecture.md`, section *5. Components*: in the Mermaid diagram add the node `kana[kana<br/>katakana → hiragana]` inside `subgraph core` right after the `romaji` node, and the edge `grading --> kana` right after `grading --> romaji`. Below the diagram, after the bullet about **`grading`**, add: `- **\`romaji\`** and **\`kana\`** have no state and no terminal access, like \`conjugation\`, so their rules are tested directly.`
   - Change nothing else in either file.
-  - Verify: the 8 new tests pass, all earlier tests pass, fmt and clippy are clean; the Mermaid block still has matching `subgraph`/`end` lines. Commit, e.g. `feat(grading): warn once about answers that look like typos`.
+  - Verify: the 9 new tests pass, all earlier tests pass, fmt and clippy are clean; the Mermaid block still has matching `subgraph`/`end` lines. Commit, e.g. `feat(grading): warn once about answers that look like typos`.
 
 ## 4. Answer field
 
@@ -182,7 +211,7 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
 
 ## Workflow follow-up
 
-- The real IME check (an actual IME on Linux, macOS and Windows terminals, and over SSH) needs the answer field on a screen, so it is done in #21 (design Open Question 4).
+- The real IME check (an actual IME on Linux, macOS and Windows terminals, and over SSH) needs the answer field on a screen, so it is done in #21 (design Open Question 3).
 - #21 must remove the four `expect(dead_code)` attributes from `src/main.rs` as it starts using each module; clippy reports `unfulfilled_lint_expectations` for any it forgets.
 - Archive order: this change uses ADDED requirements only, for three new capabilities, so it archives on its own, before or after the other open changes.
 - `CHANGELOG.md` and the status note in `docs/architecture.md` are also edited by the area selection change (#20); whichever branch merges second resolves the text conflict by keeping both entries.
