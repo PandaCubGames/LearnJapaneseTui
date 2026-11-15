@@ -235,7 +235,8 @@ impl Session {
         self.areas
     }
 
-    /// The index of the highlighted area in `areas()`.
+    /// The index of the highlighted area in `areas()`. It stays `0` when the
+    /// list is empty, and `highlighted_area()` is then `None`.
     pub fn highlighted(&self) -> usize {
         self.highlighted
     }
@@ -393,9 +394,9 @@ mod tests {
 
     #[test]
     fn start_highlights_the_first_area() {
-        let mut session = Session::new(80, 24);
+        let mut session = Session::with_areas(80, 24, EMPTY_THREE);
         session.apply(Action::Start);
-        assert_eq!(name_of(&session), Some("Vocabulary"));
+        assert_eq!(name_of(&session), Some("A"));
     }
 
     #[test]
@@ -957,5 +958,17 @@ mod tests {
         session.apply(Action::Confirm);
         assert_eq!(session.drill().unwrap().answered(), 0);
         assert_eq!(session.drill().unwrap().correct(), 0);
+    }
+
+    #[test]
+    fn an_empty_list_highlights_nothing() {
+        let mut session = Session::with_areas(80, 24, &[]);
+        assert!(session.areas().is_empty());
+        assert_eq!(session.highlighted(), 0);
+        assert!(session.highlighted_area().is_none());
+        session.apply(Action::Start);
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        assert_eq!(session.highlighted(), 0);
+        assert!(session.highlighted_area().is_none());
     }
 }

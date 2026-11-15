@@ -11,6 +11,8 @@ Types, signatures and wording are in `design.md` (D-numbers point there). Every 
 
 **Tests added here must not pin** that a real area (Vocabulary, Kanji, Grammar) has no questions, that the list has exactly three areas, or that Enter on an area with questions stays on the list (design.md D11). Use `areas::fake::FakeArea` for those cases.
 
+**Revision (owner feedback on the pull request):** groups 1 to 5 are implemented and stay ticked. Group 6 removes the three built-in areas, so the app registers no area, and adds a defined empty-list state (design.md D12). Tests added here must also not pin what `areas::all()` contains: not empty, not a length, not names (design.md D11).
+
 ## 1. Existing key test that pins Enter, Esc and Up as no-ops
 
 Do this task first. It changes only the named test, no production code, and passes both before and after the feature. The other three approved edits cannot pass before the new screen exists, so they are part of task 2.1, not of this group.
@@ -150,7 +152,286 @@ Do this task first. It changes only the named test, no production code, and pass
 
 - [x] 5.1 Check the release binary in a pseudo-terminal (no person needed). Build with `cargo build --release`, run `target/release/tui-learnjapanese` under an 80x24 pty (e.g. Python's `pty` module; keep the script outside the repository). After each input, wait about 0.5 s and look only at the output that arrived **since that input** (`ratatui` redraws changed cells only). Confirm in order: at start the output contains `Press Enter to start`; after `\r` it contains `What do you want to practise?`; after `\x1b[B` (Down) and then `\r` it contains `Kanji` and `No questions in this area yet`; after `\r` it contains `What do you want to practise?`; after `q` the process is still running; after `\x1b` (Esc) the process exits with status 0 within 2 s. Record each result in the report. This task changes no files; commit only the ticked checkbox, e.g. `chore(openspec): record the area selection terminal check`. If a step fails, stop and report instead of changing the key table.
 
+## 6. Owner feedback: no built-in areas
+
+The owner does not want this change to add a Vocabulary, Kanji or Grammar area: the screen lists whatever the app has registered, and this change registers none (design.md D12). Do the tasks in order; each is one commit that builds and passes `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` on its own.
+
+**Do not touch the four owner-approved tests** (`keys::tests::other_keys_do_nothing_on_area_selection`, `ui::tests::area_selection_placeholder_is_shown`, `ui::tests::area_selection_follows_a_resize`, `text::tests::area_selection_messages_are_plain_ascii_text`) or any other test that exists on `main` (listed in design.md D10). They must pass unchanged after every task in this group. Only the tests named in the table below change, and they exist only on this branch. Do not add `#[allow(...)]` or any other lint suppression: if clippy reports dead code or anything else not described here, stop and report (design.md D13, Open Questions 11).
+
+**Branch-only tests and what group 6 does with them** (every test not listed here stays exactly as it is):
+
+| Test | File | Task | Action |
+|---|---|---|---|
+| `the_list_starts_with_vocabulary_kanji_grammar` | `src/areas.rs` | 6.2 | Delete (pinned the built-in areas). |
+| `area_names_are_unique_and_not_empty` | `src/areas.rs` | | Keep unchanged (holds for any list; vacuous for the empty one, meaningful once areas are added). |
+| `is_named_vocabulary` | `src/areas/vocabulary.rs` | 6.2 | Delete with the file. |
+| `is_named_kanji` | `src/areas/kanji.rs` | 6.2 | Delete with the file. |
+| `is_named_grammar` | `src/areas/grammar.rs` | 6.2 | Delete with the file. |
+| `area_and_no_questions_wording_is_plain_ascii_text` | `src/text.rs` | 6.2 | Rewrite as `no_questions_wording_is_plain_ascii_text` (same place in the file), without the three area names. |
+| `area_markers_are_the_same_width` | `src/text.rs` | | Keep. |
+| `new_session_lists_the_apps_areas` | `src/session.rs` | | Keep (compares with `areas::all()`, true for any list). |
+| `start_highlights_the_first_area` | `src/session.rs` | 6.2 | Rewrite with `EMPTY_THREE`: expects `Some("A")`. |
+| all other `session` tests added by this branch | `src/session.rs` | | Keep (they use `EMPTY_THREE`, `ONE_FULL` or `&[]`). |
+| all `keys` tests added by this branch | `src/keys.rs` | | Keep (they use `EMPTY_ONE` or no session). |
+| `area_selection_lists_the_areas_in_order` | `src/ui.rs` | 6.2 | Rewrite with `THREE` (`First`, `Second`, `Third`). |
+| `first_area_is_highlighted_with_a_marker` | `src/ui.rs` | 6.2 | Rewrite with `THREE`: the marked row contains `> First`. |
+| `area_list_is_centred_by_display_width` | `src/ui.rs` | 6.2 | Rewrite with `THREE`: marker at 36, names at 38 (block 8 wide at 80). |
+| `area_names_line_up_by_display_width` | `src/ui.rs` | | Keep (`WIDE_PAIR` is test data; `Vocabulary` and `漢字` both at 36). |
+| `another_area_adds_a_line` | `src/ui.rs` | | Keep (`FOUR`). |
+| `area_selection_hint_is_centred_below_the_list` | `src/ui.rs` | 6.2 | Rewrite with `THREE`: hint below `Third`, `U` at 17. |
+| `area_list_stays_centred_after_a_resize` | `src/ui.rs` | 6.2 | Rewrite with `THREE`: at 100 wide, marker at 46, `First` and `Second` at 48. |
+| `area_selection_with_no_areas_still_draws` | `src/ui.rs` | | Keep. |
+| `no_questions_screen_shows_the_area_and_the_message` | `src/ui.rs` | 6.2 | Rewrite: constant `EMPTY_KANJI` (name `"Kanji"`) becomes `ONE_EMPTY` (name `"Only"`); the row needle `"Kanji"` becomes `"Only"`. |
+| `no_questions_message_is_centred`, `no_questions_draws_at_any_size_without_panicking`, `no_questions_uses_no_colour` | `src/ui.rs` | 6.2 | Rewrite only the constant name `EMPTY_KANJI` → `ONE_EMPTY` (columns unchanged: the message is centred on its own). |
+| `moving_the_highlight_moves_the_marker` | `src/ui.rs` | 6.2 | Rewrite with `THREE`: after `Next`, `Second` has `>` at 36 and `First` has `" "` at 36. |
+
+- [x] 6.1 Show `Nothing to practise yet` when the list of areas is empty. The three built-in areas still exist in this task, so the real list does not change; the new state is reached only through `Session::with_areas(.., &[])`.
+  - **`src/text.rs`:** add, right after `AREA_NO_MARKER` and before the `/// Area names, as shown in the list.` block:
+
+    ```rust
+    /// Area selection: shown in place of the list when the app has no areas.
+    pub const AREA_SELECTION_EMPTY: &str = "Nothing to practise yet";
+    ```
+  - **`src/ui.rs`, `draw_area_selection`:** right after the line `let mut lines = vec![Line::from(text::AREA_SELECTION_TITLE), Line::default()];` insert:
+
+    ```rust
+        if session.areas().is_empty() {
+            lines.push(Line::from(text::AREA_SELECTION_EMPTY));
+        }
+    ```
+    Change nothing else in `ui.rs` outside `mod tests`.
+  - **`src/session.rs`:** only the doc comment of `highlighted()` changes, to two lines: `/// The index of the highlighted area in \`areas()\`. It stays \`0\` when the` / `/// list is empty, and \`highlighted_area()\` is then \`None\`.` No code change (design.md D4, D12).
+  - **New tests**, each appended at the end of the file's `mod tests` (this is `cargo fmt` output):
+    - `src/text.rs`:
+
+      ```rust
+      #[test]
+      fn empty_area_list_wording_is_plain_ascii_text() {
+          assert_eq!(AREA_SELECTION_EMPTY, "Nothing to practise yet");
+          assert!(AREA_SELECTION_EMPTY.is_ascii());
+      }
+      ```
+    - `src/ui.rs` (uses the existing helpers `render`, `buffer`, `row_index`, `text`, `started_with` and the constant `FOUR`):
+
+      ```rust
+      #[test]
+      fn empty_area_list_says_there_is_nothing_to_practise() {
+          let rows = render(&started_with(&[], 80, 24));
+          let order = [
+              row_index(&rows, text::AREA_SELECTION_TITLE),
+              row_index(&rows, text::AREA_SELECTION_EMPTY),
+              row_index(&rows, text::AREA_SELECTION_HINT),
+          ];
+          assert!(order.windows(2).all(|pair| pair[0] < pair[1]), "{order:?}");
+          assert!(!text(&rows).contains(text::AREA_MARKER));
+      }
+
+      #[test]
+      fn a_list_with_areas_does_not_say_it_is_empty() {
+          let screen = text(&render(&started_with(FOUR, 80, 24)));
+          assert!(!screen.contains(text::AREA_SELECTION_EMPTY));
+      }
+
+      #[test]
+      fn empty_area_list_is_centred() {
+          let mut session = started_with(&[], 80, 24);
+          let rows = render(&session);
+          let empty = &rows[row_index(&rows, text::AREA_SELECTION_EMPTY)];
+          assert_eq!(empty[29], "N");
+          assert!(empty[..29].iter().all(|symbol| symbol == " "));
+          assert_eq!(rows[row_index(&rows, text::AREA_SELECTION_HINT)][17], "U");
+          session.apply(Action::Resized {
+              width: 100,
+              height: 30,
+          });
+          let rows = render(&session);
+          let empty = &rows[row_index(&rows, text::AREA_SELECTION_EMPTY)];
+          assert_eq!(empty[39], "N");
+          assert!(empty[..39].iter().all(|symbol| symbol == " "));
+          assert_eq!(rows[row_index(&rows, text::AREA_SELECTION_HINT)][27], "U");
+      }
+
+      #[test]
+      fn empty_area_list_draws_at_any_size_without_panicking() {
+          for (width, height) in [(1, 1), (5, 2), (20, 3), (200, 60)] {
+              render(&started_with(&[], width, height));
+          }
+      }
+
+      #[test]
+      fn empty_area_list_uses_no_colour() {
+          let buffer = buffer(&started_with(&[], 80, 24));
+          assert!(
+              buffer
+                  .content()
+                  .iter()
+                  .all(|cell| cell.fg == Color::Reset && cell.bg == Color::Reset)
+          );
+      }
+      ```
+      (Columns: `40 - 23/2 = 29` and `50 - 23/2 = 39` for the 23-column line; `17` and `27` for the 46-column hint.)
+    - `src/session.rs`:
+
+      ```rust
+      #[test]
+      fn an_empty_list_highlights_nothing() {
+          let mut session = Session::with_areas(80, 24, &[]);
+          assert!(session.areas().is_empty());
+          assert_eq!(session.highlighted(), 0);
+          assert!(session.highlighted_area().is_none());
+          session.apply(Action::Start);
+          assert_eq!(session.screen(), Screen::AreaSelection);
+          assert_eq!(session.highlighted(), 0);
+          assert!(session.highlighted_area().is_none());
+      }
+      ```
+    - `src/keys.rs`:
+
+      ```rust
+      #[test]
+      fn only_esc_leaves_an_empty_list() {
+          let mut session = Session::with_areas(80, 24, &[]);
+          let feed = |session: &mut Session, event: Event| {
+              if let Some(action) = action_for(session.screen(), &event) {
+                  session.apply(action);
+              }
+          };
+          feed(&mut session, press(KeyCode::Enter, KeyModifiers::NONE));
+          assert_eq!(session.screen(), Screen::AreaSelection);
+          for code in [KeyCode::Up, KeyCode::Down, KeyCode::Enter] {
+              feed(&mut session, press(code, KeyModifiers::NONE));
+              assert_eq!(session.screen(), Screen::AreaSelection, "{code:?}");
+              assert_eq!(session.highlighted(), 0, "{code:?}");
+              assert!(session.highlighted_area().is_none(), "{code:?}");
+              assert!(!session.should_quit(), "{code:?}");
+          }
+          feed(&mut session, press(KeyCode::Esc, KeyModifiers::NONE));
+          assert!(session.should_quit());
+      }
+
+      #[test]
+      fn ctrl_c_quits_an_empty_list() {
+          let mut session = Session::with_areas(80, 24, &[]);
+          let feed = |session: &mut Session, event: Event| {
+              if let Some(action) = action_for(session.screen(), &event) {
+                  session.apply(action);
+              }
+          };
+          feed(&mut session, press(KeyCode::Enter, KeyModifiers::NONE));
+          assert_eq!(session.screen(), Screen::AreaSelection);
+          feed(
+              &mut session,
+              press(KeyCode::Char('c'), KeyModifiers::CONTROL),
+          );
+          assert!(session.should_quit());
+      }
+      ```
+  - No `CHANGELOG.md` or `docs/` change in this task (task 6.2 rewrites the entry once the built-in areas are gone).
+  - Verify: check once that `empty_area_list_says_there_is_nothing_to_practise` fails with the `if` block in `draw_area_selection` taken out, then put it back. `cargo test` passes with 109 tests (100 before + 9 new); fmt and clippy are clean; `git diff --stat` shows only `src/text.rs`, `src/ui.rs`, `src/session.rs`, `src/keys.rs` and this `tasks.md`; `git diff` removes no line inside any `mod tests` block. Commit, e.g. `feat(areas): say when there is nothing to practise`.
+
+- [x] 6.2 Remove the built-in areas, so the app registers none. One commit (design.md D9).
+  - **Delete** `src/areas/vocabulary.rs`, `src/areas/kanji.rs` and `src/areas/grammar.rs` (with their tests `is_named_vocabulary`, `is_named_kanji`, `is_named_grammar`). The `src/areas/` directory is then gone.
+  - **`src/areas.rs`:** delete the lines `mod grammar;`, `mod kanji;`, `mod vocabulary;`, `use grammar::Grammar;`, `use kanji::Kanji;`, `use vocabulary::Vocabulary;` and the blank lines after each group, so the module doc is followed by one blank line and the `Area` trait's doc comment. Replace the doc comment and value of `ALL` with:
+
+    ```rust
+    /// Every area, in the order the list shows them. There are none yet. Adding
+    /// an area adds its own file under `src/areas/` and one entry here.
+    const ALL: &[&dyn Area] = &[];
+    ```
+    Keep the `Area` trait, `all()`, `pub mod fake` and `FakeArea` exactly as they are. In `mod tests`, delete `the_list_starts_with_vocabulary_kanji_grammar`; keep `area_names_are_unique_and_not_empty` unchanged.
+  - **`src/text.rs`:** delete the block `/// Area names, as shown in the list.`, `pub const AREA_VOCABULARY ...`, `pub const AREA_KANJI ...`, `pub const AREA_GRAMMAR ...` and its following blank line. In `mod tests`, replace `area_and_no_questions_wording_is_plain_ascii_text` (same place) with:
+
+    ```rust
+    #[test]
+    fn no_questions_wording_is_plain_ascii_text() {
+        for (text, expected) in [
+            (NO_QUESTIONS, "No questions in this area yet"),
+            (NO_QUESTIONS_HINT, "Press Enter to go back"),
+        ] {
+            assert_eq!(text, expected);
+            assert!(text.is_ascii());
+        }
+    }
+    ```
+  - **`src/session.rs` `mod tests`:** the body of `start_highlights_the_first_area` becomes:
+
+    ```rust
+        let mut session = Session::with_areas(80, 24, EMPTY_THREE);
+        session.apply(Action::Start);
+        assert_eq!(name_of(&session), Some("A"));
+    ```
+  - **`src/ui.rs` `mod tests`:**
+    - Add, right before the constant `EMPTY_KANJI`:
+
+      ```rust
+      const THREE: &[&dyn Area] = &[
+          &FakeArea {
+              name: "First",
+              has_questions: false,
+          },
+          &FakeArea {
+              name: "Second",
+              has_questions: false,
+          },
+          &FakeArea {
+              name: "Third",
+              has_questions: false,
+          },
+      ];
+      ```
+    - Rename the constant `EMPTY_KANJI` to `ONE_EMPTY` (all five uses) and change its `name: "Kanji"` to `name: "Only"`. In `no_questions_screen_shows_the_area_and_the_message`, `row_index(&rows, "Kanji")` becomes `row_index(&rows, "Only")`.
+    - `area_selection_lists_the_areas_in_order`: `render(&started(80, 24))` becomes `render(&started_with(THREE, 80, 24))`; the needles `"Vocabulary"`, `"Kanji"`, `"Grammar"` become `"First"`, `"Second"`, `"Third"`. The rest (title first, no `Area selection is coming soon.`) stays.
+    - `first_area_is_highlighted_with_a_marker`: `started(80, 24)` becomes `started_with(THREE, 80, 24)`; `"> Vocabulary"` becomes `"> First"`.
+    - `area_list_is_centred_by_display_width`, new body:
+
+      ```rust
+          let rows = render(&started_with(THREE, 80, 24));
+          let first = &rows[row_index(&rows, "First")];
+          assert_eq!(first[36], ">");
+          assert_eq!(first[38], "F");
+          assert!(first[..36].iter().all(|symbol| symbol == " "));
+          for (name, initial) in [("Second", "S"), ("Third", "T")] {
+              let row = &rows[row_index(&rows, name)];
+              assert_eq!(row[36], " ");
+              assert_eq!(row[37], " ");
+              assert_eq!(row[38], initial);
+          }
+      ```
+      (Block = marker 2 + `Second` 6 = 8 columns: `40 - 4 = 36`.)
+    - `area_selection_hint_is_centred_below_the_list`: `started(80, 24)` becomes `started_with(THREE, 80, 24)`; `row_index(&rows, "Grammar")` becomes `row_index(&rows, "Third")`. `U` at 17 stays.
+    - `area_list_stays_centred_after_a_resize`, new body:
+
+      ```rust
+          let mut session = started_with(THREE, 80, 24);
+          session.apply(Action::Resized {
+              width: 100,
+              height: 30,
+          });
+          let rows = render(&session);
+          let first = &rows[row_index(&rows, "First")];
+          assert_eq!(first[46], ">");
+          assert_eq!(first[48], "F");
+          assert_eq!(rows[row_index(&rows, "Second")][48], "S");
+      ```
+    - `moving_the_highlight_moves_the_marker`, new body:
+
+      ```rust
+          let mut session = started_with(THREE, 80, 24);
+          session.apply(Action::Next);
+          let rows = render(&session);
+          assert_eq!(rows[row_index(&rows, "Second")][36], ">");
+          assert_eq!(rows[row_index(&rows, "First")][36], " ");
+      ```
+    - The helper `started` stays: the owner-approved tests and `area_selection_draws_at_any_size_without_panicking` / `area_selection_uses_no_colour` still use it, now with the real (empty) list.
+  - **`CHANGELOG.md`**, *Unreleased* / *Added*: replace the whole line that starts with `- Area selection screen (issue #20):` with:
+
+    `- Area selection screen (issue #20): lists the areas the app has registered, with the first one highlighted by a "> " marker. Up and Down move the highlight and stop at the first and last area. Enter on an area with no questions shows "No questions in this area yet", and Enter or Esc there goes back to the list. Esc quits from the list (until the Thank you screen exists). No area is registered yet, so the screen says "Nothing to practise yet"; each area adds its own file under \`src/areas/\` and one entry in \`src/areas.rs\`.`
+  - **`docs/architecture.md`:** in the status note, replace `The areas have no questions yet.` with `No area is registered yet, so area selection says "Nothing to practise yet".` In §5, replace `Its first part exists: \`src/areas.rs\` lists the areas, each with a name and whether it has any questions.` with `Its first part exists: \`src/areas.rs\` lists the registered areas, each with a name and whether it has any questions. None is registered yet; each area adds its own file under \`src/areas/\` and one entry in that list.` Change nothing else (the planned design that names Vocabulary, Kanji and Grammar stays as it is).
+  - Verify: `cargo test` passes with 105 tests (109 − 4 deleted); fmt, `cargo clippy --all-targets -- -D warnings` and `cargo clippy -- -D warnings` are clean with no `#[allow]` added (if not, stop and report, design.md D13); `git grep -n -E 'Vocabulary|Kanji|Grammar' -- src` shows only the `WIDE_PAIR` test data in `src/ui.rs` (`name: "Vocabulary"` and the needle in `area_names_line_up_by_display_width`); `git diff HEAD -- src` changes none of the four owner-approved tests and no test that exists on `main` (design.md D10); `git diff main -- VERSION Cargo.toml Cargo.lock` prints nothing. Commit, e.g. `feat(areas): list only registered areas and register none`; in the commit body say the owner asked for no built-in areas in the pull request review.
+
+- [x] 6.3 Re-run the pseudo-terminal check on the release binary (no file changes besides this checkbox). Same method as 5.1: `cargo build --release`, run `target/release/tui-learnjapanese` under an 80x24 pty with a script kept outside the repository; after each input wait about 0.5 s and look only at the output that arrived since that input. Confirm in order: at start the output contains `Press Enter to start`; after `\r` it contains `What do you want to practise?`, `Nothing to practise yet` and `Up/Down to move, Enter to choose, Esc to leave`; after `\x1b[B` (Down), then `\x1b[A` (Up), then `\r` (Enter), the process is still running after each and the output since each input does not contain `No questions in this area yet`; after `q` the process is still running; after `\x1b` (Esc) the process exits with status 0 within 2 s. Record each result in the report. Commit only the ticked checkbox, e.g. `chore(openspec): record the empty area selection terminal check`. If a step fails, stop and report.
+
 ## Workflow follow-up
 
-- The owner runs `cargo run --release` once in a real terminal to confirm by eye: Enter from Welcome, the marker moving with Up and Down, the "no questions" screen, Enter and Esc back, Esc quitting, and a resize on both screens.
+- The owner runs `cargo run --release` once in a real terminal to confirm by eye: Enter from Welcome shows `Nothing to practise yet` with the heading and the hint, Up, Down and Enter do nothing there, Esc quits, and a resize keeps it centred. The list with areas, the marker and the "no questions" screen are covered by tests with test-only areas and become visible once #11, #12 or #13 registers an area.
 - Archive order (design.md D1): archive `add-main-application-loop` (recommended) and `add-welcome-screen` (required) **before** this change. Archiving this change first does not fail but leaves the three placeholder requirements in `openspec/specs/area-selection/spec.md` once `add-welcome-screen` is archived.

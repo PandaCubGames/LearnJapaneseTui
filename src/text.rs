@@ -43,10 +43,8 @@ pub const AREA_MARKER: &str = "> ";
 /// Area selection: in front of every other area, as wide as `AREA_MARKER`.
 pub const AREA_NO_MARKER: &str = "  ";
 
-/// Area names, as shown in the list.
-pub const AREA_VOCABULARY: &str = "Vocabulary";
-pub const AREA_KANJI: &str = "Kanji";
-pub const AREA_GRAMMAR: &str = "Grammar";
+/// Area selection: shown in place of the list when the app has no areas.
+pub const AREA_SELECTION_EMPTY: &str = "Nothing to practise yet";
 
 /// Shown when the chosen area has no questions.
 pub const NO_QUESTIONS: &str = "No questions in this area yet";
@@ -223,11 +221,8 @@ mod tests {
     }
 
     #[test]
-    fn area_and_no_questions_wording_is_plain_ascii_text() {
+    fn no_questions_wording_is_plain_ascii_text() {
         for (text, expected) in [
-            (AREA_VOCABULARY, "Vocabulary"),
-            (AREA_KANJI, "Kanji"),
-            (AREA_GRAMMAR, "Grammar"),
             (NO_QUESTIONS, "No questions in this area yet"),
             (NO_QUESTIONS_HINT, "Press Enter to go back"),
         ] {
@@ -354,5 +349,11 @@ mod tests {
     fn score_text() {
         assert_eq!(score(0, 0), "Score: 0 of 0");
         assert_eq!(score(2, 3), "Score: 2 of 3");
+    }
+
+    #[test]
+    fn empty_area_list_wording_is_plain_ascii_text() {
+        assert_eq!(AREA_SELECTION_EMPTY, "Nothing to practise yet");
+        assert!(AREA_SELECTION_EMPTY.is_ascii());
     }
 }

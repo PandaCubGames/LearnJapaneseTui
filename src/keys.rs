@@ -870,4 +870,42 @@ mod tests {
         assert_eq!(session.highlighted_area().unwrap().name(), "Sample");
         assert!(!session.should_quit());
     }
+
+    #[test]
+    fn only_esc_leaves_an_empty_list() {
+        let mut session = Session::with_areas(80, 24, &[]);
+        let feed = |session: &mut Session, event: Event| {
+            if let Some(action) = action_for(session.screen(), &event) {
+                session.apply(action);
+            }
+        };
+        feed(&mut session, press(KeyCode::Enter, KeyModifiers::NONE));
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        for code in [KeyCode::Up, KeyCode::Down, KeyCode::Enter] {
+            feed(&mut session, press(code, KeyModifiers::NONE));
+            assert_eq!(session.screen(), Screen::AreaSelection, "{code:?}");
+            assert_eq!(session.highlighted(), 0, "{code:?}");
+            assert!(session.highlighted_area().is_none(), "{code:?}");
+            assert!(!session.should_quit(), "{code:?}");
+        }
+        feed(&mut session, press(KeyCode::Esc, KeyModifiers::NONE));
+        assert!(session.should_quit());
+    }
+
+    #[test]
+    fn ctrl_c_quits_an_empty_list() {
+        let mut session = Session::with_areas(80, 24, &[]);
+        let feed = |session: &mut Session, event: Event| {
+            if let Some(action) = action_for(session.screen(), &event) {
+                session.apply(action);
+            }
+        };
+        feed(&mut session, press(KeyCode::Enter, KeyModifiers::NONE));
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        feed(
+            &mut session,
+            press(KeyCode::Char('c'), KeyModifiers::CONTROL),
+        );
+        assert!(session.should_quit());
+    }
 }

@@ -54,6 +54,9 @@ fn draw_area_selection(frame: &mut Frame, session: &Session) {
         .unwrap_or(0);
 
     let mut lines = vec![Line::from(text::AREA_SELECTION_TITLE), Line::default()];
+    if session.areas().is_empty() {
+        lines.push(Line::from(text::AREA_SELECTION_EMPTY));
+    }
     for (index, name) in names.enumerate() {
         let marker = if index == session.highlighted() {
             text::AREA_MARKER
@@ -526,8 +529,23 @@ mod tests {
         session
     }
 
-    const EMPTY_KANJI: &[&dyn Area] = &[&FakeArea {
-        name: "Kanji",
+    const THREE: &[&dyn Area] = &[
+        &FakeArea {
+            name: "First",
+            has_questions: false,
+        },
+        &FakeArea {
+            name: "Second",
+            has_questions: false,
+        },
+        &FakeArea {
+            name: "Third",
+            has_questions: false,
+        },
+    ];
+
+    const ONE_EMPTY: &[&dyn Area] = &[&FakeArea {
+        name: "Only",
         has_questions: false,
     }];
 
@@ -563,12 +581,12 @@ mod tests {
 
     #[test]
     fn area_selection_lists_the_areas_in_order() {
-        let rows = render(&started(80, 24));
+        let rows = render(&started_with(THREE, 80, 24));
         let order = [
             row_index(&rows, text::AREA_SELECTION_TITLE),
-            row_index(&rows, "Vocabulary"),
-            row_index(&rows, "Kanji"),
-            row_index(&rows, "Grammar"),
+            row_index(&rows, "First"),
+            row_index(&rows, "Second"),
+            row_index(&rows, "Third"),
         ];
         assert!(order.windows(2).all(|pair| pair[0] < pair[1]), "{order:?}");
         assert!(!text(&rows).contains("Area selection is coming soon."));
@@ -576,28 +594,28 @@ mod tests {
 
     #[test]
     fn first_area_is_highlighted_with_a_marker() {
-        let rows = render(&started(80, 24));
+        let rows = render(&started_with(THREE, 80, 24));
         let marked: Vec<_> = rows
             .iter()
             .map(|row| row.concat())
             .filter(|row| row.contains("> "))
             .collect();
         assert_eq!(marked.len(), 1, "{marked:?}");
-        assert!(marked[0].contains("> Vocabulary"));
+        assert!(marked[0].contains("> First"));
     }
 
     #[test]
     fn area_list_is_centred_by_display_width() {
-        let rows = render(&started(80, 24));
-        let vocabulary = &rows[row_index(&rows, "Vocabulary")];
-        assert_eq!(vocabulary[34], ">");
-        assert_eq!(vocabulary[36], "V");
-        assert!(vocabulary[..34].iter().all(|symbol| symbol == " "));
-        for (name, first) in [("Kanji", "K"), ("Grammar", "G")] {
+        let rows = render(&started_with(THREE, 80, 24));
+        let first = &rows[row_index(&rows, "First")];
+        assert_eq!(first[36], ">");
+        assert_eq!(first[38], "F");
+        assert!(first[..36].iter().all(|symbol| symbol == " "));
+        for (name, initial) in [("Second", "S"), ("Third", "T")] {
             let row = &rows[row_index(&rows, name)];
-            assert_eq!(row[34], " ");
-            assert_eq!(row[35], " ");
-            assert_eq!(row[36], first);
+            assert_eq!(row[36], " ");
+            assert_eq!(row[37], " ");
+            assert_eq!(row[38], initial);
         }
     }
 
@@ -622,25 +640,25 @@ mod tests {
 
     #[test]
     fn area_selection_hint_is_centred_below_the_list() {
-        let rows = render(&started(80, 24));
+        let rows = render(&started_with(THREE, 80, 24));
         let hint = row_index(&rows, text::AREA_SELECTION_HINT);
-        assert!(hint > row_index(&rows, "Grammar"));
+        assert!(hint > row_index(&rows, "Third"));
         assert_eq!(rows[hint][17], "U");
         assert!(rows[hint][..17].iter().all(|symbol| symbol == " "));
     }
 
     #[test]
     fn area_list_stays_centred_after_a_resize() {
-        let mut session = started(80, 24);
+        let mut session = started_with(THREE, 80, 24);
         session.apply(Action::Resized {
             width: 100,
             height: 30,
         });
         let rows = render(&session);
-        let vocabulary = &rows[row_index(&rows, "Vocabulary")];
-        assert_eq!(vocabulary[44], ">");
-        assert_eq!(vocabulary[46], "V");
-        assert_eq!(rows[row_index(&rows, "Kanji")][46], "K");
+        let first = &rows[row_index(&rows, "First")];
+        assert_eq!(first[46], ">");
+        assert_eq!(first[48], "F");
+        assert_eq!(rows[row_index(&rows, "Second")][48], "S");
     }
 
     #[test]
@@ -653,9 +671,9 @@ mod tests {
 
     #[test]
     fn no_questions_screen_shows_the_area_and_the_message() {
-        let rows = render(&chosen_with(EMPTY_KANJI, 80, 24));
+        let rows = render(&chosen_with(ONE_EMPTY, 80, 24));
         let order = [
-            row_index(&rows, "Kanji"),
+            row_index(&rows, "Only"),
             row_index(&rows, text::NO_QUESTIONS),
             row_index(&rows, text::NO_QUESTIONS_HINT),
         ];
@@ -667,7 +685,7 @@ mod tests {
 
     #[test]
     fn no_questions_message_is_centred() {
-        let rows = render(&chosen_with(EMPTY_KANJI, 80, 24));
+        let rows = render(&chosen_with(ONE_EMPTY, 80, 24));
         let row = &rows[row_index(&rows, text::NO_QUESTIONS)];
         assert_eq!(row[26], "N");
         assert!(row[..26].iter().all(|symbol| symbol == " "));
@@ -676,13 +694,13 @@ mod tests {
     #[test]
     fn no_questions_draws_at_any_size_without_panicking() {
         for (width, height) in [(1, 1), (5, 2), (20, 3), (200, 60)] {
-            render(&chosen_with(EMPTY_KANJI, width, height));
+            render(&chosen_with(ONE_EMPTY, width, height));
         }
     }
 
     #[test]
     fn no_questions_uses_no_colour() {
-        let buffer = buffer(&chosen_with(EMPTY_KANJI, 80, 24));
+        let buffer = buffer(&chosen_with(ONE_EMPTY, 80, 24));
         assert!(
             buffer
                 .content()
@@ -693,11 +711,66 @@ mod tests {
 
     #[test]
     fn moving_the_highlight_moves_the_marker() {
-        let mut session = started(80, 24);
+        let mut session = started_with(THREE, 80, 24);
         session.apply(Action::Next);
         let rows = render(&session);
-        assert_eq!(rows[row_index(&rows, "Kanji")][34], ">");
-        assert_eq!(rows[row_index(&rows, "Vocabulary")][34], " ");
+        assert_eq!(rows[row_index(&rows, "Second")][36], ">");
+        assert_eq!(rows[row_index(&rows, "First")][36], " ");
+    }
+
+    #[test]
+    fn empty_area_list_says_there_is_nothing_to_practise() {
+        let rows = render(&started_with(&[], 80, 24));
+        let order = [
+            row_index(&rows, text::AREA_SELECTION_TITLE),
+            row_index(&rows, text::AREA_SELECTION_EMPTY),
+            row_index(&rows, text::AREA_SELECTION_HINT),
+        ];
+        assert!(order.windows(2).all(|pair| pair[0] < pair[1]), "{order:?}");
+        assert!(!text(&rows).contains(text::AREA_MARKER));
+    }
+
+    #[test]
+    fn a_list_with_areas_does_not_say_it_is_empty() {
+        let screen = text(&render(&started_with(FOUR, 80, 24)));
+        assert!(!screen.contains(text::AREA_SELECTION_EMPTY));
+    }
+
+    #[test]
+    fn empty_area_list_is_centred() {
+        let mut session = started_with(&[], 80, 24);
+        let rows = render(&session);
+        let empty = &rows[row_index(&rows, text::AREA_SELECTION_EMPTY)];
+        assert_eq!(empty[29], "N");
+        assert!(empty[..29].iter().all(|symbol| symbol == " "));
+        assert_eq!(rows[row_index(&rows, text::AREA_SELECTION_HINT)][17], "U");
+        session.apply(Action::Resized {
+            width: 100,
+            height: 30,
+        });
+        let rows = render(&session);
+        let empty = &rows[row_index(&rows, text::AREA_SELECTION_EMPTY)];
+        assert_eq!(empty[39], "N");
+        assert!(empty[..39].iter().all(|symbol| symbol == " "));
+        assert_eq!(rows[row_index(&rows, text::AREA_SELECTION_HINT)][27], "U");
+    }
+
+    #[test]
+    fn empty_area_list_draws_at_any_size_without_panicking() {
+        for (width, height) in [(1, 1), (5, 2), (20, 3), (200, 60)] {
+            render(&started_with(&[], width, height));
+        }
+    }
+
+    #[test]
+    fn empty_area_list_uses_no_colour() {
+        let buffer = buffer(&started_with(&[], 80, 24));
+        assert!(
+            buffer
+                .content()
+                .iter()
+                .all(|cell| cell.fg == Color::Reset && cell.bg == Color::Reset)
+        );
     }
 
     const PICKABLE: &[&dyn Area] = &[&FakeArea {

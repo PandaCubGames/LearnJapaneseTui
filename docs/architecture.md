@@ -6,7 +6,7 @@ Copyright (C) 2026 PandaCubGames
 # Architecture (draft)
 
 > **Status: mostly planned.** Only the core loop, the Welcome screen and area selection exist in code
-> (`app`, `areas`, `keys`, `session` and `ui`). The areas have no questions yet. Esc on area selection quits directly until the Thank you screen exists. Answer input and checking (`answer_field`,
+> (`app`, `areas`, `keys`, `session` and `ui`). Area selection lists the registered areas; none is registered yet, so it says "Nothing to practise yet". Esc on area selection quits directly until the Thank you screen exists. Answer input and checking (`answer_field`,
 > `grading`, `kana`, `romaji`) exist. The generic practice module exists (`practice`): level picker, question and feedback screens; only a test area has questions so far. Everything else
 > here is still planned.
 > These diagrams describe the intended design and will change as it gets built.
@@ -394,7 +394,7 @@ flowchart LR
 - **Area contract.** The core never sees a Vocabulary, Kanji or Grammar entry. It asks an
   area for questions at the chosen levels, and each question carries only a prompt, its
   accepted answers and its exercise kind. Adding a new area means implementing the
-  contract and adding its content. No existing area changes. It exists as `Area::questions(levels)` in `src/areas.rs`: the area's entries that have any of the chosen levels, each with its levels and its questions (prompt, accepted answers, the Japanese text the prompt shows, and the kind, Japanese or meaning). Whether an area has questions is worked out from it.
+  contract and adding its content. No existing area changes. It exists as `Area::questions(levels)` in `src/areas.rs`: the area's entries that have any of the chosen levels, each with its levels and its questions (prompt, accepted answers, the Japanese text the prompt shows, and the kind, Japanese or meaning). Whether an area has questions is worked out from it. `src/areas.rs` lists the registered areas, each with a name; none is registered yet, and each area adds its own file under `src/areas/` and one entry in that list.
 - **`keys`** turns a terminal key into an action for the current screen. **`app`** hands
   that action to **`session`**, which holds the whole screen flow as one step: the current
   state and an action give the next state. Neither draws anything, so the flow can be unit

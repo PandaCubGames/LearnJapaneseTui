@@ -9,18 +9,20 @@ See `proposal.md` for the motivation and `specs/area-selection/spec.md` for the 
 - The crate is a binary: `cargo clippy --all-targets -- -D warnings` fails on any item, field or constant that non-test code never uses. This decides the task order (D9) and why the placeholder constants must go.
 - `openspec/specs/` is empty. `area-selection` exists only as an ADDED delta of the unarchived change `add-welcome-screen` (complete, 4/4 tasks).
 - The baseline is 51 passing tests (`cargo test`, run while writing this design). Issue #20's "Existing tests" section says nothing conflicts; that was written before #19 merged the placeholder tests, and is no longer true (D10).
-- Three facts were checked in a scratch crate (same toolchain, pinned `ratatui` 0.30) before relying on them: a centred `Paragraph` line keeps its trailing spaces (so padded lines of equal width start in the same column); `const ALL: &[&dyn Area] = &[&Vocabulary, ...]` compiles and can be returned as `&'static [&'static dyn Area]`; and with this module layout, clippy `-D warnings` rejects `Area::has_questions` and `FakeArea::has_questions` while no non-test code calls `has_questions`, and accepts them once `Session::apply` does.
+- **Revision after the owner's pull request review:** the owner does not want this change to add a Vocabulary, Kanji or Grammar area. The screen is a generic place to select any area; it lists whatever the app registers, and this change registers none. Groups 1 to 5 of `tasks.md` were implemented with three built-in areas; group 6 removes them and adds the empty-list state. D2, D4, D6, D8, D9 and D11 were revised, D12 and D13 are new.
+- Three facts were checked in a scratch crate (same toolchain, pinned `ratatui` 0.30) before relying on them: a centred `Paragraph` line keeps its trailing spaces (so padded lines of equal width start in the same column); `const ALL: &[&dyn Area] = &[&Vocabulary, ...]` (the list before the revision) compiles and can be returned as `&'static [&'static dyn Area]`; and with this module layout, clippy `-D warnings` rejects `Area::has_questions` and `FakeArea::has_questions` while no non-test code calls `has_questions`, and accepts them once `Session::apply` does.
 
 ## Goals / Non-Goals
 
 **Goals:**
-- One place lists the app's areas, and the screen reads its lines from there (D2). This is the seam #21 grows.
+- One place lists the app's areas, and the screen reads its lines from there (D2). This is the seam #21 grows. The screen does not know or care which areas exist.
+- A defined, tested state for an empty list, which is what the app ships with after this change (D12).
 - Everything on both screens is testable without a terminal, including the "another area adds a line" rule, through test-only areas (D3).
 - No test added here pins a fact that #11, #12, #13 or #21 will legitimately change, so those issues do not inherit test conflicts (D11).
 
 **Non-Goals:**
 - Questions, JLPT levels, the practice screens, what Enter does on an area that has questions (all #21).
-- Any content (#11, #12, #13).
+- Any area and any content (#11, #12, #13). This change registers no area.
 - The Thank you screen. Esc quits directly.
 - Marking empty areas in the list (D7, Open Questions).
 
@@ -28,12 +30,12 @@ See `proposal.md` for the motivation and `specs/area-selection/spec.md` for the 
 
 ### D1. Spec delta: REMOVED + ADDED on `area-selection`, archived after `add-welcome-screen`
 
-The delta removes the three placeholder requirements and adds eleven new ones. It does not use MODIFIED.
+The delta removes the three placeholder requirements and adds twelve new ones (eleven before the revision, plus *Empty list of areas*). It does not use MODIFIED.
 
 - **Why not MODIFIED:** every placeholder requirement is replaced, not adjusted. Their names ("...placeholder...") would be wrong afterwards, and a MODIFIED block must restate the whole requirement anyway. REMOVED with a Reason and a Migration says plainly what happened.
 - **Why not a new capability** (e.g. `area-list`) with ADDED only: the placeholder requirements would then stay in `openspec/specs/area-selection/spec.md` for ever, contradicting the new ones ("every other key does nothing" against "Esc quits").
 - **Archive order, verified** on a scratch copy of `openspec/` with OpenSpec 1.16.0:
-  - `add-main-application-loop` → `add-welcome-screen` → `add-area-selection-screen`: all three archive; `area-selection` ends with exactly the eleven new requirements (`+ 11, - 3`), and `openspec validate --specs --strict` passes.
+  - `add-main-application-loop` → `add-welcome-screen` → `add-area-selection-screen`: all three archive; `area-selection` ends with exactly the twelve new requirements (`+ 12, - 3`), and `openspec validate --specs --strict` passes (re-checked after the revision on a scratch copy of `openspec/`; the archive prints the non-blocking warning "Consider splitting changes with more than 10 deltas", as it already did with eleven).
   - Archiving this change **before** `add-welcome-screen` does **not** fail. It prints only a warning ("3 REMOVED requirement(s) ignored for new spec") and creates `area-selection` from the ADDED part. Archiving `add-welcome-screen` afterwards then silently adds the three placeholder requirements back, leaving 14 contradictory requirements. So the order is a rule the owner must follow, not one the tool enforces.
   - `add-main-application-loop` is independent of this change (it owns `app-shell`); archiving it first is recommended, not required.
 - `openspec validate add-area-selection-screen --strict` passes now, before any archive.
@@ -41,10 +43,7 @@ The delta removes the three placeholder requirements and adds eleven new ones. I
 ### D2. The seam for #21: `src/areas.rs`
 
 ```rust
-// src/areas.rs
-mod grammar;
-mod kanji;
-mod vocabulary;
+// src/areas.rs (after the revision: no `mod` lines, no `use` lines)
 
 /// One thing the user can practise. #21 grows this into the full area
 /// contract (questions for a set of JLPT levels).
@@ -56,20 +55,20 @@ pub trait Area: std::fmt::Debug {
     fn has_questions(&self) -> bool;
 }
 
-/// Every area, in the order the list shows them. Adding an area adds one
-/// entry here and its own file under `src/areas/`.
-const ALL: &[&dyn Area] = &[&Vocabulary, &Kanji, &Grammar];
+/// Every area, in the order the list shows them. There are none yet. Adding
+/// an area adds its own file under `src/areas/` and one entry here.
+const ALL: &[&dyn Area] = &[];
 
 pub fn all() -> &'static [&'static dyn Area] { ALL }
 ```
 
-- `src/areas/vocabulary.rs`, `src/areas/kanji.rs`, `src/areas/grammar.rs` each hold one unit struct (`pub struct Vocabulary;` etc., `#[derive(Debug)]`) implementing `Area`: `name()` returns `text::AREA_VOCABULARY` (`AREA_KANJI`, `AREA_GRAMMAR`), `has_questions()` returns `false`. Their module docs name the issue that fills them: #11 (vocabulary), #12 (kanji), #13 (grammar).
+- **No built-in area (owner decision, revision).** Groups 1 to 5 added `src/areas/vocabulary.rs`, `src/areas/kanji.rs` and `src/areas/grammar.rs` (one unit struct each, `has_questions() == false`) and the name constants `text::AREA_VOCABULARY`, `AREA_KANJI`, `AREA_GRAMMAR`. Task 6.2 deletes all of them: the screen must not depend on which areas exist, and whether Vocabulary, Kanji or Grammar exist at all is decided by their own issues. `ALL` is the empty slice and `src/areas/` does not exist after this change.
 - **A trait, not a struct with fields.** `docs/architecture.md` §5 calls it a contract each area implements, and #21 adds methods to it (questions for levels). With a struct, #21 would have to add fields to every area at once.
-- **One file per area now.** #11, #12 and #13 then each grow only their own file and never touch each other's. Putting all three in `areas.rs` would make each of them edit a file shared with the other two.
+- **One file per area, when one is added.** Each area lives in its own file under `src/areas/` and never touches another area's file. The only shared edit is one entry in `ALL` (plus one `mod` and one `use` line in `src/areas.rs`).
 - **`Debug` as a supertrait** keeps `#[derive(Debug)]` on `Session`, which now holds the list.
 - **What #21 is expected to extend:** add methods to `Area` (for example `fn questions(&self, levels: ...) -> ...`); it may give `has_questions` a default body built on them, keeping its name and signature. Replace the comment-marked branch in `Session::apply` (D4) where an area with questions is chosen, adding its own `Screen` variants and actions. Add its test-only areas through `Session::with_areas` and `areas::fake` (D3).
 - **What #21 must not need to change:** `areas::all()` and the `ALL` list shape, `Session::with_areas`/`areas()`/`highlighted()`/`highlighted_area()`, the `Screen::AreaSelection` and `Screen::NoQuestions` arms in `keys` and `ui`, the `Previous`/`Next`/`Choose`/`Back` actions, and any test added here.
-- **What #11, #12, #13 change:** only their own file's `has_questions` body (and whatever #21's contract adds), plus their content.
+- **What an area change (#11, #12, #13 or any later one) adds:** its own new file `src/areas/<area>.rs` with a unit struct implementing `Area` (and whatever #21's contract adds), its content, one `mod <area>;` and one `use <area>::<Struct>;` line in `src/areas.rs`, one entry in `ALL`, and its display name (see D8 and Open Questions 5 for where the name lives). It does not touch `session`, `keys`, `ui` or any other area. Its tests must not assert that `areas::all()` is empty or has a fixed length (D11).
 
 ### D3. Test-only areas: `Session::with_areas` and `areas::fake`
 
@@ -174,7 +173,7 @@ pub fn highlighted_area(&self) -> Option<&'static dyn Area>   // self.areas.get(
 - Every new action checks the screen, so an action that arrives on the wrong screen changes nothing, as `Start` already does.
 - **Ends stop, no wrap** (Open Questions 1): `saturating_sub` and the length check. With three short lines, wrapping saves little and a jump from the bottom to the top is easy to miss.
 - **Back keeps the highlight** on the area just chosen, so the user can move on from where they were. "The first area is highlighted when the screen opens" is honoured on arrival from Welcome (`Start` resets it). Open Questions 4.
-- **An empty list** (only possible through `with_areas`): arrows and Enter do nothing, the screen shows the heading and the hint.
+- **An empty list** (what `Session::new` gives after the revision, and `with_areas(.., &[])`): see D12. `highlighted()` stays `0` and `highlighted_area()` is `None`; arrows and Enter change nothing. No code indexes `areas` directly: `highlighted_area` uses `get`, `Next` checks `highlighted + 1 < len` (false for `len == 0`), `Previous` uses `saturating_sub`, and drawing iterates.
 - **An area with questions:** `Choose` changes nothing for now. No test pins "stays on the list", only "does not show the message and does not quit", which #21's level picker also satisfies.
 
 ### D5. Key table
@@ -214,26 +213,37 @@ Screen::NoQuestions => match key.code {
 
 ### D6. Drawing
 
-Area selection, centred with the existing `draw_centred`:
+Area selection, centred with the existing `draw_centred` (shown with three registered areas named `First`, `Second`, `Third`, as in the tests):
 
 ```text
 What do you want to practise?
 (empty)
-> Vocabulary
-  Kanji
-  Grammar
+> First
+  Second
+  Third
 (empty)
 Up/Down to move, Enter to choose, Esc to leave
 ```
 
-- `fn draw_area_selection(frame: &mut Frame, session: &Session)` (signature gains `session`). Each area line is three spans: the marker (`text::AREA_MARKER` = `"> "` on the highlighted line, `text::AREA_NO_MARKER` = `"  "` on the others), the name, and trailing spaces up to the display width of the widest name (`Span::raw(name).width()`, which is what `ratatui` uses to lay out). All area lines then have the same width, so `Alignment::Center` starts them all in the same column: in 80 columns the block is 12 wide, the marker is at column 34 and every name starts at 36.
+With no registered area (D12):
+
+```text
+What do you want to practise?
+(empty)
+Nothing to practise yet
+(empty)
+Up/Down to move, Enter to choose, Esc to leave
+```
+
+- `fn draw_area_selection(frame: &mut Frame, session: &Session)` (signature gains `session`). Each area line is three spans: the marker (`text::AREA_MARKER` = `"> "` on the highlighted line, `text::AREA_NO_MARKER` = `"  "` on the others), the name, and trailing spaces up to the display width of the widest name (`Span::raw(name).width()`, which is what `ratatui` uses to lay out). All area lines then have the same width, so `Alignment::Center` starts them all in the same column: with `First`/`Second`/`Third` the block is 8 wide (marker 2 + `Second` 6); in 80 columns the marker is at column 36 and every name starts at 38, in 100 columns at 46 and 48. With `Vocabulary` (10) and `漢字` (4 columns) the block is 12 wide and both names start at 36 in 80 columns.
+- When `session.areas()` is empty, one line `text::AREA_SELECTION_EMPTY` is pushed after the heading's blank line instead of area lines (the area loop then pushes nothing). Exact code in `tasks.md` 6.1.
 - **Marker, not reversed text.** It is plain ASCII, survives every terminal, copy-paste and screen readers, and is checked by reading the buffer's symbols. Reversed text was considered: it is a modifier, not a colour, so the existing `area_selection_uses_no_colour` test (fg and bg are `Color::Reset`) would still pass, but it adds nothing the marker does not already show.
 - No colour, no bold on this screen.
 
 "No questions" screen, `fn draw_no_questions(frame: &mut Frame, session: &Session)`:
 
 ```text
-Kanji                              (the highlighted area's name; empty if none)
+Only                               (the highlighted area's name; empty if none)
 (empty)
 No questions in this area yet
 (empty)
@@ -245,7 +255,7 @@ Press Enter to go back
 
 ### D7. Empty areas look like the others in the list
 
-Not marked before they are chosen (Open Questions 3). Right now all three are empty, so a mark would sit on every line and say nothing; the issue already defines what happens when an empty area is chosen. If the owner wants a mark later, it is one more span and one constant.
+Not marked before they are chosen (Open Questions 3). The issue already defines what happens when an empty area is chosen, and while areas are being added most of them will be empty, so a mark would sit on most lines and say little. If the owner wants a mark later, it is one more span and one constant.
 
 ### D8. Wording in `src/text.rs`
 
@@ -260,20 +270,18 @@ pub const AREA_SELECTION_HINT: &str = "Up/Down to move, Enter to choose, Esc to 
 pub const AREA_MARKER: &str = "> ";
 /// Area selection: in front of every other area, as wide as `AREA_MARKER`.
 pub const AREA_NO_MARKER: &str = "  ";
-/// Area names, as shown in the list.
-pub const AREA_VOCABULARY: &str = "Vocabulary";
-pub const AREA_KANJI: &str = "Kanji";
-pub const AREA_GRAMMAR: &str = "Grammar";
+/// Area selection: shown in place of the list when the app has no areas.
+pub const AREA_SELECTION_EMPTY: &str = "Nothing to practise yet";
 /// Shown when the chosen area has no questions.
 pub const NO_QUESTIONS: &str = "No questions in this area yet";
 /// How to leave the "no questions" screen.
 pub const NO_QUESTIONS_HINT: &str = "Press Enter to go back";
 ```
 
-Removed: `AREA_SELECTION_SOON` and `AREA_SELECTION_QUIT_HINT` (unused once the placeholder is gone, so clippy rejects them).
+Removed: `AREA_SELECTION_SOON` and `AREA_SELECTION_QUIT_HINT` (unused once the placeholder is gone, so clippy rejects them). Groups 1 to 5 also added `AREA_VOCABULARY`, `AREA_KANJI` and `AREA_GRAMMAR`; task 6.2 removes them with the area files (they would be unused, and clippy rejects them). `AREA_SELECTION_EMPTY` is added by task 6.1, between `AREA_NO_MARKER` and `NO_QUESTIONS`.
 
 - The hint says `Up/Down`, not arrow symbols: `↑`/`↓` have ambiguous East Asian width and would break centring in CJK terminals (module doc of `text.rs`).
-- **Area names live in `text.rs`**, as the issue and the module doc require. The cost: adding an area also adds one constant here, besides its file and its line in `areas::ALL`. Open Questions 5.
+- **Area names:** this change has none. When #11, #12 or #13 add an area, its display name follows the `text.rs` rule (all wording in `src/text.rs`) unless the owner decides otherwise; see the note in Open Questions 5.
 
 ### D9. Task order and commits
 
@@ -284,6 +292,10 @@ Each task is one commit that builds and passes fmt, clippy and tests (`AGENTS.md
 - **Task 3.1: Up and Down** (extends the `CHANGELOG.md` entry).
 - **Task 4.1: Esc**, quit on the list and back on "no questions" (extends the `CHANGELOG.md` entry and the architecture status note).
 - **Task 5.1:** scripted check of the release binary in a pseudo-terminal (no file changes).
+- **Group 6, the revision (D12, D13):**
+  - **Task 6.1: the empty-list line.** `AREA_SELECTION_EMPTY`, its drawing, and its tests through `Session::with_areas(.., &[])`. It comes first: the three built-in areas still exist, so the real list is untouched, and the new constant is already used by `ui` (no dead code). No docs change yet.
+  - **Task 6.2: remove the built-in areas.** The three files, their `mod`/`use` lines, the three name constants, the branch-only tests that pinned them (deleted or rewritten with `FakeArea`), the `CHANGELOG.md` entry and `docs/architecture.md`. One commit, because deleting the files makes the name constants unused (clippy) and makes the tests that render the real list fail, so neither can be left for a later commit.
+  - **Task 6.3:** the pseudo-terminal check again, with the new expected observations (no file changes besides the checkbox).
 
 ### D10. Existing tests
 
@@ -317,7 +329,9 @@ Keeping the placeholder text on screen only to keep these tests passing was cons
 
 Edits b, c and d assert the new screen and wording, so they cannot pass before the feature and are part of task 2.1's commit, each labelled in the task as an owner-approved edit. No other existing test changes (re-checked against `src/keys.rs`, `src/ui.rs`, `src/text.rs` and `src/session.rs` after this decision).
 
-**Columns, checked by rendering.** `ratatui` centres a line at `area_width / 2 - line_width / 2`, each division rounded down (this is also why the existing greeting test finds `日` at column 28 in both 80 and 81 columns). The hint is 46 columns wide: column `40 - 23 = 17` at 80, `50 - 23 = 27` at 100. The area block is 12 columns (marker 2 + `Vocabulary` 10, shorter names padded): marker at `40 - 6 = 34`, names at 36 at 80; marker at 44, names at 46 at 100. The heading (29 columns) starts at 26 at 80, and so does `No questions in this area yet` (29 columns). The new bodies of b, c and d, a prototype of D6's drawing and D8's constants were run in a scratch copy of the crate: all existing tests, including the three edited ones, pass, and `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` are clean.
+**Columns, checked by rendering.** `ratatui` centres a line at `area_width / 2 - line_width / 2`, each division rounded down (this is also why the existing greeting test finds `日` at column 28 in both 80 and 81 columns). The hint is 46 columns wide: column `40 - 23 = 17` at 80, `50 - 23 = 27` at 100. The area block was 12 columns with the built-in areas of groups 1 to 5 (marker 2 + `Vocabulary` 10, shorter names padded): marker at `40 - 6 = 34`, names at 36 at 80; marker at 44, names at 46 at 100. After the revision the tests use their own lists; their columns are in D6 and the empty list's in D12. The heading (29 columns) starts at 26 at 80, and so does `No questions in this area yet` (29 columns). The new bodies of b, c and d, a prototype of D6's drawing and D8's constants were run in a scratch copy of the crate: all existing tests, including the three edited ones, pass, and `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` are clean.
+
+**Re-checked for the revision (D12).** After task 6.2 these four tests run against the real, now empty, list (`Session::new`). The empty-list screen still draws the heading and the hint, the hint is centred horizontally on its own (it does not depend on the list), so `area_selection_placeholder_is_shown` and `area_selection_follows_a_resize` (hint `U` at 27 at 100 wide) still pass; `area_selection_messages_are_plain_ascii_text` uses only the heading and hint constants, which do not change; `other_keys_do_nothing_on_area_selection` uses only the key table. All four keep exactly their current bodies; group 6 does not touch them. Verified by running them on a scratch copy with groups 6.1 and 6.2 applied (D13).
 
 **Planned new tests trimmed so they do not repeat the edited ones:**
 - `area_selection_lists_the_areas_in_order` keeps the order of the heading and the three areas and the absence of `Area selection is coming soon.`; it no longer checks that the heading is present or that `日`, `Press Enter to start` and `Last key:` are absent (edit b does).
@@ -329,17 +343,56 @@ Edits b, c and d assert the new screen and wording, so they cannot pass before t
 
 All new tests are unit tests in the file they cover, without a terminal; they are named per task in `tasks.md`. Rules followed so later issues do not inherit conflicts:
 
+- **No test asserts what `areas::all()` contains** (revision): not that it is empty, not its length, not its names. #11, #12 and #13 will each add an entry. Tests that need a known list, including the empty one, build it with `Session::with_areas`. `areas::tests::area_names_are_unique_and_not_empty` checks every registered name and holds for any list (vacuously for the empty one), and the owner-approved `ui` tests through `Session::new` check only the heading and the hint, which every list shows.
 - **No test asserts that a real area has no questions** (`Vocabulary.has_questions() == false`, "Enter on Vocabulary shows the message"). #11, #12 and #13 will make that false. Empty-area behaviour is tested with `FakeArea`.
-- **No test asserts the list has exactly three areas.** Real-area tests check that the names *start with* Vocabulary, Kanji, Grammar, in that order; ends-of-list tests use fakes.
+- **No test asserts the list has exactly three areas.** Ends-of-list tests use fakes. (Before the revision, one test checked that the real names start with Vocabulary, Kanji, Grammar; task 6.2 deletes it.)
 - **No test asserts that Enter on an area with questions stays on the list** (#21 changes that); only that it does not show the message and does not quit.
 - Rows are found by content (`row_index`), never by a fixed row number, as in the existing tests.
+
+### D12. Revision: no built-in areas, and the empty list
+
+The owner reviewed the pull request: the screen is a place to select areas, any area; it should not matter which ones exist, so that areas can be added later, or not. This change therefore registers none (`ALL = &[]`), and the empty list is the state the app actually ships with until #11, #12 or #13 lands.
+
+**What stays (the generic mechanism):** the `Area` trait, `areas::all()`, `Session::with_areas`, `areas()`, `highlighted()`, `highlighted_area()`, the test-only `FakeArea`, the `> ` highlight, `Previous`/`Next`/`Choose`/`Back`, `Screen::NoQuestions` and its drawing and wording, and the whole key table. None of it changes in group 6.
+
+**The empty list, drawn** (five lines, centred as one block vertically, each line centred horizontally by display width):
+
+| Line | Text | Width | Column at 80 | Column at 100 |
+|---|---|---|---|---|
+| 1 | `What do you want to practise?` (`AREA_SELECTION_TITLE`) | 29 | 26 | 36 |
+| 2 | blank | | | |
+| 3 | `Nothing to practise yet` (`AREA_SELECTION_EMPTY`, new) | 23 | 29 | 39 |
+| 4 | blank | | | |
+| 5 | `Up/Down to move, Enter to choose, Esc to leave` (`AREA_SELECTION_HINT`) | 46 | 17 | 27 |
+
+Columns follow `area_width / 2 - line_width / 2` with integer division (D10): `40 - 11 = 29` and `50 - 11 = 39` for the new line. Verified by rendering on a scratch copy (D13). With areas, line 3 is replaced by the area lines and nothing else moves, so the screen keeps one layout.
+
+- **Wording:** `Nothing to practise yet`. Plain ASCII, short, British spelling like the heading ("practise"), and "yet" says areas are expected later without promising which. Open Questions 8.
+- **No marker** is drawn on the empty list: there is nothing to highlight.
+- **Same hint** as with areas, so the screen has one layout and the owner-approved hint tests hold for any list. Up/Down/Enter are then named but do nothing; accepted for now, Open Questions 9.
+- **Keys** (no change to `keys`): Up → `Previous`, Down → `Next`, Enter → `Choose` are still produced by the key table, and `Session::apply` turns each into no change (D4). Esc → `Quit`; `Ctrl+C` → `Quit`.
+- **Getters on an empty list:** `areas()` is the empty slice, `highlighted()` returns `0` (its documented meaning "index into `areas()`" only holds when `highlighted_area()` is `Some`), and `highlighted_area()` returns `None`. `highlighted()` keeps its `usize` signature rather than becoming `Option<usize>`, because #21 relies on it and `highlighted_area()` already expresses "nothing highlighted"; its doc comment gains one sentence (task 6.1).
+- **Not skipping the screen when the list is empty** (Open Questions 10): the Welcome → area selection → (Esc) flow stays the same for every build, the user sees why there is nothing to do, and no test or key path depends on how many areas exist.
+
+### D13. Dead code with no implementor of `Area`, checked
+
+The concern: in this binary crate, `cargo clippy --all-targets -- -D warnings` rejects any item non-test code never uses. After task 6.2 only the test-only `FakeArea` implements `Area`.
+
+Checked on scratch copies of this branch (outside the worktree, own `CARGO_TARGET_DIR`), toolchain `cargo 1.100.0`, `clippy 0.1.100`:
+
+1. Only the three area files, their `mod`/`use` lines and the three name constants removed, `ALL = &[]`: `cargo clippy -- -D warnings` (non-test build) prints only `Checking tui-learnjapanese ...` and `Finished`, with **no warning**. `--all-targets` fails only because the test `text::tests::area_and_no_questions_wording_is_plain_ascii_text` still names the removed constants (`error[E0425]: cannot find value AREA_VOCABULARY / AREA_KANJI / AREA_GRAMMAR`); this is why that test is rewritten in the same task.
+2. Tasks 6.1 and 6.2 applied exactly as written in `tasks.md`: `cargo fmt --all -- --check` clean, `cargo clippy --all-targets -- -D warnings` clean, `cargo clippy -- -D warnings` clean, `cargo test`: 109 passed after 6.1, 105 passed after 6.2 (4 deleted tests, 0 failed).
+
+Why nothing becomes dead: the trait's methods are called through `&dyn Area` from non-test code (`ui::draw_area_selection` and `draw_no_questions` call `name()`, `Session::apply` calls `has_questions()`), and rustc counts a call through a trait object as a use whether or not a non-test implementor exists. `Screen::NoQuestions` is constructed in `Session::apply` (`Choose`), `Choose`/`Back`/`Previous`/`Next` are constructed in `keys::action_for`, `NO_QUESTIONS`, `NO_QUESTIONS_HINT`, `AREA_MARKER`, `AREA_NO_MARKER` and the new `AREA_SELECTION_EMPTY` are read by `ui`, `areas::all()` by `Session::new`. So no lint suppression is needed. If the implementer's clippy reports anything else, they must stop and report it, not add an `#[allow]` (Open Questions 11).
 
 ## Risks / Trade-offs
 
 - [Archiving in the wrong order silently produces a contradictory `area-selection` spec] → D1 states the order; the owner archives `add-welcome-screen` before this change. Verified on a scratch copy.
 - [Most Unix terminals report a held key as repeated presses, so a held Enter can still pass Welcome → list → "no questions" → list] → Harmless (no screen is skipped irreversibly; Esc is not reached). The `Press` guard helps where repeats are reported (Windows, kitty protocol).
 - [Esc is detected by crossterm only after a short wait, to tell it from escape sequences] → Standard terminal behaviour; the scripted check (task 5.1) confirms Esc quits.
-- [Area names in `text.rs` mean adding an area touches one more file] → D8; Open Questions 5.
+- [Area names in `text.rs` mean adding an area touches one more file] → D8; note in Open Questions 5, decided when the first area is added.
+- [The shipped app has nothing to practise until an area is added, and the hint names Up/Down/Enter, which do nothing on the empty list] → Owner decision (D12). The `Nothing to practise yet` line says why; Open Questions 9 offers an empty-list hint if wanted.
+- [Nothing in the code base exercises `Area` with a real implementor until #11 to #13] → The full mechanism is tested through `FakeArea` (D3), and D13 shows it is not dead code.
 - [Task 2.1 edits three existing tests in the same commit as the feature, which makes the edits harder to review than separate commits] → Each edit is labelled in the task and the commit body, its exact body is written out in `tasks.md`, and the verify step checks that no test is removed or renamed.
 
 ## Open Questions
@@ -350,8 +403,15 @@ For the owner:
 2. **Other keys on the list (D5):** recommended **`q` does nothing**, and **no `j`/`k` and no number keys**. If you want `q` to leave as on Welcome, two existing tests are then affected: `keys::tests::other_keys_do_nothing_on_area_selection` (also remove `KeyCode::Char('q')` from its array) and `keys::tests::enter_then_ctrl_c_through_the_key_table` (asserts `q` does not quit on area selection), and the plan changes.
 3. **Empty areas in the list (D7):** recommended **not marked**; they look like the others until chosen.
 4. **Highlight after coming back from "no questions" (D4):** recommended **stays on the area just chosen**. Alternative: back to the first area each time.
-5. **Where area names live (D8):** recommended **`src/text.rs`** (issue #20 and the `text.rs` rule). Alternative: each area's own file, so that adding an area changes no shared wording file; this would be an exception to "all wording in `text.rs`".
+5. **Note for #11, #12, #13 (was: where area names live):** this change has no area name any more, so nothing is decided here. The area changes follow the `text.rs` rule (name constant in `src/text.rs`) unless the owner chooses, in one of them, to keep the name in the area's own file so that adding an area changes no shared wording file.
 6. **Archive order (D1):** please archive `add-welcome-screen` (and preferably `add-main-application-loop` first) before archiving this change. Both are complete. Archiving this one first does not fail but leaves the old placeholder requirements in the main spec.
 7. **Test names that read oddly after the approved edits (D10), for a possible later rename:** `ui::tests::area_selection_placeholder_is_shown` now checks the real screen, not a placeholder (a later name could be e.g. `area_selection_heading_and_hint_are_shown`). The other three names still fit. This change keeps every name, because a rename was not approved; renaming would be a separate owner decision.
 
-(The former question 6, approval of the four conflicting tests, is decided: see D10.)
+8. **Empty-list wording (D12):** recommended **`Nothing to practise yet`**. Alternatives: `No areas to practise yet`, `There is nothing to practise yet`. Changing it later changes only `text::AREA_SELECTION_EMPTY` and the tests that pin it (`text::tests::empty_area_list_wording_is_plain_ascii_text`, `ui::tests::empty_area_list_is_centred`, whose columns depend on the width).
+9. **Hint on the empty list (D12):** recommended **the same hint as with areas**, so the screen has one layout and the owner-approved hint tests hold for any list. Alternative: a shorter hint such as `Esc to leave` on the empty list only; the owner-approved tests `area_selection_placeholder_is_shown` and `area_selection_follows_a_resize` render the real list, so with an empty real list they would then fail, which would require the owner's approval to change them again. Not planned.
+10. **Skip area selection when the list is empty?** Recommended **no, show it** (D12). Skipping would make Enter on Welcome do something else depending on the build, and the owner-approved tests that render the real list after Enter would fail.
+11. **Lint suppressions:** none is needed (D13). If clippy ever reports dead code that can only be kept with `#[allow(dead_code)]` or similar, the implementer stops and reports; the owner chooses between suppressing it, removing the item, or adding a non-test use.
+
+**Decided by the owner:**
+- The four conflicting tests on `main` may be edited (D10); none removed.
+- **No built-in areas:** the screen lists whatever the app has registered, and this change registers none. Vocabulary, Kanji and Grammar are added later by their own issues (#11, #12, #13), each with its own file and its own entry in the list (D2, D12).
