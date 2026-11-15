@@ -173,7 +173,7 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
 
 ## 4. Answer field
 
-- [ ] 4.1 Add `src/answer_field.rs` with `Edit`, `edit_for` and `AnswerField` (`text`, `apply`) (D2, D8 keys and editing).
+- [x] 4.1 Add `src/answer_field.rs` with `Edit`, `edit_for` and `AnswerField` (`text`, `apply`) (D2, D8 keys and editing).
   - `src/main.rs`: add `mod answer_field;` with the D1 attribute.
   - `Edit` and `AnswerField` with the derives of D2. `edit_for` follows the six rules of D8 in order. `apply` follows D8 *Editing*, using `ratatui::text::Span::styled_graphemes` for `DeleteBack`.
   - Imports: `ratatui::crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers}`, `ratatui::style::Style`, `ratatui::text::Span`.
