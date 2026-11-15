@@ -74,7 +74,7 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
     - `apostrophe_not_after_n`: `'takai`, `ta'kai`, `'` → `None`.
   - Verify: the 16 new tests pass, all earlier tests pass, fmt and clippy are clean. Commit, e.g. `feat(romaji): convert romaji syllables to hiragana`.
 
-- [ ] 2.2 Add the っ and ん rules to `to_hiragana` (D4 algorithm steps 3.2 **without** the two-reading spot, 3.3 and 3.4, checked in that order before the table lookup). Every result still has exactly one reading.
+- [x] 2.2 Add the っ and ん rules to `to_hiragana` (D4 algorithm steps 3.2 **without** the two-reading spot, 3.3 and 3.4, checked in that order before the table lookup). Every result still has exactly one reading.
   - `n`: next is `'` → push `ん`, advance 2; next is `n` → push `ん`, advance 2 (in this task always; task 2.3 adds the two-reading spot); next is none, or not one of `a i u e o y` → push `ん`, advance 1; otherwise fall through to the table lookup.
   - Doubled consonant: current is one of `bcdfghjklmpqrstvwxyz` (not `n`, not a vowel) and next is the same letter → push `っ`, advance 1.
   - `t` followed by `ch` → push `っ`, advance 1.

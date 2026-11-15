@@ -240,6 +240,29 @@ pub fn to_hiragana(romaji: &str) -> Option<Vec<String>> {
             i += 1;
             continue;
         }
+        let c = text.as_bytes()[i];
+        let next = text.as_bytes().get(i + 1).copied();
+        if c == b'n' {
+            match next {
+                Some(b'\'' | b'n') => {
+                    push_all(&mut readings, "ん");
+                    i += 2;
+                    continue;
+                }
+                Some(b'a' | b'i' | b'u' | b'e' | b'o' | b'y') => {}
+                _ => {
+                    push_all(&mut readings, "ん");
+                    i += 1;
+                    continue;
+                }
+            }
+        } else if (next == Some(c) && b"bcdfghjklmpqrstvwxyz".contains(&c))
+            || (c == b't' && text.get(i + 1..i + 3) == Some("ch"))
+        {
+            push_all(&mut readings, "っ");
+            i += 1;
+            continue;
+        }
         let mut found = None;
         for len in (1..=4).rev() {
             if let Some(kana) = text.get(i..i + len).and_then(kana_of) {
@@ -447,6 +470,103 @@ mod tests {
     #[test]
     fn apostrophe_not_after_n() {
         for romaji in ["'takai", "ta'kai", "'"] {
+            assert_eq!(hira(romaji), None, "{romaji}");
+        }
+    }
+
+    #[test]
+    fn doubled_consonant_gives_small_tsu() {
+        for (romaji, kana) in [
+            ("kitte", "きって"),
+            ("zasshi", "ざっし"),
+            ("ippai", "いっぱい"),
+            ("motto", "もっと"),
+            ("gakkou", "がっこう"),
+        ] {
+            assert_eq!(hira(romaji), one(kana), "{romaji}");
+        }
+    }
+
+    #[test]
+    fn small_tsu_before_ch() {
+        assert_eq!(hira("matcha"), one("まっちゃ"));
+        assert_eq!(hira("maccha"), one("まっちゃ"));
+    }
+
+    #[test]
+    fn doubled_consonant_needs_a_syllable() {
+        for romaji in ["kk", "tt", "kkx"] {
+            assert_eq!(hira(romaji), None, "{romaji}");
+        }
+    }
+
+    #[test]
+    fn n_before_a_consonant_and_at_the_end() {
+        for (romaji, kana) in [
+            ("shinbun", "しんぶん"),
+            ("hon", "ほん"),
+            ("kantan", "かんたん"),
+            ("byouin", "びょういん"),
+            ("ra-men", "らーめん"),
+            ("n", "ん"),
+            ("n-", "んー"),
+            ("vaiorin", "ゔぁいおりん"),
+        ] {
+            assert_eq!(hira(romaji), one(kana), "{romaji}");
+        }
+    }
+
+    #[test]
+    fn n_before_a_vowel_starts_a_syllable() {
+        assert_eq!(hira("kinen"), one("きねん"));
+        assert_eq!(hira("konya"), one("こにゃ"));
+    }
+
+    #[test]
+    fn apostrophe_gives_n() {
+        assert_eq!(hira("kin'en"), one("きんえん"));
+        assert_eq!(hira("kon'ya"), one("こんや"));
+        assert_eq!(hira("KIN'EN"), one("きんえん"));
+        assert_eq!(hira("n'"), one("ん"));
+    }
+
+    #[test]
+    fn nn_without_a_vowel_after_it() {
+        for (romaji, kana) in [
+            ("nn", "ん"),
+            ("honn", "ほん"),
+            ("nnnn", "んん"),
+            ("shinnbun", "しんぶん"),
+            ("onnye", "おんいぇ"),
+        ] {
+            assert_eq!(hira(romaji), one(kana), "{romaji}");
+        }
+    }
+
+    #[test]
+    fn three_n_before_a_vowel() {
+        assert_eq!(hira("konnnichiha"), one("こんにちは"));
+        assert_eq!(hira("onnna"), one("おんな"));
+        assert_eq!(hira("konnnya"), one("こんにゃ"));
+    }
+
+    #[test]
+    fn apostrophe_in_the_wrong_place_after_n() {
+        for romaji in ["kan''i", "nn'a"] {
+            assert_eq!(hira(romaji), None, "{romaji}");
+        }
+    }
+
+    #[test]
+    fn m_is_not_a_syllabic_n() {
+        for romaji in ["shimbun", "sempai"] {
+            assert_eq!(hira(romaji), None, "{romaji}");
+        }
+    }
+
+    #[test]
+    fn ny_without_a_vowel() {
+        for romaji in ["ny", "nyk", "konnyk", "onnx"] {
             assert_eq!(hira(romaji), None, "{romaji}");
         }
     }
