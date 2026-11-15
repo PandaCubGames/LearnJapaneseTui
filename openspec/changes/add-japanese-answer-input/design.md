@@ -67,6 +67,8 @@ pub fn to_hiragana(romaji: &str) -> Option<Vec<String>>;
 // src/kana.rs
 /// Japanese characters: kana, kanji, CJK punctuation, variation selectors (D5).
 pub fn is_japanese(c: char) -> bool;
+/// Kanji: CJK ideographs and the marks 々 〆 〇 (D5). Every kanji is also Japanese.
+pub fn is_kanji(c: char) -> bool;
 /// Joins a kana and a following combining voiced (U+3099) or semi-voiced (U+309A) mark.
 pub fn compose_voicing(text: &str) -> String;
 /// Katakana with a hiragana counterpart becomes that hiragana; all else unchanged.
@@ -121,7 +123,7 @@ impl AnswerField {
 
 **What #21 supplies:**
 - `accepted`: every accepted answer of the question, written in Japanese (kana and/or kanji), for example `["高い", "たかい"]`. Romaji is not allowed in content; an accepted answer written in romaji is compared as text and will never match a romaji answer. Validating content is the content change's job.
-- `shown`: the Japanese text the question already displays and that must not be accepted as the answer, for example `["食"]` for "How do you read 食?". `&[]` when the prompt shows no Japanese.
+- `shown`: the Japanese text the question already displays, for example `["食"]` for "How do you read 食?", or `["食べる", "たべる"]` for "What is the polite past of 食べる?". `&[]` when the prompt shows no Japanese. Only a shown text that contains a kanji has an effect: an answer typed in Japanese that equals it is wrong, so the user cannot copy the kanji back (D6). A shown text in kana only never makes an answer wrong, so #21 may list it or leave it out with the same result.
 - One `TypoGuard::default()` and one `AnswerField::default()` per question, replaced when the next question starts.
 - The key arm of its question screen: Enter submits `field.text()` to `guard.submit(...)`, Esc leaves, and otherwise `answer_field::edit_for(event)` gives the edit. `Edit` is `Copy`, so #21 can wrap it in an `Action` variant without breaking `#[derive(Clone, Copy)]` on `Action`.
 - Drawing: `if let Some(p) = field.render(area, frame.buffer_mut()) { frame.set_cursor_position(p) }`.
@@ -137,7 +139,7 @@ impl AnswerField {
 
 | File | Contents | Uses |
 |---|---|---|
-| `src/kana.rs` | `is_japanese`, `compose_voicing`, `katakana_to_hiragana` | nothing |
+| `src/kana.rs` | `is_japanese`, `is_kanji`, `compose_voicing`, `katakana_to_hiragana` | nothing |
 | `src/romaji.rs` | `to_hiragana` and its private table | nothing |
 | `src/grading.rs` | `Outcome`, `check`, `TypoGuard` and private helpers | `kana`, `romaji` |
 | `src/answer_field.rs` | `Edit`, `edit_for`, `AnswerField` | `ratatui` |
@@ -256,6 +258,20 @@ Decisions taken by this algorithm (the issue did not decide them; the ones a use
 
 Not Japanese, on purpose: U+FF00–U+FFEF (full-width Latin, full-width punctuation and half-width katakana, all out of scope), and everything else.
 
+**`is_kanji(c)`** is true exactly for these code point ranges (inclusive). It is used only for the repeat rule (D6): a shown text "contains a kanji" when at least one of its characters is a kanji.
+
+| Range | What |
+|---|---|
+| U+3005–U+3007 | `々` (iteration mark), `〆` (closing mark), `〇` (ideographic zero) |
+| U+3400–U+4DBF | CJK Extension A |
+| U+4E00–U+9FFF | CJK Unified Ideographs |
+| U+F900–U+FAFF | CJK Compatibility Ideographs |
+| U+20000–U+3FFFF | CJK Extensions B and later (supplementary ideographic planes) |
+
+- **Every kanji is Japanese:** each range lies inside an `is_japanese` range, so a text with a kanji is never classified as romaji or as unreadable for that reason.
+- **`々`, `〆` and `〇` count as kanji.** They sit in the CJK symbols block, not among the ideographs, but they are written in place of kanji: `々` repeats the kanji before it (`人々`, `時々`), `〆` is read しめ, `〇` is a kanji numeral (`二〇二六`). Like a kanji, each is something the learner has to supply the reading for, so copying it back must not count. In a real word `々` always follows a kanji, so the choice only changes the result when a question shows `々` (or `〆`, `〇`) on its own, for example "How do you read 々?"; then typing `々` back is wrong, as typing `食` back is.
+- **Not kanji:** kana, `ー`, punctuation (`、`, `。`, `「`), the other CJK symbols (U+3000–U+3004, U+3008–U+303F), combining marks, variation selectors on their own, CJK radicals (U+2E80–U+2FDF, which `is_japanese` does not accept either), and everything outside the table.
+
 **`compose_voicing(text)`**: for each character followed by U+3099 (combining voiced mark) or U+309A (combining semi-voiced mark), replace the pair by the precomposed kana when one exists; otherwise leave both characters as they are. All other characters are copied unchanged.
 
 - U+3099 after a kana of か–ご, さ–ぞ, た–ど, は–ぽ rows: the voiced kana is the base code point **+ 1**, for these bases only: hiragana `かきくけこさしすせそたちつてとはひふへほ`, katakana `カキクケコサシスセソタチツテトハヒフヘホ`.
@@ -268,36 +284,41 @@ This is what Unicode NFC does for these characters, without a normalisation crat
 
 ### D6. Classifying and checking an answer (`grading.rs`)
 
-Private helper `normalise_japanese(text) -> String` = remove every character for which `char::is_whitespace` is true (this includes U+3000), then `kana::compose_voicing`, then `kana::katakana_to_hiragana`. It is applied to every accepted answer and every shown text, and to Japanese answers.
+Private helper `normalise_japanese(text) -> String` = remove every character for which `char::is_whitespace` is true (this includes U+3000), then `kana::compose_voicing`, then `kana::katakana_to_hiragana`. It is applied to every accepted answer, every shown text and every Japanese answer, so typed text and shown text are compared in the same form.
 
 Private helper `is_marked_vowel(c) -> bool`: true for `ā ī ū ē ō Ā Ī Ū Ē Ō â î û ê ô Â Î Û Ê Ô` (precomposed only).
 
 A romaji character is an ASCII letter, `'`, `-` or a marked vowel. A Latin letter is an ASCII letter or a marked vowel.
+
+**The repeat rule** (owner decision, narrowed after review): an answer is wrong as a repeat only when it equals Japanese text the question shows **and** that shown text contains at least one kanji (`kana::is_kanji`, D5). A shown text written only in kana never makes an answer wrong. The rule exists for one reason: when a question shows a word written with kanji (`食べる`), the user must not be able to answer by copying and pasting that text back. Typing its reading is a real answer: with `食べる` shown, `食べる` is wrong but `たべる` and `taberu` are correct; with `する` shown, `する` and `suru` are correct.
+
+Private helper `blocked(shown) -> Vec<String>`: `normalise_japanese(s)` for every `s` in `shown` whose normalised text contains at least one kanji (`.chars().any(kana::is_kanji)`), in order; the others are dropped. (Normalising neither adds nor removes kanji, so testing before or after normalising gives the same result; testing the normalised text keeps one value per shown text.)
 
 `check(typed, accepted, shown)`:
 
 1. `text` = `typed` with every whitespace character removed (anywhere). If `text` is empty → `Outcome::Empty`.
 2. Classify `text`, in this order:
    1. **Mixed**: it contains at least one Japanese character (`kana::is_japanese`) **and** at least one Latin letter → `Wrong { read_as: None }`. (Owner decision: `食beru`, `たberu`.)
-   2. **Japanese**: every character is Japanese → `readings = vec![normalise_japanese(text)]` (always exactly one).
+   2. **Japanese**: every character is Japanese → `r = normalise_japanese(text)`. If `r` equals a text in `blocked(shown)` → `Wrong { read_as: Some(r) }` (the repeat rule). Otherwise `readings = vec![r]` (always exactly one).
    3. **Romaji**: every character is a romaji character:
       - it contains a marked vowel → `Wrong { read_as: None }`. (Owner decision: `tōkyō` is wrong. It is not a typo warning, and it is never read with short vowels, because that would make `kōkō` correct for ここ.)
       - otherwise `romaji::to_hiragana(text)`: `Some(rs)` with `rs` non-empty → `readings = rs`; `None` → `LooksLikeTypo`. (`to_hiragana` never returns an empty list; if it ever did, treat it like `None`, so nothing indexes an empty list.)
    4. **Anything else** (a digit, full-width Latin, half-width katakana, `@`, a Japanese text with `-` or `'` in it, ...) → `LooksLikeTypo`.
 3. With `readings` (non-empty, in the order `to_hiragana` gives, so `readings[0]` is the textbook reading):
-   - if **any** reading equals `normalise_japanese(s)` for any `s` in `shown` → `Wrong { read_as: Some(r) }`, where `r` is the first reading, in list order, that equals a shown text;
-   - else if any reading equals `normalise_japanese(a)` for any `a` in `accepted` → `Correct { read_as: r }`, where `r` is the first reading, in list order, that equals an accepted answer;
+   - if any reading equals `normalise_japanese(a)` for any `a` in `accepted` → `Correct { read_as: r }`, where `r` is the first reading, in list order, that equals an accepted answer;
    - else → `Wrong { read_as: Some(readings[0]) }`: the textbook reading.
 
-**`read_as` with several readings** (owner preference for wrong answers):
-- **Correct:** the reading that matched. `konnya` against `["今夜", "こんや"]` is correct, read as こんや (its keyboard reading); `konnichiha` against `["こんにちは"]` is read as こんにちは.
-- **Wrong, not a repeat:** the textbook reading, `readings[0]`, so a learner who types `konnichiwa` for こんばんは sees `こんにちわ`, the kana they expect, not `こんいちわ`.
-- **Wrong because it repeats what is shown:** the reading that repeats it. This explains *why* it is wrong: with shown `こんや`, `konnya` shows `こんや`, not `こんにゃ`. This differs from the textbook choice only when the repeated reading is a keyboard reading.
-- **Why any reading counts as a repeat:** "what the question shows is never accepted" is the stronger rule. If one reading of the typed text is the shown text, the user may well have meant it, so the answer is not accepted even if another reading would match an accepted answer. This only matters when a shown text and an accepted answer differ exactly at an `nn` spot, which real content does not do.
-- **Japanese answers** have one reading, so nothing changes for them.
+**Why the repeat check is only in the Japanese branch:** a romaji answer's readings are made of hiragana and `ー` only (the D4 table has nothing else), and every blocked text contains a kanji, so a romaji reading can never equal a blocked text. Only an answer typed in Japanese, with a kanji in it, can be a repeat. Checking romaji readings against `blocked` would be code that can never fire, so there is none. Consequence: a romaji answer is never wrong because of `shown`, and no rule has to choose which of several readings "repeats" the shown text.
+
+**`read_as`**, complete:
+- **Correct:** the reading that matched. For romaji with several readings, the first in list order that equals an accepted answer: `konnya` against `["今夜", "こんや"]` is correct, read as こんや (its keyboard reading); `konnichiha` against `["こんにちは"]` is read as こんにちは.
+- **Wrong (readable):** the textbook reading, `readings[0]` (owner preference), so a learner who types `konnichiwa` for こんばんは sees `こんにちわ`, the kana they expect, not `こんいちわ`. For romaji with one reading, that reading.
+- **A Japanese answer has exactly one reading**, its normalised text (katakana folded, kanji kept). It is the `read_as` whether the answer is correct, wrong, or wrong as a repeat: `食ベル` with `食べる` shown is wrong, read as `食べる`.
+- **No reading** (`Wrong { read_as: None }`): mixed and macron answers, and from `TypoGuard` an unreadable text submitted twice (D7).
 
 Notes:
-- Comparison is exact string equality after normalisation. "Repeats what the question shows" means the whole normalised answer equals a whole normalised shown text; containing it is not enough (`食べる` is not rejected for showing `食`).
+- Comparison is exact string equality after normalisation: `normalise_japanese` on both sides (whitespace anywhere removed, voiced marks composed, katakana folded to hiragana; kanji kept). So `食 べる`, `食ベル` and `食べる` all repeat a shown `食べる`. "Repeats what the question shows" means the whole normalised answer equals a whole normalised shown text that contains a kanji; containing it is not enough (`食べる` is not rejected for showing `食`).
+- A shown text that is also an accepted answer is still wrong when typed back, if it contains a kanji: with `食` shown and `食` accepted, `食` is wrong. Its kana form, if accepted, stays correct.
 - Whitespace is removed everywhere, not only at the ends, so `tabete kudasai` matches `たべてください`. Japanese answers have no meaningful spaces.
 - Japanese punctuation is not removed: `たかい。` does not match `たかい`. Content does not put punctuation in accepted answers.
 - `read_as` for a Japanese answer keeps kanji: `高い` reads as `高い`, `タカイ` as `たかい`.
@@ -392,12 +413,14 @@ None is changed, and none can be affected:
 
 ## Risks / Trade-offs
 
-- [**Known cost of the two readings of `nn`:** `onna` is accepted for both おんな and おんあ, `kinnen` for both きんねん and きんえん, `konnya` for both こんにゃ and こんや] → Owner decision. It only matters if both readings were accepted answers to one question (or one shown and the other accepted, D6), which real content does not do. Romaji stays exact everywhere else: `kinen` is only きねん and `kin'en` only きんえん.
+- [**Known cost of the two readings of `nn`:** `onna` is accepted for both おんな and おんあ, `kinnen` for both きんねん and きんえん, `konnya` for both こんにゃ and こんや] → Owner decision. It only matters if both readings were accepted answers to one question, which real content does not do. (A shown text cannot interfere: only shown text with a kanji blocks an answer, and romaji readings are kana, D6.) Romaji stays exact everywhere else: `kinen` is only きねん and `kin'en` only きんえん.
 - [Beyond four `nn` spots in one answer, only the textbook reading is read] → Needed to bound the work on arbitrary user text (D4). No real answer has more than two spots.
 - [Strict romaji (`shimbun`, `tokyo`) frustrates users who learned other spellings] → Owner decision for long vowels. `shimbun` gets a typo warning first, so the user sees it was not read. Open Question 2.
 - [The lint expectation hides dead code until #21] → Approved by the owner (D1). It is scoped to four modules, every item has tests, and it removes itself through `unfulfilled_lint_expectations`.
 - [A paste that contains a newline arrives as Enter and would submit in #21] → Bracketed paste is not enabled; Open Question 4.
 - [On Windows with some keyboard layouts, `AltGr` characters arrive with `CONTROL | ALT` modifiers and are not typed] → Romaji needs only `a`–`z`, `'` and `-`, which no common layout puts on `AltGr`; IME text arrives without modifiers. Checked by hand in Open Question 3.
+- [A question that shows a kana-only word which is also its answer is easy: typing the shown kana back is correct (for example "What is the plain non-past of する?")] → Owner decision: the repeat rule is only there to stop copying kanji (D6). Whether to ask such a question is the content's decision (#13), not this module's.
+- [A question that shows the kanji word and accepts only that kanji form can never be answered correctly] → Content error, not a checking rule: content that shows a word with kanji also accepts its kana form (`食べる` shown, `たべる` accepted). Validating content is the content change's job, as for romaji in `accepted`.
 - [Answers with typos in content (romaji in `accepted`) never match] → Documented contract in D2; content checks belong to the content changes.
 - [ambiguous-width characters] → The field only displays what the user typed; it adds no text of its own, so `src/text.rs`'s ambiguous-width rule is not affected.
 
@@ -405,7 +428,7 @@ None is changed, and none can be affected:
 
 For the owner:
 
-Already decided by the owner, recorded here so they are not asked again: the scoped unused-code expectation (D1, approved) and both readings of `nn` before a vowel (D4).
+Already decided by the owner, recorded here so they are not asked again: the scoped unused-code expectation (D1, approved), both readings of `nn` before a vowel (D4), and the repeat rule applying only to shown text that contains a kanji (D6).
 
 1. **A different unreadable text after a warning** (`tabxru`, then `tabwru`). Default: another warning, as the issue's rule is written (D7). Alternative: any second unreadable submit in a row is a counted wrong answer. Changing this changes only `TypoGuard::submit` and the scenario *A different unreadable text*.
 2. **Romaji details not decided in the issue** (D4). Defaults: `m` before `b`/`p` is not ん (`shimbun` unreadable); both `tch` and `cch` give っち; `wi`/`we` give うぃ/うぇ; `di` ぢ and `du`/`dzu` づ; whitespace is ignored anywhere; punctuation is not ignored (`takai.` unreadable, `たかい。` wrong); macron vowels are always wrong; an empty submit is ignored (`Outcome::Empty`, not counted). Please confirm or name the ones to change.

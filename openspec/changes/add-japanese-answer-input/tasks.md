@@ -29,9 +29,10 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
 
 ## 1. Kana helpers
 
-- [ ] 1.1 Add `src/kana.rs` with `is_japanese`, `compose_voicing` and `katakana_to_hiragana` (D2 signatures, D5 rules).
+- [ ] 1.1 Add `src/kana.rs` with `is_japanese`, `is_kanji`, `compose_voicing` and `katakana_to_hiragana` (D2 signatures, D5 rules).
   - `src/main.rs`: add `mod kana;` with the D1 attribute.
   - `pub fn is_japanese(c: char) -> bool`: `matches!` on the exact ranges of the D5 table.
+  - `pub fn is_kanji(c: char) -> bool`: `matches!` on the exact ranges of the D5 `is_kanji` table: `'\u{3005}'..='\u{3007}' | '\u{3400}'..='\u{4DBF}' | '\u{4E00}'..='\u{9FFF}' | '\u{F900}'..='\u{FAFF}' | '\u{20000}'..='\u{3FFFF}'`. Doc comment as in D2.
   - `pub fn compose_voicing(text: &str) -> String`: walk the `char`s with a peekable iterator; when the next char is U+3099 or U+309A and a private `fn voiced(base: char, mark: char) -> Option<char>` returns `Some(v)`, push `v` and skip the mark; else push the char. `voiced` implements the D5 list exactly (the +1 bases, the +2 bases, and the listed special pairs). A mark that does not combine stays in the text.
   - `pub fn katakana_to_hiragana(text: &str) -> String`: map each char per D5 (U+30A1..=U+30F6 minus 0x60, `ヽ`→`ゝ`, `ヾ`→`ゞ`, all else unchanged). Use `char::from_u32(..)` and fall back to the original char if it ever returned `None`; do not `unwrap`.
   - New tests in `src/kana.rs` `mod tests`:
@@ -42,7 +43,9 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
     - `combining_marks_join_their_kana`: `"か\u{3099}"`→`が`, `"つ\u{3099}"`→`づ`, `"ほ\u{309A}"`→`ぽ`, `"ハ\u{309A}"`→`パ`, `"う\u{3099}"`→`ゔ`, `"ウ\u{3099}"`→`ヴ`, `"ワ\u{3099}"`→`ヷ`, `"ヽ\u{3099}"`→`ヾ`, `"た\u{3099}かい"`→`だかい`.
     - `marks_without_a_partner_stay`: `"あ\u{3099}"`, `"か\u{309A}"`, `"\u{3099}"` and `"a\u{3099}"` come back unchanged.
     - `composing_then_folding`: `katakana_to_hiragana(&compose_voicing("カ\u{3099}イ")) == "がい"`.
-  - Verify: the 7 new tests pass, 51 existing tests pass, fmt and clippy are clean. Commit, e.g. `feat(kana): add katakana folding and voiced-mark composition`.
+    - `kanji_are_recognised`: `is_kanji` is true for `'食'`, `'高'`, `'々'` (U+3005), `'〆'` (U+3006), `'〇'` (U+3007), `'\u{3400}'`, `'\u{4DBF}'`, `'\u{4E00}'`, `'\u{9FFF}'`, `'\u{F900}'`, `'\u{FAFF}'`, `'\u{20B9F}'` and `'\u{3FFFF}'`; and `is_japanese` is also true for each of them.
+    - `other_characters_are_not_kanji`: `is_kanji` is false for `'あ'`, `'ア'`, `'ー'`, `'。'`, `'、'`, `'〜'`, `'\u{3004}'`, `'\u{3008}'`, `'\u{3099}'`, `'\u{E0100}'`, `'\u{4DC0}'` (just after Extension A), `'\u{2E80}'` (a CJK radical), `'a'`, `'ｔ'` (U+FF54), `'ﾀ'` (U+FF80) and `'😀'`.
+  - Verify: the 9 new tests pass, 51 existing tests pass, fmt and clippy are clean. Commit, e.g. `feat(kana): add katakana folding and voiced-mark composition`.
 
 ## 2. Romaji to hiragana
 
@@ -113,8 +116,8 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
 - [ ] 3.1 Add `src/grading.rs` with `Outcome` and `check` (D2, D6).
   - `src/main.rs`: add `mod grading;` with the D1 attribute.
   - `Outcome` exactly as in D2, with its derives and doc comments.
-  - Private helpers: `fn normalise_japanese(text: &str) -> String` and `fn is_marked_vowel(c: char) -> bool` as in D6. Remove whitespace with `text.chars().filter(|c| !c.is_whitespace())`.
-  - `pub fn check(typed: &str, accepted: &[&str], shown: &[&str]) -> Outcome`: steps 1 to 3 of D6, in that order. Use `crate::kana` and `crate::romaji`. Work with a `Vec<String>` of readings: one for a Japanese answer, the list from `romaji::to_hiragana` for romaji (an empty list is treated like `None`). Step 3 checks `shown` against **every** reading first (a repeat through any reading is wrong, `read_as` = the first reading in list order that repeats it), then `accepted` (correct, `read_as` = the first reading in list order that matches), and otherwise returns `Wrong { read_as: Some(first reading) }`, the textbook reading. Take the first reading with `readings.first()` or `into_iter().next()`, never by indexing.
+  - Private helpers: `fn normalise_japanese(text: &str) -> String`, `fn blocked(shown: &[&str]) -> Vec<String>` and `fn is_marked_vowel(c: char) -> bool` as in D6. Remove whitespace with `text.chars().filter(|c| !c.is_whitespace())`. `blocked` keeps `normalise_japanese(s)` for each `s` whose normalised text satisfies `.chars().any(kana::is_kanji)`, in order.
+  - `pub fn check(typed: &str, accepted: &[&str], shown: &[&str]) -> Outcome`: steps 1 to 3 of D6, in that order. Use `crate::kana` and `crate::romaji`. The repeat rule is checked **only** in the Japanese branch (D6 step 2.2): if the normalised answer equals a text of `blocked(shown)`, return `Wrong { read_as: Some(normalised answer) }`. Do not compare romaji readings with `shown` at all (they are kana and can never equal a text with a kanji). Then work with a `Vec<String>` of readings: one for a Japanese answer, the list from `romaji::to_hiragana` for romaji (an empty list is treated like `None`). Step 3 checks `accepted` (correct, `read_as` = the first reading in list order that matches), and otherwise returns `Wrong { read_as: Some(first reading) }`, the textbook reading. Take the first reading with `readings.first()` or `into_iter().next()`, never by indexing.
   - New tests in `src/grading.rs` `mod tests` (define `const NOTHING: &[&str] = &[];` and helpers `fn correct(r: &str) -> Outcome { Outcome::Correct { read_as: r.to_string() } }` and `fn wrong(r: &str) -> Outcome { Outcome::Wrong { read_as: Some(r.to_string()) } }`; `const UNREAD: Outcome = Outcome::Wrong { read_as: None };` will not compile because of `String`, so write `Outcome::Wrong { read_as: None }` in full):
     - `four_ways_to_answer_takai`: accepted `["高い", "たかい"]`, shown `NOTHING`: `takai`→`correct("たかい")`, `たかい`→`correct("たかい")`, `タカイ`→`correct("たかい")`, `高い`→`correct("高い")`.
     - `katakana_accepted_answer`: accepted `["ショク"]`: `しょく`, `ショク`, `shoku` → `correct("しょく")`.
@@ -123,8 +126,11 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
     - `tokyo_without_long_vowels_is_wrong`: same accepted: `tokyo` → `wrong("ときょ")`.
     - `macron_romaji_is_wrong`: same accepted: `tōkyō`, `TŌKYŌ`, `tôkyô` → `Outcome::Wrong { read_as: None }`; accepted `["ここ"]`: `kōkō` → `Outcome::Wrong { read_as: None }`.
     - `mixed_scripts_are_wrong`: accepted `["食べる", "たべる"]`: `食beru`, `たberu`, `食beru1` → `Outcome::Wrong { read_as: None }`.
-    - `shown_text_is_never_accepted`: shown `["食"]`, accepted `["食", "しょく", "たべる"]`: `食` → `wrong("食")`; `しょく` → `correct("しょく")`.
-    - `shown_reading_in_another_script_is_wrong`: shown `["たかい"]`, accepted `["高い", "たかい"]`: `takai` → `wrong("たかい")`, `タカイ` → `wrong("たかい")`, `高い` → `correct("高い")`.
+    - `shown_kanji_is_never_accepted`: shown `["食"]`, accepted `["食", "しょく", "たべる"]`: `食` → `wrong("食")`; `しょく` → `correct("しょく")`; `たべる` → `correct("たべる")`; `taberu` → `correct("たべる")`.
+    - `copying_a_shown_word_with_kanji_is_wrong`: shown `["食べる"]`, accepted `["食べる", "たべる"]`: `食べる`, `"食 べる"` and `食ベル` → `wrong("食べる")`; `たべる`, `タベル` and `taberu` → `correct("たべる")`.
+    - `kana_shown_text_never_makes_an_answer_wrong`: shown `["する"]`, accepted `["する"]`: `する`, `スル` and `suru` → `correct("する")`; shown `["たかい"]`, accepted `["高い", "たかい"]`: `takai`, `タカイ` and `たかい` → `correct("たかい")`, `高い` → `correct("高い")`.
+    - `romaji_is_never_a_repeat`: shown `["今夜", "こんや"]`, accepted `["今夜", "こんや"]`: `konnya` and `kon'ya` → `correct("こんや")`; `今夜` → `wrong("今夜")`.
+    - `iteration_mark_counts_as_kanji`: shown `["々"]`, accepted `["々"]`: `々` → `wrong("々")`.
     - `containing_the_shown_text_is_not_repeating_it`: shown `["食"]`, accepted `["食べる"]`: `食べる` → `correct("食べる")`.
     - `spaces_are_ignored`: accepted `["たべてください"]`: `" tabete kudasai "` and `"たべて\u{3000}ください"` → `correct("たべてください")`; accepted `["たべて ください"]`: `tabetekudasai` → `correct("たべてください")`.
     - `empty_answers_are_not_checked`: `""`, `"   "`, `"\u{3000}"`, `"\t"` → `Outcome::Empty`.
@@ -137,9 +143,8 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
     - `keyboard_reading_can_be_correct`: accepted `["今夜", "こんや"]`: `konnya` and `kon'ya` → `correct("こんや")`, `konya` → `wrong("こにゃ")`; accepted `["きんえん"]`: `kinnen` → `correct("きんえん")`; accepted `["おんあ"]`: `onna` → `correct("おんあ")` (the known cost in design *Risks*).
     - `single_readings_stay_exact`: accepted `["きんえん"]`: `kinen` → `wrong("きねん")`, `kin'en` → `correct("きんえん")`.
     - `wrong_answer_shows_the_textbook_reading`: accepted `["こんばんは"]`: `konnichiwa` → `wrong("こんにちわ")`, `konnichiha` → `wrong("こんにちは")`; accepted `["おとこ"]`: `onna` → `wrong("おんな")`.
-    - `repeat_through_either_reading_is_wrong`: shown `["こんや"]`, accepted `["今夜", "こんや", "こんにゃ"]`: `konnya` → `wrong("こんや")` (even though its other reading こんにゃ is accepted); `今夜` → `correct("今夜")`.
     - `unreadable_text_with_an_nn_spot_is_a_typo`: accepted `["こんにちは"]`: `konnichiq` → `Outcome::LooksLikeTypo`.
-  - Verify: the 23 new tests pass, all earlier tests pass, fmt and clippy are clean. Commit, e.g. `feat(grading): check Japanese answers in any script`.
+  - Verify: the 25 new tests pass (at least `shown_kanji_is_never_accepted`, `copying_a_shown_word_with_kanji_is_wrong` and `iteration_mark_counts_as_kanji` fail without the repeat rule, and `kana_shown_text_never_makes_an_answer_wrong` fails if `blocked` keeps kana-only shown text), all earlier tests pass, fmt and clippy are clean. Commit, e.g. `feat(grading): check Japanese answers in any script`.
 
 - [ ] 3.2 Add `TypoGuard` (D2, D7) and document the checking rules.
   - `src/grading.rs`: `TypoGuard` with its derives and `submit` exactly as the D7 pseudocode. Compare `self.warned.as_deref() == Some(typed)`.
@@ -156,13 +161,15 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
   - `CHANGELOG.md`, *Unreleased* / *Added*: add this entry as the **last** item of the *Added* list (after whatever is last there now):
     `- Japanese answer checking (issue #18): romaji is read letter for letter into hiragana (\`shi\`/\`si\`, \`kitte\` → きって, \`kin'en\` → きんえん, \`-\` → ー; \`nn\` before a vowel is accepted both ways, so \`konnichiha\` and \`konnnichiha\` both match こんにちは) and katakana is folded to hiragana, so \`takai\`, \`たかい\`, \`タカイ\` and \`高い\` all match \`高い\`. Long vowels must be typed out (\`toukyou\`), mixed romaji and Japanese is wrong, and text that cannot be read gets one typo warning before it counts as wrong. No screen uses it yet; the practice screen is issue #21.`
     (without the backslashes; they only escape the backticks here).
-  - `docs/architecture.md`, section *Checking answers*: after the bullet that ends with `"How do you read 食?" does not accept \`食\`.`, insert three bullets, wrapped like the surrounding text:
+  - `docs/architecture.md`, section *Checking answers*: replace the whole bullet that starts `- **An answer that repeats what the question already shows is never accepted.**` (two lines, ending with `"How do you read 食?" does not accept \`食\`.`) by this bullet, which states the narrower rule (design D6), wrapped like the surrounding text:
+    - `- **Kanji the question shows can't be copied back as the answer.** An answer that is exactly a text the question shows is wrong when that text contains a kanji, so it can't just be copied and pasted: "How do you read 食?" does not accept \`食\`, and a question that shows \`食べる\` does not accept \`食べる\`, but \`たべる\` and \`taberu\` are correct. Text the question shows in kana only never makes an answer wrong.`
+  - Then, right after that bullet, insert three bullets, wrapped like the surrounding text:
     - `- **Romaji is exact.** It is read letter for letter, the way it is typed into a Japanese IME: long vowels are typed out (\`とうきょう\` is \`toukyou\`; \`tokyo\` and \`tōkyō\` are wrong), \`n'\` gives ん before a vowel, and a doubled consonant gives っ. \`nn\` before a vowel is accepted both ways, as an IME reads it and as textbooks write it: \`konnichiha\` and \`konnnichiha\` both give こんにちは, and wrong answers are shown with the textbook reading.`
     - `- **One script per answer.** An answer is all romaji or all Japanese. \`食beru\` is wrong.`
     - `- **Typos.** Text that cannot be read as Japanese at all (\`tabxru\`) gets a warning and is not counted. Submitting the same text again counts it as wrong. A readable but wrong word, such as \`tokyo\`, is simply wrong.`
   - `docs/architecture.md`, section *5. Components*: in the Mermaid diagram add the node `kana[kana<br/>katakana → hiragana]` inside `subgraph core` right after the `romaji` node, and the edge `grading --> kana` right after `grading --> romaji`. Below the diagram, after the bullet about **`grading`**, add: `- **\`romaji\`** and **\`kana\`** have no state and no terminal access, like \`conjugation\`, so their rules are tested directly.`
   - Change nothing else in either file.
-  - Verify: the 9 new tests pass, all earlier tests pass, fmt and clippy are clean; the Mermaid block still has matching `subgraph`/`end` lines. Commit, e.g. `feat(grading): warn once about answers that look like typos`.
+  - Verify: the 9 new tests pass, all earlier tests pass, fmt and clippy are clean; the Mermaid block still has matching `subgraph`/`end` lines; `grep -n "repeats what the question already shows" docs/architecture.md` finds nothing. Commit, e.g. `feat(grading): warn once about answers that look like typos`.
 
 ## 4. Answer field
 

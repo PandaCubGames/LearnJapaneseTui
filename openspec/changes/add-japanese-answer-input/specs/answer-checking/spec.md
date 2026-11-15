@@ -62,20 +62,36 @@ An answer that contains both Japanese characters and Latin letters SHALL be a wr
 - **WHEN** the accepted answers are `食べる` and `たべる` and the answer is `たberu`
 - **THEN** the answer is wrong, without a typo warning
 
-### Requirement: What the question shows is never accepted
-An answer any of whose readings equals the normalised form of Japanese text the question already shows MUST be wrong, even when that text is also among the accepted answers, and even when another reading of the answer equals an accepted answer.
+### Requirement: Shown text with kanji is never accepted
+An answer MUST be wrong when, after normalisation, it equals Japanese text the question shows that contains at least one kanji (a CJK ideograph, `々`, `〆` or `〇`), even when that text is also accepted. Shown text written only in kana MUST NOT make an answer wrong. Containing a shown text is not repeating it. So a romaji answer, read as kana, is never a repeat.
 
 #### Scenario: Repeating the kanji asked about
 - **WHEN** the question shows `食`, the accepted answers are `食`, `しょく` and `たべる`, and the answer is `食`
+- **THEN** the answer is wrong, read as `食`, while `しょく`, `たべる` and `taberu` are correct
+
+#### Scenario: Copying a shown word written with kanji
+- **WHEN** the question shows `食べる`, the accepted answers are `食べる` and `たべる`, and the answer is `食べる`, `食 べる` or `食ベル`
+- **THEN** each answer is wrong, read as `食べる`, while `たべる`, `タベル` and `taberu` are correct
+
+#### Scenario: Shown text in kana only blocks nothing
+- **WHEN** the question shows `する`, the accepted answer is `する`, and the answer is `する`, `スル` or `suru`
+- **THEN** each answer is correct, read as `する`
+
+#### Scenario: The shown reading may be typed in any script
+- **WHEN** the question shows `たかい`, the accepted answers are `高い` and `たかい`, and the answer is `takai`, `タカイ`, `たかい` or `高い`
+- **THEN** each answer is correct
+
+#### Scenario: Romaji is never a repeat
+- **WHEN** the question shows `今夜` and `こんや`, the accepted answers are `今夜` and `こんや`, and the answer is `konnya`
+- **THEN** the answer is correct, read as `こんや`, while `今夜` is wrong
+
+#### Scenario: The iteration mark counts as kanji
+- **WHEN** the question shows `々`, the accepted answer is `々`, and the answer is `々`
 - **THEN** the answer is wrong
 
-#### Scenario: Repeating the shown reading in another script
-- **WHEN** the question shows `たかい`, the accepted answers are `高い` and `たかい`, and the answer is `takai` or `タカイ`
-- **THEN** the answer is wrong, while `高い` is correct
-
-#### Scenario: Repeating the shown text through one of two readings
-- **WHEN** the question shows `こんや`, the accepted answers are `今夜`, `こんや` and `こんにゃ`, and the answer is `konnya`
-- **THEN** the answer is wrong, read as `こんや`
+#### Scenario: Containing the shown kanji is not repeating it
+- **WHEN** the question shows `食`, the accepted answer is `食べる`, and the answer is `食べる`
+- **THEN** the answer is correct
 
 ### Requirement: Spaces are ignored
 Whitespace anywhere in an answer or an accepted answer, including the ideographic space, SHALL be ignored when checking.
@@ -145,7 +161,7 @@ A correct or wrong answer that could be read SHALL come with its reading: romaji
 - **THEN** it is wrong and has no reading
 
 ### Requirement: Which reading is reported when romaji has several
-When a romaji answer has several readings, a correct answer SHALL come with the reading that matched, a wrong answer that repeats what the question shows with the reading that repeats it, and any other wrong answer with its textbook reading (`nn` before a vowel read as `ん` plus an `n`-row syllable).
+When a romaji answer has several readings, a correct answer SHALL come with the reading that matched, and a wrong answer with its textbook reading (`nn` before a vowel read as `ん` plus an `n`-row syllable). A Japanese answer has exactly one reading, which SHALL be reported whether it is correct or wrong.
 
 #### Scenario: Wrong answer with two readings
 - **WHEN** the accepted answer is `こんばんは` and the answer is `konnichiwa`
