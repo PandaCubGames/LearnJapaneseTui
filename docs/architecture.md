@@ -362,14 +362,14 @@ The rules of the first version, by group (cut = what is removed from the end of 
 | Group (text must end in) | Cut | Non-past | Negative | Past | Past negative | Te-form |
 |---|---|---|---|---|---|---|
 | Ichidan (`る`) | `る` | る | ない | た | なかった | て |
-| Godan (D3a) | last kana *k* | *k* | *a*ない | *ta* | *a*なかった | *te* |
+| Godan | last kana *k* | *k* | *a*ない | *ta* | *a*なかった | *te* |
 | Suru (`する`) | `する` | する | しない | した | しなかった | して |
 | Kuru, written (`来る`) | `来る` | 来る | 来ない | 来た | 来なかった | 来て |
 | Kuru, reading (`くる`) | `くる` | くる | こない | きた | こなかった | きて |
 | Iku (`く`) | `く` | く | かない | った | かなかった | って |
 | Aru (`ある`) | `ある` | ある | ない | あった | なかった | あって |
 | IAdjective (`い`) | `い` | い | くない | かった | くなかった | くて |
-| Ii (`いい`), D3b | `いい` | いい; よい; 良い | よくない; 良くない | よかった; 良かった | よくなかった; 良くなかった | よくて; 良くて |
+| Ii (`いい`) | `いい` | いい; よい; 良い | よくない; 良くない | よかった; 良かった | よくなかった; 良くなかった | よくて; 良くて |
 | NaAdjective (not empty) | `""` | だ | じゃない; ではない | だった | じゃなかった; ではなかった | で |
 
 Polite (the te-form does not exist in polite style):
@@ -384,7 +384,7 @@ Polite (the te-form does not exist in polite style):
 | Iku | きます | きません | きました | きませんでした |
 | Aru | あります | ありません | ありました | ありませんでした |
 | IAdjective | いです | くないです; くありません | かったです | くなかったです; くありませんでした |
-| Ii, D3b | いいです; よいです; 良いです | よくないです; 良くないです; よくありません; 良くありません | よかったです; 良かったです | よくなかったです; 良くなかったです; よくありませんでした; 良くありませんでした |
+| Ii (`いい`) | いいです; よいです; 良いです | よくないです; 良くないです; よくありません; 良くありません | よかったです; 良かったです | よくなかったです; 良くなかったです; よくありませんでした; 良くありませんでした |
 | NaAdjective | です | じゃないです; じゃありません; ではないです; ではありません | でした | じゃなかったです; じゃありませんでした; ではなかったです; ではありませんでした |
 
 A godan verb's last kana selects one row of this table:
@@ -416,7 +416,7 @@ Where a form has several standard variants, all are accepted: 高くないです
 | Polite negative | (よくないです, よくないです), (良くないです, よくないです), (よくありません, よくありません), (良くありません, よくありません) |
 | Polite past | (よかったです, よかったです), (良かったです, よかったです) |
 | Polite past negative | (よくなかったです, よくなかったです), (良くなかったです, よくなかったです), (よくありませんでした, よくありませんでした), (良くありませんでした, よくありませんでした) |
-| Polite te-form | none (`pick` gives `None`) |
+| Polite te-form | none |
 
 ## 5. Components
 
