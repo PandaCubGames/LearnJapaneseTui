@@ -19,7 +19,7 @@ Do this task first. It changes only the named test, no production code, and pass
 
 ## 2. The list of areas, and choosing an area
 
-- [ ] 2.1 Show the list and let Enter choose an area, in one commit (design.md D9 explains why it cannot be split). This commit also holds three owner-approved edits of existing tests (below), because they assert the new screen and wording and cannot pass before it.
+- [x] 2.1 Show the list and let Enter choose an area, in one commit (design.md D9 explains why it cannot be split). This commit also holds three owner-approved edits of existing tests (below), because they assert the new screen and wording and cannot pass before it.
   - **`src/areas.rs` (new):** module doc `//! The practice areas the app knows about, listed in one place.` Then `mod grammar; mod kanji; mod vocabulary;`, `use` of the three structs, the trait `Area: std::fmt::Debug` with `fn name(&self) -> &'static str` and `fn has_questions(&self) -> bool` (doc comments from D2), `const ALL: &[&dyn Area] = &[&Vocabulary, &Kanji, &Grammar];` with the doc comment from D2, and `pub fn all() -> &'static [&'static dyn Area] { ALL }`. At the end, `#[cfg(test)] pub mod fake` with `FakeArea` exactly as in D3, then `#[cfg(test)] mod tests`.
   - **`src/areas/vocabulary.rs`, `src/areas/kanji.rs`, `src/areas/grammar.rs` (new):** each has a module doc (`//! The Vocabulary area. Its words and questions come with issue #11.`; Kanji: `#12`; Grammar: `#13`), `#[derive(Debug)] pub struct Vocabulary;` (`Kanji`, `Grammar`) and `impl Area for ...` with `name()` returning `text::AREA_VOCABULARY` (`AREA_KANJI`, `AREA_GRAMMAR`) and `has_questions()` returning `false`.
   - **`src/main.rs`:** add `mod areas;` right after `mod app;` (alphabetical order). Nothing else.

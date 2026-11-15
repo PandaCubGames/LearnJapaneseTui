@@ -41,7 +41,18 @@ pub fn action_for(screen: Screen, event: &Event) -> Option<Action> {
             }
             _ => None,
         },
-        Screen::AreaSelection => None,
+        Screen::AreaSelection => match key.code {
+            KeyCode::Enter if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Choose)
+            }
+            _ => None,
+        },
+        Screen::NoQuestions => match key.code {
+            KeyCode::Enter if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Back)
+            }
+            _ => None,
+        },
     }
 }
 
@@ -50,6 +61,7 @@ mod tests {
     use ratatui::crossterm::event::KeyEvent;
 
     use super::*;
+    use crate::areas::{Area, fake::FakeArea};
     use crate::session::Session;
 
     fn press(code: KeyCode, modifiers: KeyModifiers) -> Event {
@@ -67,6 +79,15 @@ mod tests {
     fn on_area_selection(event: Event) -> Option<Action> {
         action_for(Screen::AreaSelection, &event)
     }
+
+    fn on_no_questions(event: Event) -> Option<Action> {
+        action_for(Screen::NoQuestions, &event)
+    }
+
+    const EMPTY_ONE: &[&dyn Area] = &[&FakeArea {
+        name: "Empty",
+        has_questions: false,
+    }];
 
     #[test]
     fn enter_starts_on_welcome() {
@@ -221,5 +242,103 @@ mod tests {
             assert_eq!(on_welcome(press(code, KeyModifiers::NONE)), None);
         }
         assert_eq!(on_welcome(Event::FocusGained), None);
+    }
+
+    #[test]
+    fn enter_chooses_on_area_selection() {
+        assert_eq!(
+            on_area_selection(press(KeyCode::Enter, KeyModifiers::NONE)),
+            Some(Action::Choose)
+        );
+    }
+
+    #[test]
+    fn modified_or_held_enter_does_nothing_on_area_selection() {
+        assert_eq!(
+            on_area_selection(press(KeyCode::Enter, KeyModifiers::CONTROL)),
+            None
+        );
+        assert_eq!(
+            on_area_selection(press(KeyCode::Enter, KeyModifiers::ALT)),
+            None
+        );
+        assert_eq!(
+            on_area_selection(with_kind(KeyCode::Enter, KeyEventKind::Repeat)),
+            None
+        );
+    }
+
+    #[test]
+    fn enter_goes_back_on_no_questions() {
+        assert_eq!(
+            on_no_questions(press(KeyCode::Enter, KeyModifiers::NONE)),
+            Some(Action::Back)
+        );
+    }
+
+    #[test]
+    fn modified_or_held_enter_does_nothing_on_no_questions() {
+        assert_eq!(
+            on_no_questions(press(KeyCode::Enter, KeyModifiers::CONTROL)),
+            None
+        );
+        assert_eq!(
+            on_no_questions(press(KeyCode::Enter, KeyModifiers::ALT)),
+            None
+        );
+        assert_eq!(
+            on_no_questions(with_kind(KeyCode::Enter, KeyEventKind::Repeat)),
+            None
+        );
+    }
+
+    #[test]
+    fn ctrl_c_quits_on_no_questions() {
+        assert_eq!(
+            on_no_questions(press(KeyCode::Char('c'), KeyModifiers::CONTROL)),
+            Some(Action::Quit)
+        );
+    }
+
+    #[test]
+    fn resize_is_followed_on_no_questions() {
+        assert_eq!(
+            on_no_questions(Event::Resize(100, 30)),
+            Some(Action::Resized {
+                width: 100,
+                height: 30
+            })
+        );
+    }
+
+    #[test]
+    fn other_keys_do_nothing_on_no_questions() {
+        for code in [
+            KeyCode::Char('q'),
+            KeyCode::Char('a'),
+            KeyCode::Char('あ'),
+            KeyCode::Up,
+            KeyCode::Down,
+        ] {
+            assert_eq!(on_no_questions(press(code, KeyModifiers::NONE)), None);
+        }
+        assert_eq!(on_no_questions(Event::FocusGained), None);
+    }
+
+    #[test]
+    fn enter_through_the_key_table_with_an_empty_area() {
+        let mut session = Session::with_areas(80, 24, EMPTY_ONE);
+        let feed = |session: &mut Session, event: Event| {
+            if let Some(action) = action_for(session.screen(), &event) {
+                session.apply(action);
+            }
+        };
+        feed(&mut session, press(KeyCode::Enter, KeyModifiers::NONE));
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        feed(&mut session, press(KeyCode::Enter, KeyModifiers::NONE));
+        assert_eq!(session.screen(), Screen::NoQuestions);
+        feed(&mut session, press(KeyCode::Enter, KeyModifiers::NONE));
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        assert!(!session.should_quit());
     }
 }
