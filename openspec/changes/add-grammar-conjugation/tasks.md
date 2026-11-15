@@ -88,7 +88,7 @@ Types, signatures, rule tables, the word list and the expected forms are in `des
 
 ## 2. Adjectives
 
-- [ ] 2.1 Wrap long lists of accepted answers on the feedback screen (design.md D10).
+- [x] 2.1 Wrap long lists of accepted answers on the feedback screen (design.md D10).
   - `src/ui.rs`: add `const EXPECTED_ROWS: u16 = 4;` with the doc comment of D10, next to `PROMPT_ROWS`. In `draw_feedback`, the constraint of `expected_row` (the ninth, between `verdict_row` and the empty row before `score_row`) becomes `Constraint::Length(EXPECTED_ROWS)`, and the accepted answers are drawn with `draw_prompt(frame, expected_row, &text::expected(&question.accepted))` instead of `centred(..)`. Change `draw_prompt`'s doc comment as in D10. Nothing else changes.
   - New tests, `src/ui.rs` (a test-only `struct ManyAnswers` implementing `Area` with name `"Many"` and one N5 entry with one `Kind::Japanese` question: prompt `"What is the polite past negative of 簡単 (かんたん, easy)?"`, accepted the eight answers of the spec scenario *Eight long answers in 80 columns*, in that order, shown empty; `const MANY: &[&dyn Area] = &[&ManyAnswers];`):
     - `many_accepted_answers_wrap_and_stay_whole`: `practising(MANY, 80, 24)`, `submit(&mut session, "neko")`; in `squashed(&render(..))` every one of the eight answers appears; the row with `Correct answers:` does not contain the last answer; the rows of `Score: 0 of 1` and of `text::FEEDBACK_HINT` come after the row with the last answer.

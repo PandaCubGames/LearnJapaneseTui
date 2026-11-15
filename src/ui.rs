@@ -141,6 +141,9 @@ fn draw_no_questions_at_levels(frame: &mut Frame, session: &Session) {
 /// Rows the prompt of a question may use.
 const PROMPT_ROWS: u16 = 3;
 
+/// Rows the accepted answers may use on the feedback screen.
+const EXPECTED_ROWS: u16 = 4;
+
 /// Columns of the answer field.
 const FIELD_WIDTH: u16 = 30;
 
@@ -236,7 +239,7 @@ fn draw_feedback(frame: &mut Frame, session: &Session) {
         Constraint::Length(1),
         Constraint::Length(1),
         Constraint::Length(1),
-        Constraint::Length(1),
+        Constraint::Length(EXPECTED_ROWS),
         Constraint::Length(1),
         Constraint::Length(1),
         Constraint::Length(1),
@@ -261,11 +264,7 @@ fn draw_feedback(frame: &mut Frame, session: &Session) {
     };
     centred(frame, verdict_row, Line::from(verdict));
     if !feedback.correct {
-        centred(
-            frame,
-            expected_row,
-            Line::from(text::expected(&question.accepted)),
-        );
+        draw_prompt(frame, expected_row, &text::expected(&question.accepted));
     }
     centred(frame, score_row, Line::from(score_text(drill)));
     centred(frame, hint_row, Line::from(text::FEEDBACK_HINT));
@@ -275,7 +274,7 @@ fn score_text(drill: &Drill) -> String {
     text::score(drill.correct(), drill.answered())
 }
 
-/// Draws a prompt over `area`, wrapped, each line centred.
+/// Draws a text that may need several rows over `area`, wrapped between words, each line centred.
 fn draw_prompt(frame: &mut Frame, area: Rect, prompt: &str) {
     frame.render_widget(
         Paragraph::new(prompt)
@@ -1258,5 +1257,77 @@ mod tests {
         assert!(screen.contains("Score: 0 of 0"));
         session.apply(Action::Submit);
         assert!(text(&render(&session)).contains("Score: 0 of 1"));
+    }
+
+    #[derive(Debug)]
+    struct ManyAnswers;
+
+    impl Area for ManyAnswers {
+        fn name(&self) -> &'static str {
+            "Many"
+        }
+
+        fn questions(&self, _levels: crate::practice::Levels) -> Vec<crate::practice::Entry> {
+            use crate::practice::question::Question;
+            vec![crate::practice::Entry {
+                levels: crate::practice::Levels::only(Level::N5),
+                questions: vec![Question {
+                    prompt: "What is the polite past negative of 簡単 (かんたん, easy)?"
+                        .to_string(),
+                    accepted: MANY_ANSWERS
+                        .iter()
+                        .map(|answer| answer.to_string())
+                        .collect(),
+                    shown: Vec::new(),
+                    kind: Kind::Japanese,
+                }],
+            }]
+        }
+    }
+
+    const MANY_ANSWERS: [&str; 8] = [
+        "簡単じゃなかったです",
+        "かんたんじゃなかったです",
+        "簡単じゃありませんでした",
+        "かんたんじゃありませんでした",
+        "簡単ではなかったです",
+        "かんたんではなかったです",
+        "簡単ではありませんでした",
+        "かんたんではありませんでした",
+    ];
+
+    const MANY: &[&dyn Area] = &[&ManyAnswers];
+
+    #[test]
+    fn many_accepted_answers_wrap_and_stay_whole() {
+        let mut session = practising(MANY, 80, 24);
+        submit(&mut session, "neko");
+        let screen = squashed(&render(&session));
+        for answer in MANY_ANSWERS {
+            assert!(screen.contains(answer), "{answer}");
+        }
+        let lines: Vec<&str> = screen.lines().collect();
+        let line_with = |needle: &str| {
+            lines
+                .iter()
+                .position(|line| line.contains(needle))
+                .unwrap_or_else(|| panic!("{needle:?} is not on screen"))
+        };
+        let last = MANY_ANSWERS[7];
+        let first_row = line_with("Correct answers:");
+        assert!(!lines[first_row].contains(last));
+        let last_row = line_with(last);
+        assert!(last_row > first_row);
+        assert!(line_with("Score: 0 of 1") > last_row);
+        assert!(line_with(text::FEEDBACK_HINT) > last_row);
+    }
+
+    #[test]
+    fn many_accepted_answers_draw_at_any_size_without_panicking() {
+        for (width, height) in [(1, 1), (5, 2), (20, 3), (200, 60)] {
+            let mut session = practising(MANY, width, height);
+            submit(&mut session, "neko");
+            render(&session);
+        }
     }
 }
