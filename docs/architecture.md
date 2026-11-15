@@ -7,7 +7,7 @@ Copyright (C) 2026 PandaCubGames
 
 > **Status: mostly planned.** Only the core loop, the Welcome screen and area selection exist in code
 > (`app`, `areas`, `keys`, `session` and `ui`). The areas have no questions yet. Esc on area selection quits directly until the Thank you screen exists. Answer input and checking (`answer_field`,
-> `grading`, `kana`, `romaji`) exist, but no screen uses them yet. The JLPT level picker exists (`practice`). Everything else
+> `grading`, `kana`, `romaji`) exist. The generic practice module exists (`practice`): level picker, question and feedback screens; only a test area has questions so far. Everything else
 > here is still planned.
 > These diagrams describe the intended design and will change as it gets built.
 
@@ -102,6 +102,7 @@ fixed header or footer, and no separate logout.
     answer is typed.
 - Enter submits the answer. **Feedback is a waiting step:** it stays until the next Enter,
   including after the last question, before the results appear.
+- **Feedback** shows the answer, its reading when it differs, whether it was right, and every accepted answer when it was wrong.
 - Each submitted answer is **counted once**, correct or not. Continuing from feedback
   doesn't count it again.
 

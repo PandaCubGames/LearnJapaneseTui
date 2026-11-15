@@ -23,6 +23,7 @@ pub fn draw(frame: &mut Frame, session: &Session) {
         Screen::LevelPicker => draw_level_picker(frame, session),
         Screen::NoQuestionsAtLevels => draw_no_questions_at_levels(frame, session),
         Screen::Question => draw_question(frame, session),
+        Screen::Feedback => draw_feedback(frame, session),
     }
 }
 
@@ -161,7 +162,7 @@ fn draw_question(frame: &mut Frame, session: &Session) {
         field_row,
         how_to_answer_row,
         _,
-        _,
+        typo_row,
         _,
         _,
         hint_row,
@@ -182,12 +183,7 @@ fn draw_question(frame: &mut Frame, session: &Session) {
     .areas(frame.area());
 
     centred(frame, name_row, Line::from(name));
-    frame.render_widget(
-        Paragraph::new(question.prompt.as_str())
-            .alignment(Alignment::Center)
-            .wrap(Wrap { trim: true }),
-        prompt_row,
-    );
+    draw_prompt(frame, prompt_row, &question.prompt);
     let [label_area, field_area] = Layout::horizontal([
         Constraint::Length(ANSWER_LABEL_WIDTH),
         Constraint::Length(FIELD_WIDTH),
@@ -199,7 +195,85 @@ fn draw_question(frame: &mut Frame, session: &Session) {
         frame.set_cursor_position(position);
     }
     centred(frame, how_to_answer_row, Line::from(how_to_answer));
+    if drill.typo_warning() {
+        centred(frame, typo_row, Line::from(text::TYPO_WARNING));
+    }
     centred(frame, hint_row, Line::from(text::QUESTION_HINT));
+}
+
+fn draw_feedback(frame: &mut Frame, session: &Session) {
+    let Some(drill) = session.drill() else {
+        return;
+    };
+    let Some(feedback) = drill.feedback() else {
+        return;
+    };
+    let question = drill.question();
+    let name = session.highlighted_area().map_or("", |area| area.name());
+    let [
+        name_row,
+        _,
+        prompt_row,
+        _,
+        answer_row,
+        read_as_row,
+        _,
+        verdict_row,
+        expected_row,
+        _,
+        _,
+        hint_row,
+    ] = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(PROMPT_ROWS),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+    ])
+    .flex(Flex::Center)
+    .areas(frame.area());
+
+    centred(frame, name_row, Line::from(name));
+    draw_prompt(frame, prompt_row, &question.prompt);
+    centred(
+        frame,
+        answer_row,
+        Line::from(text::your_answer(&feedback.answer)),
+    );
+    if let Some(reading) = &feedback.read_as {
+        centred(frame, read_as_row, Line::from(text::read_as(reading)));
+    }
+    let verdict = if feedback.correct {
+        text::CORRECT
+    } else {
+        text::WRONG
+    };
+    centred(frame, verdict_row, Line::from(verdict));
+    if !feedback.correct {
+        centred(
+            frame,
+            expected_row,
+            Line::from(text::expected(&question.accepted)),
+        );
+    }
+    centred(frame, hint_row, Line::from(text::FEEDBACK_HINT));
+}
+
+/// Draws a prompt over `area`, wrapped, each line centred.
+fn draw_prompt(frame: &mut Frame, area: Rect, prompt: &str) {
+    frame.render_widget(
+        Paragraph::new(prompt)
+            .alignment(Alignment::Center)
+            .wrap(Wrap { trim: true }),
+        area,
+    );
 }
 
 /// Draws one line centred in `area` by display width.
@@ -941,6 +1015,126 @@ mod tests {
     fn question_screen_with_text_uses_no_colour() {
         let mut session = practising(READING_ONLY, 80, 24);
         type_text(&mut session, "たかい");
+        let buffer = buffer(&session);
+        assert!(
+            buffer
+                .content()
+                .iter()
+                .all(|cell| cell.fg == Color::Reset && cell.bg == Color::Reset)
+        );
+    }
+
+    const POLITE_PAST_ONLY: &[&dyn Area] = &[&crate::areas::sample::POLITE_PAST];
+
+    /// The cells of a row as text; the hidden cell after a wide symbol is left out.
+    fn squash(row: &[String]) -> String {
+        let mut text = String::new();
+        let mut skip = false;
+        for symbol in row {
+            if skip {
+                skip = false;
+                continue;
+            }
+            skip = Span::raw(symbol.as_str()).width() > 1;
+            text.push_str(symbol);
+        }
+        text
+    }
+
+    fn squashed(rows: &[Vec<String>]) -> String {
+        rows.iter()
+            .map(|row| squash(row))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    fn submit(session: &mut Session, answer: &str) {
+        type_text(session, answer);
+        session.apply(Action::Submit);
+    }
+
+    #[test]
+    fn typo_warning_is_shown() {
+        let mut session = practising(READING_ONLY, 80, 24);
+        submit(&mut session, "tabxru");
+        let rows = render(&session);
+        assert!(text(&rows).contains(text::TYPO_WARNING));
+        assert!(text(&rows).contains("tabxru"));
+        assert!(
+            rows[row_index(&rows, text::ANSWER_LABEL)]
+                .concat()
+                .contains("tabxru")
+        );
+    }
+
+    #[test]
+    fn feedback_for_a_correct_romaji_answer() {
+        let mut session = practising(READING_ONLY, 80, 24);
+        submit(&mut session, "takai");
+        let screen = squashed(&render(&session));
+        assert!(screen.contains("Your answer: takai"));
+        assert!(screen.contains("Read as: たかい"));
+        assert!(screen.contains(text::CORRECT));
+        assert!(!screen.contains("Correct answer"));
+    }
+
+    #[test]
+    fn feedback_for_a_correct_kana_answer() {
+        let mut session = practising(READING_ONLY, 80, 24);
+        submit(&mut session, "たかい");
+        let screen = squashed(&render(&session));
+        assert!(screen.contains("Your answer: たかい"));
+        assert!(!screen.contains("Read as:"));
+    }
+
+    #[test]
+    fn feedback_for_a_wrong_answer() {
+        let mut session = practising(POLITE_PAST_ONLY, 80, 24);
+        submit(&mut session, "ねこ");
+        let screen = squashed(&render(&session));
+        assert!(screen.contains("Your answer: ねこ"));
+        assert!(screen.contains(text::WRONG));
+        assert!(screen.contains("Correct answers: 食べました, たべました"));
+    }
+
+    #[test]
+    fn feedback_lines_are_in_order() {
+        let mut session = practising(READING_ONLY, 80, 24);
+        submit(&mut session, "takai");
+        let rows = render(&session);
+        let order = [
+            row_index(&rows, "Sample"),
+            row_index(&rows, "How do you read"),
+            row_index(&rows, "Your answer:"),
+            row_index(&rows, text::CORRECT),
+            row_index(&rows, text::FEEDBACK_HINT),
+        ];
+        assert!(order.windows(2).all(|pair| pair[0] < pair[1]), "{order:?}");
+    }
+
+    #[test]
+    fn feedback_hint_is_centred() {
+        let mut session = practising(READING_ONLY, 80, 24);
+        submit(&mut session, "takai");
+        let rows = render(&session);
+        let row = &rows[row_index(&rows, text::FEEDBACK_HINT)];
+        assert_eq!(row[17], "P");
+        assert!(row[..17].iter().all(|symbol| symbol == " "));
+    }
+
+    #[test]
+    fn feedback_draws_at_any_size_without_panicking() {
+        for (width, height) in [(1, 1), (5, 2), (20, 3), (200, 60)] {
+            let mut session = practising(READING_ONLY, width, height);
+            submit(&mut session, "takai");
+            render(&session);
+        }
+    }
+
+    #[test]
+    fn feedback_uses_no_colour() {
+        let mut session = practising(READING_ONLY, 80, 24);
+        submit(&mut session, "takai");
         let buffer = buffer(&session);
         assert!(
             buffer

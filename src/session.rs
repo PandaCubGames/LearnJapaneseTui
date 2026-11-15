@@ -27,6 +27,8 @@ pub enum Screen {
     NoQuestionsAtLevels,
     /// A question waits for its answer.
     Question,
+    /// The answer was checked; waiting for Enter.
+    Feedback,
 }
 
 /// Something that happened, already translated from a terminal event.
@@ -51,10 +53,12 @@ pub enum Action {
     Toggle,
     /// Start practice with the ticked levels.
     Confirm,
-    /// Go on: back to the level picker.
+    /// Go on: back to the level picker, or to the next question.
     Continue,
     /// Edit the answer.
     Edit(Edit),
+    /// Submit the answer.
+    Submit,
     /// Go back to area selection.
     Back,
 }
@@ -167,9 +171,22 @@ impl Session {
                     }
                 }
             }
-            Action::Continue => {
-                if self.screen == Screen::NoQuestionsAtLevels {
-                    self.screen = Screen::LevelPicker;
+            Action::Continue => match self.screen {
+                Screen::NoQuestionsAtLevels => self.screen = Screen::LevelPicker,
+                Screen::Feedback => {
+                    if let Some(drill) = self.drill.as_mut() {
+                        drill.next(&mut self.rng);
+                        self.screen = Screen::Question;
+                    }
+                }
+                _ => {}
+            },
+            Action::Submit => {
+                if self.screen == Screen::Question
+                    && let Some(drill) = self.drill.as_mut()
+                    && drill.submit()
+                {
+                    self.screen = Screen::Feedback;
                 }
             }
             Action::Edit(edit) => {
@@ -186,6 +203,7 @@ impl Session {
                         | Screen::LevelPicker
                         | Screen::NoQuestionsAtLevels
                         | Screen::Question
+                        | Screen::Feedback
                 ) {
                     self.screen = Screen::AreaSelection;
                     self.drill = None;
@@ -797,5 +815,135 @@ mod tests {
         session.apply(Action::Choose);
         session.apply(Action::Confirm);
         assert_eq!(typed_answer(&session), "");
+    }
+
+    /// Types `text` and submits it.
+    fn answer(session: &mut Session, text: &str) {
+        for c in text.chars() {
+            session.apply(Action::Edit(Edit::Insert(c)));
+        }
+        session.apply(Action::Submit);
+    }
+
+    fn answer_correctly(session: &mut Session) {
+        let text = session.drill().unwrap().question().accepted[0].clone();
+        answer(session, &text);
+    }
+
+    #[test]
+    fn submit_shows_feedback() {
+        let mut session = practising(READING_ONLY, 0);
+        answer(&mut session, "takai");
+        assert_eq!(session.screen(), Screen::Feedback);
+        assert!(session.drill().unwrap().feedback().unwrap().correct);
+    }
+
+    #[test]
+    fn continue_shows_the_next_question() {
+        let mut session = practising(SAMPLE, 0);
+        answer_correctly(&mut session);
+        session.apply(Action::Continue);
+        assert_eq!(session.screen(), Screen::Question);
+        assert_eq!(typed_answer(&session), "");
+        assert!(session.drill().unwrap().feedback().is_none());
+    }
+
+    #[test]
+    fn back_from_feedback_returns_to_area_selection() {
+        let mut session = practising(READING_ONLY, 0);
+        answer_correctly(&mut session);
+        session.apply(Action::Back);
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        assert!(session.drill().is_none());
+    }
+
+    #[test]
+    fn submit_with_an_empty_answer_stays() {
+        let mut session = practising(READING_ONLY, 0);
+        session.apply(Action::Submit);
+        assert_eq!(session.screen(), Screen::Question);
+        answer(&mut session, "  ");
+        assert_eq!(session.screen(), Screen::Question);
+    }
+
+    #[test]
+    fn typo_warning_stays_on_the_question() {
+        let mut session = practising(READING_ONLY, 0);
+        answer(&mut session, "tabxru");
+        assert_eq!(session.screen(), Screen::Question);
+        assert!(session.drill().unwrap().typo_warning());
+    }
+
+    #[test]
+    fn submit_and_continue_act_only_on_their_own_screens() {
+        let mut session = Session::with_areas(80, 24, SAMPLE);
+        session.apply(Action::Submit);
+        session.apply(Action::Continue);
+        assert_eq!(session.screen(), Screen::Welcome);
+        session.apply(Action::Start);
+        session.apply(Action::Submit);
+        session.apply(Action::Continue);
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        let mut session = practising(READING_ONLY, 0);
+        session.apply(Action::Continue);
+        assert_eq!(session.screen(), Screen::Question);
+        answer(&mut session, "takai");
+        session.apply(Action::Submit);
+        assert_eq!(session.screen(), Screen::Feedback);
+    }
+
+    #[test]
+    fn only_n3_is_ever_asked() {
+        let mut session = Session::with_areas(80, 24, SAMPLE);
+        session.apply(Action::Start);
+        session.apply(Action::Choose);
+        session.apply(Action::Toggle);
+        session.apply(Action::Next);
+        session.apply(Action::Next);
+        session.apply(Action::Toggle);
+        session.apply(Action::Confirm);
+        for _ in 0..20 {
+            assert_eq!(prompt_of(&session), "How do you read 山?");
+            answer_correctly(&mut session);
+            session.apply(Action::Continue);
+        }
+    }
+
+    fn all_levels_practice(seed: u64) -> Session {
+        let mut session = Session::with_areas(80, 24, SAMPLE).with_seed(seed);
+        session.apply(Action::Start);
+        session.apply(Action::Choose);
+        for _ in 0..4 {
+            session.apply(Action::Next);
+            session.apply(Action::Toggle);
+        }
+        session.apply(Action::Confirm);
+        session
+    }
+
+    #[test]
+    fn same_seed_same_questions() {
+        let run = |seed| {
+            let mut session = all_levels_practice(seed);
+            let mut prompts = Vec::new();
+            for _ in 0..10 {
+                prompts.push(prompt_of(&session));
+                answer_correctly(&mut session);
+                session.apply(Action::Continue);
+            }
+            prompts
+        };
+        assert_eq!(run(3), run(3));
+    }
+
+    #[test]
+    fn practice_goes_on_until_esc() {
+        let mut session = all_levels_practice(0);
+        for _ in 0..30 {
+            answer_correctly(&mut session);
+            assert_eq!(session.screen(), Screen::Feedback);
+            session.apply(Action::Continue);
+            assert_eq!(session.screen(), Screen::Question);
+        }
     }
 }

@@ -135,7 +135,7 @@ Types, signatures, algorithms and wording are in `design.md` (D-numbers point th
 
 ## 4. Answering
 
-- [ ] 4.1 Submit, check and show feedback; Enter goes to the next question.
+- [x] 4.1 Submit, check and show feedback; Enter goes to the next question.
   - `src/practice/meaning.rs` (new): `Outcome`, `check` and `normalise` (D15), **without** the leading-word rule (4.3). `src/practice.rs`: `mod meaning;`.
   - `src/practice.rs`: `Drill` gets `pool` (now kept by `start`), `guard`, `typo_warning`, `feedback`; `Feedback` (D8); `submit` exactly as D9 without the counting lines; `next`; `typo_warning()`; `feedback()`; `edit` now does nothing while `feedback` is `Some` and clears `typo_warning`.
   - `src/session.rs`: `Screen::Feedback`; `Action::Submit` with its doc comment; `Submit` on `Question` → `Feedback` when `submit()` is `true`; `Continue` on `Feedback` → `drill.next(&mut self.rng)`, `Question`; `Back` also on `Feedback`.

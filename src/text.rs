@@ -88,6 +88,37 @@ pub const QUESTION_HINT: &str = "Enter to answer, Esc to stop";
 /// Question screen: in front of the answer field.
 pub const ANSWER_LABEL: &str = "Answer: ";
 
+/// Question screen: shown when the answer cannot be read as Japanese.
+pub const TYPO_WARNING: &str =
+    "This does not read as Japanese. Press Enter again to submit it anyway.";
+
+/// Feedback screen: the answer was right.
+pub const CORRECT: &str = "Correct!";
+
+/// Feedback screen: the answer was wrong.
+pub const WRONG: &str = "Not quite.";
+
+/// Feedback screen: the keys.
+pub const FEEDBACK_HINT: &str = "Press Enter for the next question, Esc to stop";
+
+/// Feedback screen: the answer as typed.
+pub fn your_answer(answer: &str) -> String {
+    format!("Your answer: {answer}")
+}
+
+/// Feedback screen: how the answer was read as Japanese.
+pub fn read_as(reading: &str) -> String {
+    format!("Read as: {reading}")
+}
+
+/// Feedback screen: the accepted answers.
+pub fn expected(accepted: &[String]) -> String {
+    match accepted {
+        [one] => format!("Correct answer: {one}"),
+        _ => format!("Correct answers: {}", accepted.join(", ")),
+    }
+}
+
 /// Level picker: the name of a level.
 pub fn level_name(level: Level) -> &'static str {
     match level {
@@ -278,5 +309,39 @@ mod tests {
     fn answer_label_is_plain_ascii_text() {
         assert_eq!(ANSWER_LABEL, "Answer: ");
         assert!(ANSWER_LABEL.is_ascii());
+    }
+
+    #[test]
+    fn practice_wording_is_plain_ascii_text() {
+        for (text, expected) in [
+            (
+                TYPO_WARNING,
+                "This does not read as Japanese. Press Enter again to submit it anyway.",
+            ),
+            (CORRECT, "Correct!"),
+            (WRONG, "Not quite."),
+            (
+                FEEDBACK_HINT,
+                "Press Enter for the next question, Esc to stop",
+            ),
+        ] {
+            assert_eq!(text, expected);
+            assert!(text.is_ascii());
+        }
+    }
+
+    #[test]
+    fn your_answer_and_read_as() {
+        assert_eq!(your_answer("takai"), "Your answer: takai");
+        assert_eq!(read_as("たかい"), "Read as: たかい");
+    }
+
+    #[test]
+    fn expected_answers() {
+        assert_eq!(expected(&["たかい".to_string()]), "Correct answer: たかい");
+        assert_eq!(
+            expected(&["食べました".to_string(), "たべました".to_string()]),
+            "Correct answers: 食べました, たべました"
+        );
     }
 }
