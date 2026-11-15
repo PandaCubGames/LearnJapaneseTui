@@ -6,7 +6,8 @@ Copyright (C) 2026 PandaCubGames
 # Architecture (draft)
 
 > **Status: mostly planned.** Only the core loop, the Welcome screen and area selection exist in code
-> (`app`, `areas`, `keys`, `session` and `ui`). The areas have no questions yet. Esc on area selection quits directly until the Thank you screen exists. Everything else
+> (`app`, `areas`, `keys`, `session` and `ui`). The areas have no questions yet. Esc on area selection quits directly until the Thank you screen exists. Answer input and checking (`answer_field`,
+> `grading`, `kana`, `romaji`) exist, but no screen uses them yet. Everything else
 > here is still planned.
 > These diagrams describe the intended design and will change as it gets built.
 
@@ -107,8 +108,21 @@ fixed header or footer, and no separate logout.
 - **Japanese answers don't depend on the script.** Romaji and katakana are both turned
   into hiragana before comparing, and the written form with kanji is accepted as it is.
   For `高い`, all of `takai`, `タカイ`, `たかい` and `高い` are correct.
-- **An answer that repeats what the question already shows is never accepted.**
-  "How do you read 食?" does not accept `食`.
+- **Kanji the question shows can't be copied back as the answer.** An answer that is
+  exactly a text the question shows is wrong when that text contains a kanji, so it can't
+  just be copied and pasted: "How do you read 食?" does not accept `食`, and a question
+  that shows `食べる` does not accept `食べる`, but `たべる` and `taberu` are correct. Text
+  the question shows in kana only never makes an answer wrong.
+- **Romaji is exact.** It is read letter for letter, the way it is typed into a Japanese
+  IME: long vowels are typed out (`とうきょう` is `toukyou`; `tokyo` and `tōkyō` are
+  wrong), `n'` gives ん before a vowel, and a doubled consonant gives っ. `nn` before a
+  vowel is accepted both ways, as an IME reads it and as textbooks write it:
+  `konnichiha` and `konnnichiha` both give こんにちは, and wrong answers are shown with
+  the textbook reading.
+- **One script per answer.** An answer is all romaji or all Japanese. `食beru` is wrong.
+- **Typos.** Text that cannot be read as Japanese at all (`tabxru`) gets a warning and is
+  not counted. Submitting the same text again counts it as wrong. A readable but wrong
+  word, such as `tokyo`, is simply wrong.
 - **English answers** ignore capital letters, extra spaces and a leading "to", "a", "an"
   or "the". "Eat" and "to eat" both match "to eat".
 - **When several entries fit an English prompt**, any entry of that area whose meaning
@@ -345,6 +359,8 @@ flowchart LR
         ui[ui<br/>draws the current screen,<br/>display width]
         grading[grading<br/>normalise and compare]
         romaji[romaji<br/>romaji → kana]
+        kana[kana<br/>katakana → hiragana]
+        field[answer_field<br/>typed answer,<br/>display width]
     end
 
     contract{{Area contract<br/>levels in → questions out}}
@@ -365,6 +381,9 @@ flowchart LR
     session -->|asks for questions| contract
     session -->|question + answer| grading
     grading --> romaji
+    grading --> kana
+    keys --> field
+    ui --> field
     vocab & kanji & grammar -.->|implements| contract
     grammar --> conj
     vocab & kanji & grammar --> content
@@ -381,6 +400,11 @@ flowchart LR
 - **`ui`** only draws the state it is given.
 - **`grading`** is shared by all areas. It applies the rules in
   [Checking answers](#checking-answers).
+- **`romaji`** and **`kana`** have no state and no terminal access, like `conjugation`, so
+  their rules are tested directly.
+- **`answer_field`** keeps the answer exactly as typed, romaji or IME text, and converts
+  nothing while typing. `keys` asks it which keys edit it and `ui` asks it to draw itself,
+  by display width.
 - **`conjugation`** has no state and no terminal access, so its rules are tested directly.
 - **Content** is embedded in the binary, so the release stays a single file. Sources and
   licenses go in `ATTRIBUTION.md`.
