@@ -114,6 +114,35 @@ pub fn check(typed: &str, accepted: &[&str], shown: &[&str]) -> Outcome {
     }
 }
 
+/// The typo memory of one question.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct TypoGuard {
+    warned: Option<String>,
+}
+
+impl TypoGuard {
+    /// Like `check`, but an unreadable text submitted again unchanged is
+    /// `Wrong { read_as: None }`.
+    pub fn submit(&mut self, typed: &str, accepted: &[&str], shown: &[&str]) -> Outcome {
+        match check(typed, accepted, shown) {
+            Outcome::Empty => Outcome::Empty,
+            Outcome::LooksLikeTypo => {
+                if self.warned.as_deref() == Some(typed) {
+                    self.warned = None;
+                    Outcome::Wrong { read_as: None }
+                } else {
+                    self.warned = Some(typed.to_string());
+                    Outcome::LooksLikeTypo
+                }
+            }
+            other => {
+                self.warned = None;
+                other
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -362,5 +391,85 @@ mod tests {
             check("konnichiq", &["こんにちは"], NOTHING),
             Outcome::LooksLikeTypo
         );
+    }
+
+    fn submit(guard: &mut TypoGuard, typed: &str) -> Outcome {
+        guard.submit(typed, &["たべる"], NOTHING)
+    }
+
+    #[test]
+    fn same_unreadable_text_twice_is_wrong() {
+        let mut guard = TypoGuard::default();
+        assert_eq!(submit(&mut guard, "tabxru"), Outcome::LooksLikeTypo);
+        assert_eq!(submit(&mut guard, "tabxru"), unread());
+    }
+
+    #[test]
+    fn corrected_text_is_checked_normally() {
+        let mut guard = TypoGuard::default();
+        assert_eq!(submit(&mut guard, "tabxru"), Outcome::LooksLikeTypo);
+        assert_eq!(submit(&mut guard, "taberu"), correct("たべる"));
+    }
+
+    #[test]
+    fn different_unreadable_text_gets_its_own_warning() {
+        let mut guard = TypoGuard::default();
+        assert_eq!(submit(&mut guard, "tabxru"), Outcome::LooksLikeTypo);
+        assert_eq!(submit(&mut guard, "tabwru"), Outcome::LooksLikeTypo);
+        assert_eq!(submit(&mut guard, "tabwru"), unread());
+    }
+
+    #[test]
+    fn empty_submit_keeps_the_memory() {
+        let mut guard = TypoGuard::default();
+        assert_eq!(submit(&mut guard, "tabxru"), Outcome::LooksLikeTypo);
+        assert_eq!(submit(&mut guard, ""), Outcome::Empty);
+        assert_eq!(submit(&mut guard, "tabxru"), unread());
+    }
+
+    #[test]
+    fn readable_wrong_answer_is_never_a_warning() {
+        let mut guard = TypoGuard::default();
+        assert_eq!(
+            guard.submit("tokyo", &["とうきょう"], NOTHING),
+            wrong("ときょ")
+        );
+    }
+
+    #[test]
+    fn same_text_means_exactly_the_same() {
+        let mut guard = TypoGuard::default();
+        assert_eq!(submit(&mut guard, "tabxru"), Outcome::LooksLikeTypo);
+        assert_eq!(submit(&mut guard, "tabxru "), Outcome::LooksLikeTypo);
+        assert_eq!(submit(&mut guard, "tabxru "), unread());
+    }
+
+    #[test]
+    fn a_readable_submit_clears_the_memory() {
+        let mut guard = TypoGuard::default();
+        assert_eq!(submit(&mut guard, "tabxru"), Outcome::LooksLikeTypo);
+        assert_eq!(submit(&mut guard, "tokyo"), wrong("ときょ"));
+        assert_eq!(submit(&mut guard, "tabxru"), Outcome::LooksLikeTypo);
+    }
+
+    #[test]
+    fn mixed_answer_is_wrong_at_once() {
+        let mut guard = TypoGuard::default();
+        assert_eq!(guard.submit("食beru", &["食べる"], NOTHING), unread());
+    }
+
+    #[test]
+    fn two_readings_are_never_a_warning() {
+        let mut guard = TypoGuard::default();
+        let accepted = ["こんばんは"];
+        assert_eq!(
+            guard.submit("konnichiha", &accepted, NOTHING),
+            wrong("こんにちは")
+        );
+        assert_eq!(
+            guard.submit("konnichiq", &accepted, NOTHING),
+            Outcome::LooksLikeTypo
+        );
+        assert_eq!(guard.submit("konnichiq", &accepted, NOTHING), unread());
     }
 }

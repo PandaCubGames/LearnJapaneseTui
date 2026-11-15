@@ -146,7 +146,7 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
     - `unreadable_text_with_an_nn_spot_is_a_typo`: accepted `["こんにちは"]`: `konnichiq` → `Outcome::LooksLikeTypo`.
   - Verify: the 25 new tests pass (at least `shown_kanji_is_never_accepted`, `copying_a_shown_word_with_kanji_is_wrong` and `iteration_mark_counts_as_kanji` fail without the repeat rule, and `kana_shown_text_never_makes_an_answer_wrong` fails if `blocked` keeps kana-only shown text), all earlier tests pass, fmt and clippy are clean. Commit, e.g. `feat(grading): check Japanese answers in any script`.
 
-- [ ] 3.2 Add `TypoGuard` (D2, D7) and document the checking rules.
+- [x] 3.2 Add `TypoGuard` (D2, D7) and document the checking rules.
   - `src/grading.rs`: `TypoGuard` with its derives and `submit` exactly as the D7 pseudocode. Compare `self.warned.as_deref() == Some(typed)`.
   - New tests in `src/grading.rs` `mod tests` (each starts from `let mut guard = TypoGuard::default();`, accepted `["たべる"]` unless stated, shown `NOTHING`):
     - `same_unreadable_text_twice_is_wrong`: `tabxru` → `LooksLikeTypo`; `tabxru` → `Wrong { read_as: None }`.
