@@ -29,7 +29,7 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
 
 ## 1. Kana helpers
 
-- [ ] 1.1 Add `src/kana.rs` with `is_japanese`, `is_kanji`, `compose_voicing` and `katakana_to_hiragana` (D2 signatures, D5 rules).
+- [x] 1.1 Add `src/kana.rs` with `is_japanese`, `is_kanji`, `compose_voicing` and `katakana_to_hiragana` (D2 signatures, D5 rules).
   - `src/main.rs`: add `mod kana;` with the D1 attribute.
   - `pub fn is_japanese(c: char) -> bool`: `matches!` on the exact ranges of the D5 table.
   - `pub fn is_kanji(c: char) -> bool`: `matches!` on the exact ranges of the D5 `is_kanji` table: `'\u{3005}'..='\u{3007}' | '\u{3400}'..='\u{4DBF}' | '\u{4E00}'..='\u{9FFF}' | '\u{F900}'..='\u{FAFF}' | '\u{20000}'..='\u{3FFFF}'`. Doc comment as in D2.
