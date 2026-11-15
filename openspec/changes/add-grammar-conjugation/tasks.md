@@ -69,7 +69,7 @@ Types, signatures, rule tables, the word list and the expected forms are in `des
   - New tests, `src/areas/grammar.rs`: `godan_words_cover_every_ending` (the set of last chars of the readings of the `Group::Godan` words contains each of `う く ぐ す つ ぬ ぶ む る`); `kaeru_is_godan` (`ask("帰る", Form::Negative, Formality::Plain).accepted == strings(&["帰らない", "かえらない"])`).
   - Verify as in 1.1. Commit, e.g. `feat(grammar): conjugate godan verbs`.
 
-- [ ] 1.4 Add する, noun + する and 来る.
+- [x] 1.4 Add する, noun + する and 来る.
   - `src/conjugation.rs`: add `Group::Suru` and `Group::Kuru` (docs as D2) and their rows of D3: Suru cuts `する`; Kuru cuts `来る` when `text` ends in `来る` (keeping 来 in every ending), else `くる` when it ends in `くる` (endings with こ/き), else `None`.
   - `src/areas/grammar.rs`: append words 29 to 32 of Appendix A.
   - New tests, `src/conjugation.rs`: `suru_nine_forms` (する); `noun_suru_keeps_the_noun` (勉強する / べんきょうする, all nine pairs); `kuru_keeps_its_kanji_and_changes_its_reading` (来る / くる, all nine pairs); `kuru_in_kana` (`nine("くる", "くる", Group::Kuru)`, all nine); `suru_and_kuru_have_no_polite_te_form`; `suru_and_kuru_need_their_ending` (`conjugate("食べる", "たべる", Group::Suru, Form::Negative, Formality::Plain)` and `conjugate("見る", "みる", Group::Kuru, Form::Negative, Formality::Plain)` are empty).

@@ -89,6 +89,22 @@ const WORDS: &[Word] = &[
     word("帰る", "かえる", "to go home", Group::Godan, Level::N5),
     word("分かる", "わかる", "to understand", Group::Godan, Level::N5),
     word("送る", "おくる", "to send", Group::Godan, Level::N4),
+    word("する", "する", "to do", Group::Suru, Level::N5),
+    word(
+        "勉強する",
+        "べんきょうする",
+        "to study",
+        Group::Suru,
+        Level::N5,
+    ),
+    word(
+        "運転する",
+        "うんてんする",
+        "to drive",
+        Group::Suru,
+        Level::N4,
+    ),
+    word("来る", "くる", "to come", Group::Kuru, Level::N5),
 ];
 
 /// The Grammar area.
@@ -378,5 +394,37 @@ mod tests {
             ask("帰る", Form::Negative, Formality::Plain).accepted,
             strings(&["帰らない", "かえらない"])
         );
+    }
+
+    #[test]
+    fn a_word_in_kana_shows_only_its_meaning() {
+        let question = ask("する", Form::Negative, Formality::Plain);
+        assert_eq!(
+            question.prompt,
+            "What is the plain negative of する (to do)?"
+        );
+        assert_eq!(question.accepted, strings(&["しない"]));
+        assert_eq!(question.shown, strings(&["する"]));
+        assert_eq!(
+            ask("する", Form::NonPast, Formality::Polite).accepted,
+            strings(&["します"])
+        );
+    }
+
+    #[test]
+    fn the_plain_non_past_of_suru_can_be_typed_back() {
+        let question = ask("する", Form::NonPast, Formality::Plain);
+        assert!(is_correct(&question, "する"));
+        assert!(is_correct(&question, "suru"));
+    }
+
+    #[test]
+    fn kuru_answers_use_its_reading() {
+        let question = ask("来る", Form::Negative, Formality::Plain);
+        assert_eq!(question.accepted, strings(&["来ない", "こない"]));
+        for typed in ["konai", "こない", "来ない"] {
+            assert!(is_correct(&question, typed), "{typed}");
+        }
+        assert!(!is_correct(&question, "kinai"));
     }
 }

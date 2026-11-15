@@ -13,6 +13,10 @@ pub enum Group {
     Ichidan,
     /// う-verbs, ending in う く ぐ す つ ぬ ぶ む る.
     Godan,
+    /// する and noun + する: 勉強する.
+    Suru,
+    /// 来る: the kanji stays, the reading changes.
+    Kuru,
 }
 
 /// The five forms asked of a word.
@@ -105,6 +109,34 @@ fn endings(
                 ["ます", "ません", "ました", "ませんでした"],
             )?;
             Some(("る", vec![ending.to_string()]))
+        }
+        Group::Suru => {
+            let ending = pick(
+                form,
+                formality,
+                ["する", "しない", "した", "しなかった", "して"],
+                ["します", "しません", "しました", "しませんでした"],
+            )?;
+            Some(("する", vec![ending.to_string()]))
+        }
+        Group::Kuru => {
+            let (cut, plain, polite) = if text.ends_with("来る") {
+                (
+                    "来る",
+                    ["来る", "来ない", "来た", "来なかった", "来て"],
+                    ["来ます", "来ません", "来ました", "来ませんでした"],
+                )
+            } else if text.ends_with("くる") {
+                (
+                    "くる",
+                    ["くる", "こない", "きた", "こなかった", "きて"],
+                    ["きます", "きません", "きました", "きませんでした"],
+                )
+            } else {
+                return None;
+            };
+            let ending = pick(form, formality, plain, polite)?;
+            Some((cut, vec![ending.to_string()]))
         }
         Group::Godan => {
             let last = text.chars().last()?;
@@ -506,5 +538,107 @@ mod tests {
                 "{written}"
             );
         }
+    }
+
+    #[test]
+    fn suru_nine_forms() {
+        assert_eq!(
+            nine("する", "する", Group::Suru),
+            single([
+                ("する", "する"),
+                ("しない", "しない"),
+                ("した", "した"),
+                ("しなかった", "しなかった"),
+                ("して", "して"),
+                ("します", "します"),
+                ("しません", "しません"),
+                ("しました", "しました"),
+                ("しませんでした", "しませんでした"),
+            ])
+        );
+    }
+
+    #[test]
+    fn noun_suru_keeps_the_noun() {
+        assert_eq!(
+            nine("勉強する", "べんきょうする", Group::Suru),
+            single([
+                ("勉強する", "べんきょうする"),
+                ("勉強しない", "べんきょうしない"),
+                ("勉強した", "べんきょうした"),
+                ("勉強しなかった", "べんきょうしなかった"),
+                ("勉強して", "べんきょうして"),
+                ("勉強します", "べんきょうします"),
+                ("勉強しません", "べんきょうしません"),
+                ("勉強しました", "べんきょうしました"),
+                ("勉強しませんでした", "べんきょうしませんでした"),
+            ])
+        );
+    }
+
+    #[test]
+    fn kuru_keeps_its_kanji_and_changes_its_reading() {
+        assert_eq!(
+            nine("来る", "くる", Group::Kuru),
+            single([
+                ("来る", "くる"),
+                ("来ない", "こない"),
+                ("来た", "きた"),
+                ("来なかった", "こなかった"),
+                ("来て", "きて"),
+                ("来ます", "きます"),
+                ("来ません", "きません"),
+                ("来ました", "きました"),
+                ("来ませんでした", "きませんでした"),
+            ])
+        );
+    }
+
+    #[test]
+    fn kuru_in_kana() {
+        assert_eq!(
+            nine("くる", "くる", Group::Kuru),
+            single([
+                ("くる", "くる"),
+                ("こない", "こない"),
+                ("きた", "きた"),
+                ("こなかった", "こなかった"),
+                ("きて", "きて"),
+                ("きます", "きます"),
+                ("きません", "きません"),
+                ("きました", "きました"),
+                ("きませんでした", "きませんでした"),
+            ])
+        );
+    }
+
+    #[test]
+    fn suru_and_kuru_have_no_polite_te_form() {
+        assert!(conjugate("する", "する", Group::Suru, Form::Te, Formality::Polite).is_empty());
+        assert!(conjugate("来る", "くる", Group::Kuru, Form::Te, Formality::Polite).is_empty());
+    }
+
+    #[test]
+    fn suru_and_kuru_need_their_ending() {
+        assert!(
+            conjugate(
+                "食べる",
+                "たべる",
+                Group::Suru,
+                Form::Negative,
+                Formality::Plain
+            )
+            .is_empty()
+        );
+        assert!(
+            conjugate(
+                "見る",
+                "みる",
+                Group::Kuru,
+                Form::Negative,
+                Formality::Plain
+            )
+            .is_empty()
+        );
     }
 }
