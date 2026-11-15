@@ -5,6 +5,7 @@
 
 use ratatui::crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers};
 
+use crate::answer_field;
 use crate::session::{Action, Screen};
 
 /// Returns the action for `event` on `screen`, or `None` when the event does
@@ -78,7 +79,7 @@ pub fn action_for(screen: Screen, event: &Event) -> Option<Action> {
             KeyCode::Esc if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
                 Some(Action::Back)
             }
-            _ => None,
+            _ => answer_field::edit_for(event).map(Action::Edit),
         },
         Screen::NoQuestionsAtLevels => match key.code {
             KeyCode::Enter if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
@@ -691,5 +692,72 @@ mod tests {
                 height: 30
             })
         );
+    }
+
+    #[test]
+    fn typing_on_the_question_screen() {
+        for (event, c) in [
+            (press(KeyCode::Char('a'), KeyModifiers::NONE), 'a'),
+            (press(KeyCode::Char('q'), KeyModifiers::NONE), 'q'),
+            (press(KeyCode::Char(' '), KeyModifiers::NONE), ' '),
+            (press(KeyCode::Char('あ'), KeyModifiers::NONE), 'あ'),
+            (press(KeyCode::Char('A'), KeyModifiers::SHIFT), 'A'),
+        ] {
+            assert_eq!(
+                on_question(event),
+                Some(Action::Edit(answer_field::Edit::Insert(c)))
+            );
+        }
+    }
+
+    #[test]
+    fn backspace_on_the_question_screen() {
+        assert_eq!(
+            on_question(press(KeyCode::Backspace, KeyModifiers::NONE)),
+            Some(Action::Edit(answer_field::Edit::DeleteBack))
+        );
+    }
+
+    #[test]
+    fn held_keys_type_on_the_question_screen() {
+        assert_eq!(
+            on_question(with_kind(KeyCode::Char('a'), KeyEventKind::Repeat)),
+            Some(Action::Edit(answer_field::Edit::Insert('a')))
+        );
+    }
+
+    #[test]
+    fn other_keys_do_nothing_on_the_question_screen() {
+        assert_eq!(on_question(press(KeyCode::Up, KeyModifiers::NONE)), None);
+        assert_eq!(on_question(press(KeyCode::Tab, KeyModifiers::NONE)), None);
+        assert_eq!(
+            on_question(press(KeyCode::Char('a'), KeyModifiers::CONTROL)),
+            None
+        );
+    }
+
+    #[test]
+    fn typing_through_the_key_table() {
+        const READING_ONLY: &[&dyn Area] = &[&crate::areas::sample::READING];
+        let mut session = Session::with_areas(80, 24, READING_ONLY);
+        let feed = |session: &mut Session, code: KeyCode| {
+            let event = press(code, KeyModifiers::NONE);
+            if let Some(action) = action_for(session.screen(), &event) {
+                session.apply(action);
+            }
+        };
+        feed(&mut session, KeyCode::Enter);
+        feed(&mut session, KeyCode::Enter);
+        feed(&mut session, KeyCode::Enter);
+        assert_eq!(session.screen(), Screen::Question);
+        for c in ['t', 'a', 'k', 'a', 'x'] {
+            feed(&mut session, KeyCode::Char(c));
+        }
+        feed(&mut session, KeyCode::Backspace);
+        feed(&mut session, KeyCode::Char('i'));
+        assert_eq!(session.drill().unwrap().field().text(), "takai");
+        feed(&mut session, KeyCode::Char('q'));
+        assert_eq!(session.drill().unwrap().field().text(), "takaiq");
+        assert!(!session.should_quit());
     }
 }

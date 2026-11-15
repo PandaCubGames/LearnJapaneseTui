@@ -118,7 +118,7 @@ Types, signatures, algorithms and wording are in `design.md` (D-numbers point th
   - New tests, `src/ui.rs` (helper `fn practising(areas, width, height) -> Session`; a local test area `LongPrompt` with one N5 Japanese question whose prompt is `"word "` repeated 20 times, trimmed): `question_screen_shows_the_prompt` (`READING_ONLY`: `"Sample"` < `How do you read 高い?` < `text::ANSWER_IN_JAPANESE` < `text::QUESTION_HINT`; no `LEVEL_PICKER_TITLE`); `meaning_question_says_answer_in_english` (`MEANING_ONLY`: contains `text::ANSWER_IN_ENGLISH`, not `ANSWER_IN_JAPANESE`); `question_hint_is_centred` (`"E"` at 26); `long_prompt_wraps` (at least two rows contain `"word"`); `question_screen_draws_at_any_size_without_panicking`; `question_screen_uses_no_colour`.
   - Verify as in 1.1. Commit, e.g. `feat(practice): pick a random question and show it`.
 
-- [ ] 3.2 Type the answer into a field on the question screen.
+- [x] 3.2 Type the answer into a field on the question screen.
   - `src/practice.rs`: `Drill` gets the field `field: AnswerField` and the methods `field()` and `edit(edit)` (in this task `edit` only calls `self.field.apply(edit)`).
   - `src/session.rs`: `Action::Edit(Edit)` with its doc comment (`use crate::answer_field::Edit;`); arm: on `Question`, `drill.edit(e)`.
   - `src/keys.rs`: the `Question` fallback becomes `_ => answer_field::edit_for(event).map(Action::Edit)`.

@@ -6,6 +6,7 @@
 
 use std::time::Duration;
 
+use crate::answer_field::Edit;
 use crate::app::TICK_INTERVAL;
 use crate::areas::{self, Area};
 use crate::practice::{Drill, Level, Levels, Rng};
@@ -52,6 +53,8 @@ pub enum Action {
     Confirm,
     /// Go on: back to the level picker.
     Continue,
+    /// Edit the answer.
+    Edit(Edit),
     /// Go back to area selection.
     Back,
 }
@@ -167,6 +170,13 @@ impl Session {
             Action::Continue => {
                 if self.screen == Screen::NoQuestionsAtLevels {
                     self.screen = Screen::LevelPicker;
+                }
+            }
+            Action::Edit(edit) => {
+                if self.screen == Screen::Question
+                    && let Some(drill) = self.drill.as_mut()
+                {
+                    drill.edit(edit);
                 }
             }
             Action::Back => {
@@ -756,5 +766,36 @@ mod tests {
     fn the_meaning_area_is_practisable() {
         let session = practising(MEANING_ONLY, 0);
         assert_eq!(prompt_of(&session), "What does 高い mean?");
+    }
+
+    fn typed_answer(session: &Session) -> String {
+        session.drill().unwrap().field().text().to_string()
+    }
+
+    #[test]
+    fn typing_edits_the_answer() {
+        let mut session = practising(READING_ONLY, 0);
+        session.apply(Action::Edit(Edit::Insert('た')));
+        session.apply(Action::Edit(Edit::Insert('か')));
+        assert_eq!(typed_answer(&session), "たか");
+    }
+
+    #[test]
+    fn edit_on_other_screens_does_nothing() {
+        let mut session = on_picker(FULL_ONE);
+        session.apply(Action::Edit(Edit::Insert('a')));
+        assert_eq!(session.screen(), Screen::LevelPicker);
+        assert!(session.drill().is_none());
+    }
+
+    #[test]
+    fn back_drops_the_unfinished_answer() {
+        let mut session = practising(READING_ONLY, 0);
+        session.apply(Action::Edit(Edit::Insert('た')));
+        session.apply(Action::Edit(Edit::Insert('か')));
+        session.apply(Action::Back);
+        session.apply(Action::Choose);
+        session.apply(Action::Confirm);
+        assert_eq!(typed_answer(&session), "");
     }
 }

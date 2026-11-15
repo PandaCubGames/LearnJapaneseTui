@@ -8,6 +8,7 @@ mod pool;
 pub(crate) mod question;
 mod rng;
 
+use crate::answer_field::{AnswerField, Edit};
 use pool::Pool;
 
 pub use level::{Level, Levels};
@@ -29,6 +30,7 @@ pub struct Drill {
     entries: Vec<Entry>,
     entry: usize,
     question: usize,
+    field: AnswerField,
 }
 
 impl Drill {
@@ -43,12 +45,23 @@ impl Drill {
             entries,
             entry,
             question,
+            field: AnswerField::default(),
         })
     }
 
     /// The question on screen.
     pub fn question(&self) -> &Question {
         &self.entries[self.entry].questions[self.question]
+    }
+
+    /// The answer being typed.
+    pub fn field(&self) -> &AnswerField {
+        &self.field
+    }
+
+    /// Edits the answer.
+    pub fn edit(&mut self, edit: Edit) {
+        self.field.apply(edit);
     }
 }
 
@@ -146,5 +159,21 @@ mod tests {
             let drill = Drill::start(entries, Levels::only(Level::N5), &mut Rng::new(seed));
             assert_eq!(drill.unwrap().question().prompt, "kept");
         }
+    }
+
+    #[test]
+    fn edit_types_into_the_field() {
+        let mut drill = Drill::start(
+            vec![entry(Levels::only(Level::N5), &["a"])],
+            Levels::only(Level::N5),
+            &mut Rng::new(0),
+        )
+        .unwrap();
+        for c in ['t', 'a', 'k', 'a', 'x'] {
+            drill.edit(Edit::Insert(c));
+        }
+        drill.edit(Edit::DeleteBack);
+        drill.edit(Edit::Insert('i'));
+        assert_eq!(drill.field().text(), "takai");
     }
 }

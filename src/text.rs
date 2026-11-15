@@ -85,6 +85,9 @@ pub const ANSWER_IN_ENGLISH: &str = "Answer in English";
 /// Question screen: the keys.
 pub const QUESTION_HINT: &str = "Enter to answer, Esc to stop";
 
+/// Question screen: in front of the answer field.
+pub const ANSWER_LABEL: &str = "Answer: ";
+
 /// Level picker: the name of a level.
 pub fn level_name(level: Level) -> &'static str {
     match level {
@@ -269,5 +272,11 @@ mod tests {
             assert_eq!(text, expected);
             assert!(text.is_ascii());
         }
+    }
+
+    #[test]
+    fn answer_label_is_plain_ascii_text() {
+        assert_eq!(ANSWER_LABEL, "Answer: ");
+        assert!(ANSWER_LABEL.is_ascii());
     }
 }

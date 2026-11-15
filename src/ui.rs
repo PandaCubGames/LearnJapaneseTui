@@ -137,6 +137,12 @@ fn draw_no_questions_at_levels(frame: &mut Frame, session: &Session) {
 /// Rows the prompt of a question may use.
 const PROMPT_ROWS: u16 = 3;
 
+/// Columns of the answer field.
+const FIELD_WIDTH: u16 = 30;
+
+/// Columns of the label in front of the answer field.
+const ANSWER_LABEL_WIDTH: u16 = 8;
+
 fn draw_question(frame: &mut Frame, session: &Session) {
     let Some(drill) = session.drill() else {
         return;
@@ -152,7 +158,7 @@ fn draw_question(frame: &mut Frame, session: &Session) {
         _,
         prompt_row,
         _,
-        _,
+        field_row,
         how_to_answer_row,
         _,
         _,
@@ -182,6 +188,16 @@ fn draw_question(frame: &mut Frame, session: &Session) {
             .wrap(Wrap { trim: true }),
         prompt_row,
     );
+    let [label_area, field_area] = Layout::horizontal([
+        Constraint::Length(ANSWER_LABEL_WIDTH),
+        Constraint::Length(FIELD_WIDTH),
+    ])
+    .flex(Flex::Center)
+    .areas(field_row);
+    frame.render_widget(Paragraph::new(text::ANSWER_LABEL), label_area);
+    if let Some(position) = drill.field().render(field_area, frame.buffer_mut()) {
+        frame.set_cursor_position(position);
+    }
     centred(frame, how_to_answer_row, Line::from(how_to_answer));
     centred(frame, hint_row, Line::from(text::QUESTION_HINT));
 }
@@ -205,6 +221,7 @@ mod tests {
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
     use ratatui::buffer::Buffer;
+    use ratatui::layout::Position;
     use ratatui::style::Color;
 
     use super::*;
@@ -857,6 +874,74 @@ mod tests {
     #[test]
     fn question_screen_uses_no_colour() {
         let buffer = buffer(&practising(READING_ONLY, 80, 24));
+        assert!(
+            buffer
+                .content()
+                .iter()
+                .all(|cell| cell.fg == Color::Reset && cell.bg == Color::Reset)
+        );
+    }
+
+    fn cursor(session: &Session) -> Position {
+        let (width, height) = session.size();
+        let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
+        terminal.draw(|frame| draw(frame, session)).unwrap();
+        terminal.get_cursor_position().unwrap()
+    }
+
+    fn type_text(session: &mut Session, text: &str) {
+        for c in text.chars() {
+            session.apply(Action::Edit(crate::answer_field::Edit::Insert(c)));
+        }
+    }
+
+    #[test]
+    fn answer_label_width_matches_the_text() {
+        assert_eq!(
+            Span::raw(text::ANSWER_LABEL).width(),
+            usize::from(ANSWER_LABEL_WIDTH)
+        );
+    }
+
+    #[test]
+    fn answer_label_and_field_are_centred() {
+        let session = practising(READING_ONLY, 80, 24);
+        let rows = render(&session);
+        let y = row_index(&rows, text::ANSWER_LABEL);
+        assert_eq!(rows[y][21], "A");
+        assert_eq!(
+            cursor(&session),
+            Position::new(29, u16::try_from(y).unwrap())
+        );
+    }
+
+    #[test]
+    fn cursor_follows_the_typed_text() {
+        let mut session = practising(READING_ONLY, 80, 24);
+        type_text(&mut session, "たか");
+        let rows = render(&session);
+        let y = row_index(&rows, text::ANSWER_LABEL);
+        assert_eq!(rows[y][29], "た");
+        assert_eq!(rows[y][31], "か");
+        assert_eq!(cursor(&session).x, 33);
+    }
+
+    #[test]
+    fn field_stays_centred_after_a_resize() {
+        let mut session = practising(READING_ONLY, 80, 24);
+        session.apply(Action::Resized {
+            width: 100,
+            height: 30,
+        });
+        let rows = render(&session);
+        assert_eq!(rows[row_index(&rows, text::ANSWER_LABEL)][31], "A");
+    }
+
+    #[test]
+    fn question_screen_with_text_uses_no_colour() {
+        let mut session = practising(READING_ONLY, 80, 24);
+        type_text(&mut session, "たかい");
+        let buffer = buffer(&session);
         assert!(
             buffer
                 .content()
