@@ -192,7 +192,7 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
     - `typing_through_the_key_mapping`: feed `t`, `a`, `k`, `a`, `x`, `Backspace`, `i` through `edit_for` and `apply` each `Some` result → `takai`.
   - Verify: the 12 new tests pass, all earlier tests pass, fmt and clippy are clean. Commit, e.g. `feat(input): add the answer field and its keys`.
 
-- [ ] 4.2 Add `AnswerField::render` (D2, D8 *Drawing*) and document the field.
+- [x] 4.2 Add `AnswerField::render` (D2, D8 *Drawing*) and document the field.
   - `src/answer_field.rs`: `pub fn render(&self, area: Rect, buf: &mut Buffer) -> Option<Position>` following the six drawing steps of D8. Imports: `ratatui::buffer::Buffer`, `ratatui::layout::{Position, Rect}`. No `as` casts; no `unwrap` outside tests.
   - New tests in `src/answer_field.rs` `mod tests` (helper `fn draw(field: &AnswerField, area: Rect) -> (Buffer, Option<Position>)` that makes `Buffer::empty(Rect::new(0, 0, 20, 5))` and calls `render`; read cells with `buffer[(x, y)].symbol()`):
     - `kana_take_two_columns`: `field("たかい")` in `Rect::new(0, 0, 10, 1)`: cells 0, 2, 4 of row 0 are `た`, `か`, `い`; cursor `Some(Position::new(6, 0))`.

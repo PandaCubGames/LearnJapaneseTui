@@ -6,8 +6,9 @@ Copyright (C) 2026 PandaCubGames
 # Architecture (draft)
 
 > **Status: mostly planned.** Only the core loop and the Welcome screen exist in code
-> (`app`, `keys`, `session` and `ui`). Area selection is a placeholder. Everything else
-> here is still planned.
+> (`app`, `keys`, `session` and `ui`). Answer input and checking (`answer_field`,
+> `grading`, `kana`, `romaji`) exist, but no screen uses them yet. Area selection is a
+> placeholder. Everything else here is still planned.
 > These diagrams describe the intended design and will change as it gets built.
 
 The diagrams use [Mermaid](https://mermaid.js.org/), which GitHub renders directly.
@@ -359,6 +360,7 @@ flowchart LR
         grading[grading<br/>normalise and compare]
         romaji[romaji<br/>romaji → kana]
         kana[kana<br/>katakana → hiragana]
+        field[answer_field<br/>typed answer,<br/>display width]
     end
 
     contract{{Area contract<br/>levels in → questions out}}
@@ -380,6 +382,8 @@ flowchart LR
     session -->|question + answer| grading
     grading --> romaji
     grading --> kana
+    keys --> field
+    ui --> field
     vocab & kanji & grammar -.->|implements| contract
     grammar --> conj
     vocab & kanji & grammar --> content
@@ -398,6 +402,9 @@ flowchart LR
   [Checking answers](#checking-answers).
 - **`romaji`** and **`kana`** have no state and no terminal access, like `conjugation`, so
   their rules are tested directly.
+- **`answer_field`** keeps the answer exactly as typed, romaji or IME text, and converts
+  nothing while typing. `keys` asks it which keys edit it and `ui` asks it to draw itself,
+  by display width.
 - **`conjugation`** has no state and no terminal access, so its rules are tested directly.
 - **Content** is embedded in the binary, so the release stays a single file. Sources and
   licenses go in `ATTRIBUTION.md`.
