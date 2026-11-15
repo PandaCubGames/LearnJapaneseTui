@@ -14,6 +14,8 @@
 use std::fmt::Display;
 use std::time::Duration;
 
+use crate::practice::Level;
+
 /// The program's name, as shown in messages.
 pub const APP_NAME: &str = env!("CARGO_PKG_NAME");
 
@@ -49,6 +51,87 @@ pub const NO_QUESTIONS: &str = "No questions in this area yet";
 
 /// How to leave the "no questions" screen.
 pub const NO_QUESTIONS_HINT: &str = "Press Enter to go back";
+
+/// Level picker: the heading above the levels.
+pub const LEVEL_PICKER_TITLE: &str = "Which JLPT levels do you want to practise?";
+
+/// Level picker: the keys.
+pub const LEVEL_PICKER_HINT: &str =
+    "Up/Down to move, Space to tick, Enter to start, Esc to go back";
+
+/// Level picker: in front of a ticked level.
+pub const LEVEL_TICKED: &str = "[x] ";
+
+/// Level picker: in front of an unticked level, as wide as `LEVEL_TICKED`.
+pub const LEVEL_UNTICKED: &str = "[ ] ";
+
+/// Level picker: shown while no level is ticked.
+pub const NO_LEVEL_TICKED: &str = "Tick at least one level";
+
+/// "No questions at these levels" screen: the message.
+pub const NO_QUESTIONS_AT_LEVELS: &str = "No questions at these levels yet";
+
+/// "No questions at these levels" screen: how to go on.
+pub const NO_QUESTIONS_AT_LEVELS_HINT: &str = "Press Enter to choose other levels";
+
+/// Question screen: how to answer a Japanese question.
+pub const ANSWER_IN_JAPANESE: &str = "Answer in Japanese or romaji";
+
+/// Question screen: how to answer a meaning question.
+pub const ANSWER_IN_ENGLISH: &str = "Answer in English";
+
+/// Question screen: the keys.
+pub const QUESTION_HINT: &str = "Enter to answer, Esc to stop";
+
+/// Question screen: in front of the answer field.
+pub const ANSWER_LABEL: &str = "Answer: ";
+
+/// Question screen: shown when the answer cannot be read as Japanese.
+pub const TYPO_WARNING: &str =
+    "This does not read as Japanese. Press Enter again to submit it anyway.";
+
+/// Feedback screen: the answer was right.
+pub const CORRECT: &str = "Correct!";
+
+/// Feedback screen: the answer was wrong.
+pub const WRONG: &str = "Not quite.";
+
+/// Feedback screen: the keys.
+pub const FEEDBACK_HINT: &str = "Press Enter for the next question, Esc to stop";
+
+/// Feedback screen: the answer as typed.
+pub fn your_answer(answer: &str) -> String {
+    format!("Your answer: {answer}")
+}
+
+/// Feedback screen: how the answer was read as Japanese.
+pub fn read_as(reading: &str) -> String {
+    format!("Read as: {reading}")
+}
+
+/// Feedback screen: the accepted answers.
+pub fn expected(accepted: &[String]) -> String {
+    match accepted {
+        [one] => format!("Correct answer: {one}"),
+        _ => format!("Correct answers: {}", accepted.join(", ")),
+    }
+}
+
+/// Question and feedback screens: how many answers were right.
+pub fn score(correct: u32, answered: u32) -> String {
+    format!("Score: {correct} of {answered}")
+}
+
+/// Level picker: the name of a level.
+pub fn level_name(level: Level) -> &'static str {
+    match level {
+        Level::N5 => "N5",
+        Level::N4 => "N4",
+        Level::N3 => "N3",
+        Level::N2 => "N2",
+        Level::N1 => "N1",
+    }
+}
 
 /// Welcome screen: shown in place of the last key before any key is typed.
 pub const NO_KEY: &str = "-";
@@ -155,6 +238,117 @@ mod tests {
         assert_eq!(AREA_MARKER.len(), AREA_NO_MARKER.len());
         assert!(AREA_MARKER.is_ascii());
         assert!(AREA_NO_MARKER.is_ascii());
+    }
+
+    #[test]
+    fn level_picker_wording_is_plain_ascii_text() {
+        for (text, expected) in [
+            (
+                LEVEL_PICKER_TITLE,
+                "Which JLPT levels do you want to practise?",
+            ),
+            (
+                LEVEL_PICKER_HINT,
+                "Up/Down to move, Space to tick, Enter to start, Esc to go back",
+            ),
+            (LEVEL_TICKED, "[x] "),
+            (LEVEL_UNTICKED, "[ ] "),
+        ] {
+            assert_eq!(text, expected);
+            assert!(text.is_ascii());
+        }
+    }
+
+    #[test]
+    fn level_names() {
+        let names: Vec<_> = Level::ALL.iter().map(|&level| level_name(level)).collect();
+        assert_eq!(names, ["N5", "N4", "N3", "N2", "N1"]);
+    }
+
+    #[test]
+    fn tick_boxes_are_the_same_width() {
+        assert_eq!(LEVEL_TICKED.len(), 4);
+        assert_eq!(LEVEL_UNTICKED.len(), 4);
+        assert!(LEVEL_TICKED.starts_with('['));
+        assert!(LEVEL_UNTICKED.starts_with('['));
+    }
+
+    #[test]
+    fn no_level_ticked_is_plain_ascii_text() {
+        assert_eq!(NO_LEVEL_TICKED, "Tick at least one level");
+        assert!(NO_LEVEL_TICKED.is_ascii());
+    }
+
+    #[test]
+    fn no_questions_at_levels_wording_is_plain_ascii_text() {
+        for (text, expected) in [
+            (NO_QUESTIONS_AT_LEVELS, "No questions at these levels yet"),
+            (
+                NO_QUESTIONS_AT_LEVELS_HINT,
+                "Press Enter to choose other levels",
+            ),
+        ] {
+            assert_eq!(text, expected);
+            assert!(text.is_ascii());
+        }
+    }
+
+    #[test]
+    fn question_wording_is_plain_ascii_text() {
+        for (text, expected) in [
+            (ANSWER_IN_JAPANESE, "Answer in Japanese or romaji"),
+            (ANSWER_IN_ENGLISH, "Answer in English"),
+            (QUESTION_HINT, "Enter to answer, Esc to stop"),
+        ] {
+            assert_eq!(text, expected);
+            assert!(text.is_ascii());
+        }
+    }
+
+    #[test]
+    fn answer_label_is_plain_ascii_text() {
+        assert_eq!(ANSWER_LABEL, "Answer: ");
+        assert!(ANSWER_LABEL.is_ascii());
+    }
+
+    #[test]
+    fn practice_wording_is_plain_ascii_text() {
+        for (text, expected) in [
+            (
+                TYPO_WARNING,
+                "This does not read as Japanese. Press Enter again to submit it anyway.",
+            ),
+            (CORRECT, "Correct!"),
+            (WRONG, "Not quite."),
+            (
+                FEEDBACK_HINT,
+                "Press Enter for the next question, Esc to stop",
+            ),
+        ] {
+            assert_eq!(text, expected);
+            assert!(text.is_ascii());
+        }
+    }
+
+    #[test]
+    fn your_answer_and_read_as() {
+        assert_eq!(your_answer("takai"), "Your answer: takai");
+        assert_eq!(read_as("たかい"), "Read as: たかい");
+    }
+
+    #[test]
+    fn expected_answers() {
+        assert_eq!(expected(&["たかい".to_string()]), "Correct answer: たかい");
+        assert_eq!(
+            expected(&["食べました".to_string(), "たべました".to_string()]),
+            "Correct answers: 食べました, たべました"
+        );
+    }
+
+    #[test]
+    fn score_text() {
+        assert_eq!(score(0, 0), "Score: 0 of 0");
+        assert_eq!(score(2, 3), "Score: 2 of 3");
     }
 
     #[test]

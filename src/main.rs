@@ -3,9 +3,14 @@
 
 use std::process::ExitCode;
 
+mod answer_field;
 mod app;
 mod areas;
+mod grading;
+mod kana;
 mod keys;
+mod practice;
+mod romaji;
 mod session;
 mod text;
 mod ui;

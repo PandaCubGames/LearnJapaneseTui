@@ -6,7 +6,8 @@ Copyright (C) 2026 PandaCubGames
 # Architecture (draft)
 
 > **Status: mostly planned.** Only the core loop, the Welcome screen and area selection exist in code
-> (`app`, `areas`, `keys`, `session` and `ui`). No area is registered yet, so area selection says "Nothing to practise yet". Esc on area selection quits directly until the Thank you screen exists. Everything else
+> (`app`, `areas`, `keys`, `session` and `ui`). Area selection lists the registered areas; none is registered yet, so it says "Nothing to practise yet". Esc on area selection quits directly until the Thank you screen exists. Answer input and checking (`answer_field`,
+> `grading`, `kana`, `romaji`) exist. The generic practice module exists (`practice`): level picker, question and feedback screens; only a test area has questions so far. Everything else
 > here is still planned.
 > These diagrams describe the intended design and will change as it gets built.
 
@@ -74,6 +75,7 @@ fixed header or footer, and no separate logout.
 - **The level picker is part of the first version.** It comes after the area and before
   the question count, and lets you choose one or more levels.
 - An entry is practised when it has **any** of the chosen levels.
+- **Picker:** N5 to N1, each with a tick box. Up and Down move, Space ticks or unticks, Enter starts, Esc goes back to area selection. Only N5 is ticked when the app starts, and the ticks are kept while the app runs. With nothing ticked, the picker says so and Enter does nothing.
 
 ### Question count
 - Chosen before practice starts. The default is `10`, and `0` means **unlimited**.
@@ -89,7 +91,7 @@ fixed header or footer, and no separate logout.
 - **Both are mixed.** An entry's custom questions join its template questions in one pool.
   A custom question never switches the templates off.
 - **Picking the next question:** pick an entry at random, then one of its questions at
-  random. An entry is not repeated until every entry in the selection has been seen.
+  random. An entry is not repeated until every entry in the selection has been seen. A new round never starts with the entry just asked. The random order comes from a small built-in generator seeded from the clock, so tests can fix it.
 
 ### Answering and feedback
 - **Input rules belong to the kind of exercise**, not to each exercise and not to one
@@ -100,15 +102,29 @@ fixed header or footer, and no separate logout.
     answer is typed.
 - Enter submits the answer. **Feedback is a waiting step:** it stays until the next Enter,
   including after the last question, before the results appear.
+- **Feedback** shows the answer, its reading when it differs, whether it was right, and every accepted answer when it was wrong.
 - Each submitted answer is **counted once**, correct or not. Continuing from feedback
-  doesn't count it again.
+  doesn't count it again. Until the results screen exists, the score is shown on the question and feedback screens and practice goes on until Esc.
 
 ### Checking answers
 - **Japanese answers don't depend on the script.** Romaji and katakana are both turned
   into hiragana before comparing, and the written form with kanji is accepted as it is.
   For `高い`, all of `takai`, `タカイ`, `たかい` and `高い` are correct.
-- **An answer that repeats what the question already shows is never accepted.**
-  "How do you read 食?" does not accept `食`.
+- **Kanji the question shows can't be copied back as the answer.** An answer that is
+  exactly a text the question shows is wrong when that text contains a kanji, so it can't
+  just be copied and pasted: "How do you read 食?" does not accept `食`, and a question
+  that shows `食べる` does not accept `食べる`, but `たべる` and `taberu` are correct. Text
+  the question shows in kana only never makes an answer wrong.
+- **Romaji is exact.** It is read letter for letter, the way it is typed into a Japanese
+  IME: long vowels are typed out (`とうきょう` is `toukyou`; `tokyo` and `tōkyō` are
+  wrong), `n'` gives ん before a vowel, and a doubled consonant gives っ. `nn` before a
+  vowel is accepted both ways, as an IME reads it and as textbooks write it:
+  `konnichiha` and `konnnichiha` both give こんにちは, and wrong answers are shown with
+  the textbook reading.
+- **One script per answer.** An answer is all romaji or all Japanese. `食beru` is wrong.
+- **Typos.** Text that cannot be read as Japanese at all (`tabxru`) gets a warning and is
+  not counted. Submitting the same text again counts it as wrong. A readable but wrong
+  word, such as `tokyo`, is simply wrong.
 - **English answers** ignore capital letters, extra spaces and a leading "to", "a", "an"
   or "the". "Eat" and "to eat" both match "to eat".
 - **When several entries fit an English prompt**, any entry of that area whose meaning
@@ -118,7 +134,7 @@ fixed header or footer, and no separate logout.
 ### Keys
 - Keys depend on the current screen:
   - Area selection: arrows and Enter.
-  - Level picker: arrows to move, a key to tick or untick a level, Enter to confirm.
+  - Level picker: arrows to move, Space to tick or untick a level, Enter to confirm.
   - Question: input suited to the exercise kind.
   - Feedback: waits for Enter.
 - **Esc:**
@@ -345,6 +361,8 @@ flowchart LR
         ui[ui<br/>draws the current screen,<br/>display width]
         grading[grading<br/>normalise and compare]
         romaji[romaji<br/>romaji → kana]
+        kana[kana<br/>katakana → hiragana]
+        field[answer_field<br/>typed answer,<br/>display width]
     end
 
     contract{{Area contract<br/>levels in → questions out}}
@@ -365,6 +383,9 @@ flowchart LR
     session -->|asks for questions| contract
     session -->|question + answer| grading
     grading --> romaji
+    grading --> kana
+    keys --> field
+    ui --> field
     vocab & kanji & grammar -.->|implements| contract
     grammar --> conj
     vocab & kanji & grammar --> content
@@ -373,7 +394,7 @@ flowchart LR
 - **Area contract.** The core never sees a Vocabulary, Kanji or Grammar entry. It asks an
   area for questions at the chosen levels, and each question carries only a prompt, its
   accepted answers and its exercise kind. Adding a new area means implementing the
-  contract and adding its content. No existing area changes. Its first part exists: `src/areas.rs` lists the registered areas, each with a name and whether it has any questions. None is registered yet; each area adds its own file under `src/areas/` and one entry in that list.
+  contract and adding its content. No existing area changes. It exists as `Area::questions(levels)` in `src/areas.rs`: the area's entries that have any of the chosen levels, each with its levels and its questions (prompt, accepted answers, the Japanese text the prompt shows, and the kind, Japanese or meaning). Whether an area has questions is worked out from it. `src/areas.rs` lists the registered areas, each with a name; none is registered yet, and each area adds its own file under `src/areas/` and one entry in that list.
 - **`keys`** turns a terminal key into an action for the current screen. **`app`** hands
   that action to **`session`**, which holds the whole screen flow as one step: the current
   state and an action give the next state. Neither draws anything, so the flow can be unit
@@ -381,6 +402,11 @@ flowchart LR
 - **`ui`** only draws the state it is given.
 - **`grading`** is shared by all areas. It applies the rules in
   [Checking answers](#checking-answers).
+- **`romaji`** and **`kana`** have no state and no terminal access, like `conjugation`, so
+  their rules are tested directly.
+- **`answer_field`** keeps the answer exactly as typed, romaji or IME text, and converts
+  nothing while typing. `keys` asks it which keys edit it and `ui` asks it to draw itself,
+  by display width.
 - **`conjugation`** has no state and no terminal access, so its rules are tested directly.
 - **Content** is embedded in the binary, so the release stays a single file. Sources and
   licenses go in `ATTRIBUTION.md`.
@@ -392,7 +418,6 @@ flowchart LR
   "食べてもいい" comes from.
 - **Conjugation details:** the exact rules for irregular verbs and for adjectives.
 - **Multiple choice:** when it arrives and which questions use it.
-- **The level picker's default selection.**
 - **The content file format**, and the step that adds an entry and assigns its id.
 - **Example sentences and example words:** whether they stay display-only or become
   exercise material.

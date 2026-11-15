@@ -4,7 +4,7 @@
 //! The event loop and the terminal lifecycle.
 
 use std::io;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use ratatui::DefaultTerminal;
 use ratatui::crossterm::{cursor, event, execute};
@@ -47,7 +47,7 @@ fn show_cursor_on_panic() {
 
 fn run_loop(terminal: &mut DefaultTerminal) -> io::Result<()> {
     let size = terminal.size()?;
-    let mut session = Session::new(size.width, size.height);
+    let mut session = Session::new(size.width, size.height).with_seed(seed_from(SystemTime::now()));
     let mut ticker = Ticker::new(TICK_INTERVAL, Instant::now());
     while !session.should_quit() {
         terminal.draw(|frame| ui::draw(frame, &session))?;
@@ -61,6 +61,12 @@ fn run_loop(terminal: &mut DefaultTerminal) -> io::Result<()> {
         }
     }
     Ok(())
+}
+
+/// A seed for the order of questions, taken from the clock so each run differs.
+pub fn seed_from(now: SystemTime) -> u64 {
+    let since = now.duration_since(UNIX_EPOCH).unwrap_or_default();
+    since.as_secs().rotate_left(32) ^ u64::from(since.subsec_nanos())
 }
 
 /// Decides when the next tick is due.
@@ -145,5 +151,27 @@ mod tests {
         assert!(ticker.due(start + ms(1000)));
         assert!(!ticker.due(start + ms(1000)));
         assert_eq!(ticker.timeout(start + ms(1000)), ms(100));
+    }
+
+    #[test]
+    fn seed_from_the_epoch_is_zero() {
+        assert_eq!(seed_from(UNIX_EPOCH), 0);
+    }
+
+    #[test]
+    fn seed_mixes_seconds_and_nanoseconds() {
+        assert_eq!(seed_from(UNIX_EPOCH + Duration::new(1, 5)), (1 << 32) ^ 5);
+    }
+
+    #[test]
+    fn seed_before_the_epoch_is_zero() {
+        assert_eq!(seed_from(UNIX_EPOCH - Duration::from_secs(5)), 0);
+    }
+
+    #[test]
+    fn different_times_give_different_seeds() {
+        let a = seed_from(UNIX_EPOCH + Duration::new(100, 0));
+        let b = seed_from(UNIX_EPOCH + Duration::new(100, 1));
+        assert_ne!(a, b);
     }
 }

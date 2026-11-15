@@ -5,6 +5,7 @@
 
 use ratatui::crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers};
 
+use crate::answer_field;
 use crate::session::{Action, Screen};
 
 /// Returns the action for `event` on `screen`, or `None` when the event does
@@ -60,6 +61,47 @@ pub fn action_for(screen: Screen, event: &Event) -> Option<Action> {
             }
             _ => None,
         },
+        Screen::LevelPicker => match key.code {
+            KeyCode::Up if key.modifiers.is_empty() => Some(Action::Previous),
+            KeyCode::Down if key.modifiers.is_empty() => Some(Action::Next),
+            KeyCode::Char(' ') if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Toggle)
+            }
+            KeyCode::Enter if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Confirm)
+            }
+            KeyCode::Esc if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Back)
+            }
+            _ => None,
+        },
+        Screen::Question => match key.code {
+            KeyCode::Enter if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Submit)
+            }
+            KeyCode::Esc if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Back)
+            }
+            _ => answer_field::edit_for(event).map(Action::Edit),
+        },
+        Screen::Feedback => match key.code {
+            KeyCode::Enter if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Continue)
+            }
+            KeyCode::Esc if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Back)
+            }
+            _ => None,
+        },
+        Screen::NoQuestionsAtLevels => match key.code {
+            KeyCode::Enter if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Continue)
+            }
+            KeyCode::Esc if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Back)
+            }
+            _ => None,
+        },
     }
 }
 
@@ -90,6 +132,24 @@ mod tests {
     fn on_no_questions(event: Event) -> Option<Action> {
         action_for(Screen::NoQuestions, &event)
     }
+
+    fn on_level_picker(event: Event) -> Option<Action> {
+        action_for(Screen::LevelPicker, &event)
+    }
+
+    fn on_no_questions_at_levels(event: Event) -> Option<Action> {
+        action_for(Screen::NoQuestionsAtLevels, &event)
+    }
+
+    fn on_question(event: Event) -> Option<Action> {
+        action_for(Screen::Question, &event)
+    }
+
+    fn on_feedback(event: Event) -> Option<Action> {
+        action_for(Screen::Feedback, &event)
+    }
+
+    const SAMPLE: &[&dyn Area] = &[&crate::areas::sample::Sample];
 
     const EMPTY_ONE: &[&dyn Area] = &[&FakeArea {
         name: "Empty",
@@ -450,6 +510,365 @@ mod tests {
         assert!(!session.should_quit());
         feed(&mut session, press(KeyCode::Esc, KeyModifiers::NONE));
         assert!(session.should_quit());
+    }
+
+    #[test]
+    fn arrows_move_on_the_level_picker() {
+        assert_eq!(
+            on_level_picker(press(KeyCode::Up, KeyModifiers::NONE)),
+            Some(Action::Previous)
+        );
+        assert_eq!(
+            on_level_picker(press(KeyCode::Down, KeyModifiers::NONE)),
+            Some(Action::Next)
+        );
+        assert_eq!(
+            on_level_picker(with_kind(KeyCode::Down, KeyEventKind::Repeat)),
+            Some(Action::Next)
+        );
+    }
+
+    #[test]
+    fn esc_goes_back_on_the_level_picker() {
+        assert_eq!(
+            on_level_picker(press(KeyCode::Esc, KeyModifiers::NONE)),
+            Some(Action::Back)
+        );
+        assert_eq!(
+            on_level_picker(press(KeyCode::Esc, KeyModifiers::ALT)),
+            None
+        );
+        assert_eq!(
+            on_level_picker(with_kind(KeyCode::Esc, KeyEventKind::Repeat)),
+            None
+        );
+    }
+
+    #[test]
+    fn ctrl_c_quits_on_the_level_picker() {
+        assert_eq!(
+            on_level_picker(press(KeyCode::Char('c'), KeyModifiers::CONTROL)),
+            Some(Action::Quit)
+        );
+    }
+
+    #[test]
+    fn resize_is_followed_on_the_level_picker() {
+        assert_eq!(
+            on_level_picker(Event::Resize(100, 30)),
+            Some(Action::Resized {
+                width: 100,
+                height: 30
+            })
+        );
+    }
+
+    #[test]
+    fn unbound_keys_do_nothing_on_the_level_picker() {
+        for code in [
+            KeyCode::Char('q'),
+            KeyCode::Char('a'),
+            KeyCode::Char('x'),
+            KeyCode::Left,
+            KeyCode::Right,
+            KeyCode::Tab,
+        ] {
+            assert_eq!(on_level_picker(press(code, KeyModifiers::NONE)), None);
+        }
+        assert_eq!(
+            on_level_picker(press(KeyCode::Down, KeyModifiers::SHIFT)),
+            None
+        );
+    }
+
+    #[test]
+    fn space_ticks_on_the_level_picker() {
+        assert_eq!(
+            on_level_picker(press(KeyCode::Char(' '), KeyModifiers::NONE)),
+            Some(Action::Toggle)
+        );
+        assert_eq!(
+            on_level_picker(with_kind(KeyCode::Char(' '), KeyEventKind::Repeat)),
+            None
+        );
+        assert_eq!(
+            on_level_picker(press(KeyCode::Char(' '), KeyModifiers::CONTROL)),
+            None
+        );
+    }
+
+    #[test]
+    fn enter_starts_on_the_level_picker() {
+        assert_eq!(
+            on_level_picker(press(KeyCode::Enter, KeyModifiers::NONE)),
+            Some(Action::Confirm)
+        );
+        assert_eq!(
+            on_level_picker(press(KeyCode::Enter, KeyModifiers::CONTROL)),
+            None
+        );
+        assert_eq!(
+            on_level_picker(with_kind(KeyCode::Enter, KeyEventKind::Repeat)),
+            None
+        );
+    }
+
+    #[test]
+    fn enter_and_esc_on_no_questions_at_levels() {
+        assert_eq!(
+            on_no_questions_at_levels(press(KeyCode::Enter, KeyModifiers::NONE)),
+            Some(Action::Continue)
+        );
+        assert_eq!(
+            on_no_questions_at_levels(press(KeyCode::Esc, KeyModifiers::NONE)),
+            Some(Action::Back)
+        );
+    }
+
+    #[test]
+    fn other_keys_do_nothing_on_no_questions_at_levels() {
+        for code in [
+            KeyCode::Char('q'),
+            KeyCode::Char('a'),
+            KeyCode::Char(' '),
+            KeyCode::Up,
+            KeyCode::Down,
+        ] {
+            assert_eq!(
+                on_no_questions_at_levels(press(code, KeyModifiers::NONE)),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn ctrl_c_quits_on_no_questions_at_levels() {
+        assert_eq!(
+            on_no_questions_at_levels(press(KeyCode::Char('c'), KeyModifiers::CONTROL)),
+            Some(Action::Quit)
+        );
+    }
+
+    #[test]
+    fn no_questions_at_levels_through_the_key_table() {
+        use crate::practice::{Level, Levels};
+
+        let mut session = Session::with_areas(80, 24, SAMPLE);
+        let feed = |session: &mut Session, code: KeyCode| {
+            let event = press(code, KeyModifiers::NONE);
+            if let Some(action) = action_for(session.screen(), &event) {
+                session.apply(action);
+            }
+        };
+        feed(&mut session, KeyCode::Enter);
+        feed(&mut session, KeyCode::Enter);
+        assert_eq!(session.screen(), Screen::LevelPicker);
+        feed(&mut session, KeyCode::Char(' '));
+        for _ in 0..4 {
+            feed(&mut session, KeyCode::Down);
+        }
+        feed(&mut session, KeyCode::Char(' '));
+        feed(&mut session, KeyCode::Enter);
+        assert_eq!(session.screen(), Screen::NoQuestionsAtLevels);
+        feed(&mut session, KeyCode::Enter);
+        assert_eq!(session.screen(), Screen::LevelPicker);
+        assert_eq!(session.levels(), Levels::only(Level::N1));
+        feed(&mut session, KeyCode::Esc);
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        assert!(!session.should_quit());
+    }
+
+    #[test]
+    fn esc_stops_on_the_question_screen() {
+        assert_eq!(
+            on_question(press(KeyCode::Esc, KeyModifiers::NONE)),
+            Some(Action::Back)
+        );
+        assert_eq!(on_question(press(KeyCode::Esc, KeyModifiers::ALT)), None);
+        assert_eq!(
+            on_question(with_kind(KeyCode::Esc, KeyEventKind::Repeat)),
+            None
+        );
+    }
+
+    #[test]
+    fn ctrl_c_quits_on_the_question_screen() {
+        assert_eq!(
+            on_question(press(KeyCode::Char('c'), KeyModifiers::CONTROL)),
+            Some(Action::Quit)
+        );
+    }
+
+    #[test]
+    fn resize_is_followed_on_the_question_screen() {
+        assert_eq!(
+            on_question(Event::Resize(100, 30)),
+            Some(Action::Resized {
+                width: 100,
+                height: 30
+            })
+        );
+    }
+
+    #[test]
+    fn typing_on_the_question_screen() {
+        for (event, c) in [
+            (press(KeyCode::Char('a'), KeyModifiers::NONE), 'a'),
+            (press(KeyCode::Char('q'), KeyModifiers::NONE), 'q'),
+            (press(KeyCode::Char(' '), KeyModifiers::NONE), ' '),
+            (press(KeyCode::Char('あ'), KeyModifiers::NONE), 'あ'),
+            (press(KeyCode::Char('A'), KeyModifiers::SHIFT), 'A'),
+        ] {
+            assert_eq!(
+                on_question(event),
+                Some(Action::Edit(answer_field::Edit::Insert(c)))
+            );
+        }
+    }
+
+    #[test]
+    fn backspace_on_the_question_screen() {
+        assert_eq!(
+            on_question(press(KeyCode::Backspace, KeyModifiers::NONE)),
+            Some(Action::Edit(answer_field::Edit::DeleteBack))
+        );
+    }
+
+    #[test]
+    fn held_keys_type_on_the_question_screen() {
+        assert_eq!(
+            on_question(with_kind(KeyCode::Char('a'), KeyEventKind::Repeat)),
+            Some(Action::Edit(answer_field::Edit::Insert('a')))
+        );
+    }
+
+    #[test]
+    fn other_keys_do_nothing_on_the_question_screen() {
+        assert_eq!(on_question(press(KeyCode::Up, KeyModifiers::NONE)), None);
+        assert_eq!(on_question(press(KeyCode::Tab, KeyModifiers::NONE)), None);
+        assert_eq!(
+            on_question(press(KeyCode::Char('a'), KeyModifiers::CONTROL)),
+            None
+        );
+    }
+
+    #[test]
+    fn typing_through_the_key_table() {
+        const READING_ONLY: &[&dyn Area] = &[&crate::areas::sample::READING];
+        let mut session = Session::with_areas(80, 24, READING_ONLY);
+        let feed = |session: &mut Session, code: KeyCode| {
+            let event = press(code, KeyModifiers::NONE);
+            if let Some(action) = action_for(session.screen(), &event) {
+                session.apply(action);
+            }
+        };
+        feed(&mut session, KeyCode::Enter);
+        feed(&mut session, KeyCode::Enter);
+        feed(&mut session, KeyCode::Enter);
+        assert_eq!(session.screen(), Screen::Question);
+        for c in ['t', 'a', 'k', 'a', 'x'] {
+            feed(&mut session, KeyCode::Char(c));
+        }
+        feed(&mut session, KeyCode::Backspace);
+        feed(&mut session, KeyCode::Char('i'));
+        assert_eq!(session.drill().unwrap().field().text(), "takai");
+        feed(&mut session, KeyCode::Char('q'));
+        assert_eq!(session.drill().unwrap().field().text(), "takaiq");
+        assert!(!session.should_quit());
+    }
+
+    #[test]
+    fn enter_submits_on_the_question_screen() {
+        assert_eq!(
+            on_question(press(KeyCode::Enter, KeyModifiers::NONE)),
+            Some(Action::Submit)
+        );
+        assert_eq!(
+            on_question(press(KeyCode::Enter, KeyModifiers::CONTROL)),
+            None
+        );
+        assert_eq!(
+            on_question(with_kind(KeyCode::Enter, KeyEventKind::Repeat)),
+            None
+        );
+    }
+
+    #[test]
+    fn feedback_keys() {
+        assert_eq!(
+            on_feedback(press(KeyCode::Enter, KeyModifiers::NONE)),
+            Some(Action::Continue)
+        );
+        assert_eq!(
+            on_feedback(press(KeyCode::Esc, KeyModifiers::NONE)),
+            Some(Action::Back)
+        );
+        for event in [
+            press(KeyCode::Char('a'), KeyModifiers::NONE),
+            press(KeyCode::Char(' '), KeyModifiers::NONE),
+            press(KeyCode::Backspace, KeyModifiers::NONE),
+            press(KeyCode::Up, KeyModifiers::NONE),
+            with_kind(KeyCode::Enter, KeyEventKind::Repeat),
+        ] {
+            assert_eq!(on_feedback(event), None);
+        }
+    }
+
+    #[test]
+    fn ctrl_c_quits_on_feedback() {
+        assert_eq!(
+            on_feedback(press(KeyCode::Char('c'), KeyModifiers::CONTROL)),
+            Some(Action::Quit)
+        );
+    }
+
+    #[test]
+    fn practice_start_to_finish_through_the_key_table() {
+        let prompts: Vec<String> = crate::areas::sample::entries()
+            .iter()
+            .flat_map(|entry| entry.questions.iter().map(|q| q.prompt.clone()))
+            .collect();
+        let mut session = Session::with_areas(80, 24, SAMPLE).with_seed(1);
+        let feed = |session: &mut Session, code: KeyCode| {
+            let event = press(code, KeyModifiers::NONE);
+            if let Some(action) = action_for(session.screen(), &event) {
+                session.apply(action);
+            }
+        };
+        for code in [
+            KeyCode::Enter,
+            KeyCode::Enter,
+            KeyCode::Down,
+            KeyCode::Char(' '),
+            KeyCode::Down,
+            KeyCode::Char(' '),
+            KeyCode::Enter,
+        ] {
+            feed(&mut session, code);
+        }
+        assert_eq!(session.screen(), Screen::Question);
+        for _ in 0..6 {
+            let question = session.drill().unwrap().question().clone();
+            assert!(prompts.contains(&question.prompt));
+            for c in question.accepted[0].chars() {
+                feed(&mut session, KeyCode::Char(c));
+            }
+            feed(&mut session, KeyCode::Enter);
+            assert_eq!(session.screen(), Screen::Feedback);
+            assert!(session.drill().unwrap().feedback().unwrap().correct);
+            feed(&mut session, KeyCode::Enter);
+            assert_eq!(session.screen(), Screen::Question);
+        }
+        for c in "ねこ".chars() {
+            feed(&mut session, KeyCode::Char(c));
+        }
+        feed(&mut session, KeyCode::Enter);
+        assert_eq!(session.screen(), Screen::Feedback);
+        assert!(!session.drill().unwrap().feedback().unwrap().correct);
+        feed(&mut session, KeyCode::Esc);
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        assert_eq!(session.highlighted_area().unwrap().name(), "Sample");
+        assert!(!session.should_quit());
     }
 
     #[test]

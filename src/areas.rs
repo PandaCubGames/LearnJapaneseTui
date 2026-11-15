@@ -3,14 +3,26 @@
 
 //! The practice areas the app knows about, listed in one place.
 
-/// One thing the user can practise. #21 grows this into the full area
-/// contract (questions for a set of JLPT levels).
+#[cfg(test)]
+pub mod sample;
+
+use crate::practice::{self, Entry, Levels};
+
+/// One thing the user can practise.
 pub trait Area: std::fmt::Debug {
     /// The name shown in the list of areas.
     fn name(&self) -> &'static str;
-    /// Whether the area has any question at all. An area without questions
-    /// can still be chosen; it says so.
-    fn has_questions(&self) -> bool;
+    /// The area's entries that have at least one of `levels`, each with all its
+    /// questions, generated and hand-written alike. The practice module drops
+    /// any entry without a chosen level or without questions. No entries by default.
+    fn questions(&self, _levels: Levels) -> Vec<Entry> {
+        Vec::new()
+    }
+    /// Whether the area has any question at all. Built on `questions`; areas do not
+    /// override it. An area without questions can still be chosen; it says so.
+    fn has_questions(&self) -> bool {
+        !practice::selection(self.questions(Levels::ALL), Levels::ALL).is_empty()
+    }
 }
 
 /// Every area, in the order the list shows them. There are none yet. Adding
@@ -53,6 +65,83 @@ mod tests {
         for (i, name) in names.iter().enumerate() {
             assert!(!name.is_empty());
             assert!(!names[i + 1..].contains(name), "duplicate {name:?}");
+        }
+    }
+
+    use crate::practice::Level;
+    use crate::practice::question::{Kind, Question};
+
+    #[derive(Debug)]
+    struct Bare;
+
+    impl Area for Bare {
+        fn name(&self) -> &'static str {
+            "Bare"
+        }
+    }
+
+    #[derive(Debug)]
+    struct Hollow;
+
+    impl Area for Hollow {
+        fn name(&self) -> &'static str {
+            "Hollow"
+        }
+
+        fn questions(&self, _levels: Levels) -> Vec<Entry> {
+            vec![Entry {
+                levels: Levels::only(Level::N5),
+                questions: Vec::new(),
+            }]
+        }
+    }
+
+    #[derive(Debug)]
+    struct Levelless;
+
+    impl Area for Levelless {
+        fn name(&self) -> &'static str {
+            "Levelless"
+        }
+
+        fn questions(&self, _levels: Levels) -> Vec<Entry> {
+            vec![Entry {
+                levels: Levels::only(Level::N5).toggled(Level::N5),
+                questions: vec![Question {
+                    prompt: "p".to_string(),
+                    accepted: vec!["あ".to_string()],
+                    shown: Vec::new(),
+                    kind: Kind::Japanese,
+                }],
+            }]
+        }
+    }
+
+    #[test]
+    fn an_area_without_entries_has_no_questions() {
+        assert!(!Bare.has_questions());
+    }
+
+    #[test]
+    fn entries_without_questions_do_not_count() {
+        assert!(!Hollow.has_questions());
+    }
+
+    #[test]
+    fn entries_without_a_level_do_not_count() {
+        assert!(!Levelless.has_questions());
+    }
+
+    #[test]
+    fn every_listed_area_agrees_with_its_questions() {
+        for area in all() {
+            let selected = practice::selection(area.questions(Levels::ALL), Levels::ALL);
+            assert_eq!(
+                area.has_questions(),
+                !selected.is_empty(),
+                "{}",
+                area.name()
+            );
         }
     }
 }
