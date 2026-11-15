@@ -34,12 +34,14 @@ pub fn action_for(screen: Screen, event: &Event) -> Option<Action> {
 
     match screen {
         Screen::Welcome => match key.code {
+            KeyCode::Enter if key.modifiers.is_empty() => Some(Action::Start),
             KeyCode::Char('q') if key.modifiers.is_empty() => Some(Action::Quit),
             KeyCode::Char(c) if (key.modifiers - KeyModifiers::SHIFT).is_empty() => {
                 Some(Action::Typed(c))
             }
             _ => None,
         },
+        Screen::AreaSelection => None,
     }
 }
 
@@ -48,6 +50,7 @@ mod tests {
     use ratatui::crossterm::event::KeyEvent;
 
     use super::*;
+    use crate::session::Session;
 
     fn press(code: KeyCode, modifiers: KeyModifiers) -> Event {
         Event::Key(KeyEvent::new(code, modifiers))
@@ -59,6 +62,89 @@ mod tests {
 
     fn on_welcome(event: Event) -> Option<Action> {
         action_for(Screen::Welcome, &event)
+    }
+
+    fn on_area_selection(event: Event) -> Option<Action> {
+        action_for(Screen::AreaSelection, &event)
+    }
+
+    #[test]
+    fn enter_starts_on_welcome() {
+        assert_eq!(
+            on_welcome(press(KeyCode::Enter, KeyModifiers::NONE)),
+            Some(Action::Start)
+        );
+    }
+
+    #[test]
+    fn enter_release_does_nothing() {
+        assert_eq!(
+            on_welcome(with_kind(KeyCode::Enter, KeyEventKind::Release)),
+            None
+        );
+    }
+
+    #[test]
+    fn modified_enter_does_nothing_on_welcome() {
+        assert_eq!(
+            on_welcome(press(KeyCode::Enter, KeyModifiers::CONTROL)),
+            None
+        );
+        assert_eq!(on_welcome(press(KeyCode::Enter, KeyModifiers::ALT)), None);
+    }
+
+    #[test]
+    fn ctrl_c_quits_on_area_selection() {
+        assert_eq!(
+            on_area_selection(press(KeyCode::Char('c'), KeyModifiers::CONTROL)),
+            Some(Action::Quit)
+        );
+    }
+
+    #[test]
+    fn resize_is_followed_on_area_selection() {
+        assert_eq!(
+            on_area_selection(Event::Resize(100, 30)),
+            Some(Action::Resized {
+                width: 100,
+                height: 30
+            })
+        );
+    }
+
+    #[test]
+    fn other_keys_do_nothing_on_area_selection() {
+        for code in [
+            KeyCode::Char('q'),
+            KeyCode::Char('a'),
+            KeyCode::Char('あ'),
+            KeyCode::Enter,
+            KeyCode::Esc,
+            KeyCode::Up,
+        ] {
+            assert_eq!(on_area_selection(press(code, KeyModifiers::NONE)), None);
+        }
+        assert_eq!(on_area_selection(Event::FocusGained), None);
+    }
+
+    #[test]
+    fn enter_then_ctrl_c_through_the_key_table() {
+        let mut session = Session::new(80, 24);
+        let feed = |session: &mut Session, event: Event| {
+            if let Some(action) = action_for(session.screen(), &event) {
+                session.apply(action);
+            }
+        };
+        feed(&mut session, press(KeyCode::Enter, KeyModifiers::NONE));
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        feed(&mut session, press(KeyCode::Char('q'), KeyModifiers::NONE));
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        assert!(!session.should_quit());
+        feed(
+            &mut session,
+            press(KeyCode::Char('c'), KeyModifiers::CONTROL),
+        );
+        assert!(session.should_quit());
     }
 
     #[test]
@@ -138,7 +224,7 @@ mod tests {
 
     #[test]
     fn other_keys_and_events_do_nothing() {
-        for code in [KeyCode::Enter, KeyCode::Esc, KeyCode::Up] {
+        for code in [KeyCode::Esc, KeyCode::Up] {
             assert_eq!(on_welcome(press(code, KeyModifiers::NONE)), None);
         }
         assert_eq!(on_welcome(Event::FocusGained), None);

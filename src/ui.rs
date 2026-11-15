@@ -16,6 +16,7 @@ use crate::text::{self, GREETING};
 pub fn draw(frame: &mut Frame, session: &Session) {
     match session.screen() {
         Screen::Welcome => draw_welcome(frame, session),
+        Screen::AreaSelection => draw_area_selection(frame),
     }
 }
 
@@ -27,11 +28,28 @@ fn draw_welcome(frame: &mut Frame, session: &Session) {
         Line::default(),
         Line::from(GREETING),
         Line::default(),
+        Line::from(text::START_HINT),
+        Line::default(),
         Line::from(text::status(width, height, session.elapsed())),
         Line::from(text::last_key(session.last_char())),
         Line::from(text::QUIT_HINT),
     ];
 
+    draw_centred(frame, lines);
+}
+
+fn draw_area_selection(frame: &mut Frame) {
+    let lines = vec![
+        Line::from(text::AREA_SELECTION_SOON),
+        Line::default(),
+        Line::from(text::AREA_SELECTION_QUIT_HINT),
+    ];
+
+    draw_centred(frame, lines);
+}
+
+/// Draws `lines` as a block centred both ways, each line by display width.
+fn draw_centred(frame: &mut Frame, lines: Vec<Line>) {
     let rows = u16::try_from(lines.len()).unwrap_or(u16::MAX);
     let [area] = Layout::vertical([Constraint::Length(rows)])
         .flex(Flex::Center)
@@ -43,6 +61,8 @@ fn draw_welcome(frame: &mut Frame, session: &Session) {
 mod tests {
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
+    use ratatui::buffer::Buffer;
+    use ratatui::style::Color;
 
     use super::*;
     use crate::session::Action;
@@ -61,6 +81,19 @@ mod tests {
                     .collect()
             })
             .collect()
+    }
+
+    fn buffer(session: &Session) -> Buffer {
+        let (width, height) = session.size();
+        let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
+        terminal.draw(|frame| draw(frame, session)).unwrap();
+        terminal.backend().buffer().clone()
+    }
+
+    fn row_index(rows: &[Vec<String>], needle: &str) -> usize {
+        rows.iter()
+            .position(|row| row.concat().contains(needle))
+            .unwrap_or_else(|| panic!("{needle:?} is not on screen"))
     }
 
     fn text(rows: &[Vec<String>]) -> String {
@@ -123,6 +156,113 @@ mod tests {
         let screen = text(&render(&session));
         assert!(screen.contains("Last key: あ"));
         assert!(screen.contains("Elapsed: 12.3 s"));
+    }
+
+    #[test]
+    fn fresh_welcome_shows_the_start_hint() {
+        let screen = text(&render(&Session::new(80, 24)));
+        assert!(screen.contains("Press Enter to start"));
+    }
+
+    #[test]
+    fn welcome_lines_are_in_order() {
+        let rows = render(&Session::new(80, 24));
+        let order = [
+            row_index(&rows, text::TITLE),
+            row_index(&rows, "日"),
+            row_index(&rows, text::START_HINT),
+            row_index(&rows, "Size: "),
+            row_index(&rows, "Last key: "),
+            row_index(&rows, text::QUIT_HINT),
+        ];
+        assert!(order.windows(2).all(|pair| pair[0] < pair[1]), "{order:?}");
+    }
+
+    #[test]
+    fn start_hint_is_centred_by_display_width() {
+        let rows = render(&Session::new(80, 24));
+        let row = &rows[row_index(&rows, text::START_HINT)];
+        assert_eq!(row[30], "P");
+        assert_eq!(row[49], "t");
+        assert!(row[..30].iter().all(|symbol| symbol == " "));
+        assert!(row[50..].iter().all(|symbol| symbol == " "));
+    }
+
+    #[test]
+    fn welcome_stays_centred_after_a_resize() {
+        let mut session = Session::new(80, 24);
+        session.apply(Action::Resized {
+            width: 100,
+            height: 30,
+        });
+        let rows = render(&session);
+        assert_eq!(greeting_row(&rows)[38], "日");
+        assert_eq!(rows[row_index(&rows, text::START_HINT)][40], "P");
+    }
+
+    #[test]
+    fn welcome_draws_at_more_sizes_without_panicking() {
+        for (width, height) in [(1, 1), (5, 2), (20, 3), (200, 60)] {
+            render(&Session::new(width, height));
+        }
+    }
+
+    #[test]
+    fn welcome_uses_no_colour() {
+        let buffer = buffer(&Session::new(80, 24));
+        assert!(
+            buffer
+                .content()
+                .iter()
+                .all(|cell| cell.fg == Color::Reset && cell.bg == Color::Reset)
+        );
+    }
+
+    fn started(width: u16, height: u16) -> Session {
+        let mut session = Session::new(width, height);
+        session.apply(Action::Start);
+        session
+    }
+
+    #[test]
+    fn area_selection_placeholder_is_shown() {
+        let screen = text(&render(&started(80, 24)));
+        assert!(screen.contains("Area selection is coming soon."));
+        assert!(screen.contains("Press Ctrl+C to quit"));
+        for unexpected in ["日", "Press Enter to start", "Last key:"] {
+            assert!(!screen.contains(unexpected), "unexpected {unexpected:?}");
+        }
+    }
+
+    #[test]
+    fn area_selection_follows_a_resize() {
+        let mut session = started(80, 24);
+        session.apply(Action::Resized {
+            width: 100,
+            height: 30,
+        });
+        let rows = render(&session);
+        let row = &rows[row_index(&rows, "Press Ctrl+C to quit")];
+        assert_eq!(row[40], "P");
+        assert!(row[..40].iter().all(|symbol| symbol == " "));
+    }
+
+    #[test]
+    fn area_selection_draws_at_any_size_without_panicking() {
+        for (width, height) in [(1, 1), (5, 2), (20, 3), (200, 60)] {
+            render(&started(width, height));
+        }
+    }
+
+    #[test]
+    fn area_selection_uses_no_colour() {
+        let buffer = buffer(&started(80, 24));
+        assert!(
+            buffer
+                .content()
+                .iter()
+                .all(|cell| cell.fg == Color::Reset && cell.bg == Color::Reset)
+        );
     }
 
     #[test]

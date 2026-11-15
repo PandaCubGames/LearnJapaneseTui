@@ -30,6 +30,7 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Agent rule: before its first commit, every agent makes sure `pre-commit` and Commitizen are installed and the hooks are enabled, and never commits without them.
 - Main application loop (issue #10): `cargo run` opens a full-screen TUI built with `ratatui`. It handles key presses, terminal resizes and a 100 ms tick, quits with `q` or `Ctrl+C`, and restores the terminal on exit, on error and on panic. A placeholder Welcome screen shows Japanese text centred by display width.
 - `scripts/setup-dev.sh`: installs the development tools at the versions the repository pins (Rust with `rustfmt`, `clippy` and the musl target, OpenSpec, Commitizen, pre-commit) and enables the git hooks.
+- Welcome screen (issue #19): shows "Press Enter to start" below the greeting. Enter continues to a placeholder area selection screen, which Ctrl+C quits; the real screen is issue #20.
 
 ### Changed
 - The minimum Rust version is now 1.88 (was 1.85), which `ratatui` requires.

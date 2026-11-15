@@ -5,8 +5,9 @@ Copyright (C) 2026 PandaCubGames
 
 # Architecture (draft)
 
-> **Status: mostly planned.** Only the core loop exists in code: `app`, `keys`, `session`
-> and `ui`, showing a placeholder Welcome screen. Everything else here is still planned.
+> **Status: mostly planned.** Only the core loop and the Welcome screen exist in code
+> (`app`, `keys`, `session` and `ui`). Area selection is a placeholder. Everything else
+> here is still planned.
 > These diagrams describe the intended design and will change as it gets built.
 
 The diagrams use [Mermaid](https://mermaid.js.org/), which GitHub renders directly.
