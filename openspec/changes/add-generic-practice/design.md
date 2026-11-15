@@ -588,3 +588,15 @@ For the owner:
 9. **Question count and results screen.** Default: **not in this change**; practice goes on until Esc and the score line shows the counts.
 10. **Esc on "No questions at these levels yet".** Default: back to **area selection**, as Esc does on every screen after it (`docs/architecture.md` §2 *Keys*); Enter goes back to the picker. Alternative: Esc also goes back to the picker.
 11. **No entry twice in a row across rounds** (D7). Default: a new round never starts with the entry just asked. This goes slightly beyond the architecture's rule; say if you prefer the plain rule.
+
+## After the design: no built-in areas
+
+The area selection change (#20) was revised at the owner's request after this design was written and implemented. It no longer registers Vocabulary, Kanji or Grammar: the list of areas is empty, and each area arrives with its own issue (#11 to #13).
+
+What that changes here:
+
+- Statements above about "the three real areas" or their files no longer apply. There are no real area files, so nothing of theirs is edited. The only file under `src/areas/` is the test-only `sample.rs`.
+- The `Area` trait, `questions`, the defaulted `has_questions` and everything in `practice` are as designed.
+- The release build shows `Nothing to practise yet` after the Welcome screen. The level picker, question and feedback screens are reached only in tests, through `Session::with_areas`.
+- The terminal check of task 5.1 was run again on the merged branch: Enter opens the screen with the heading, `Nothing to practise yet` and the key hint; Down, Up, Enter and `q` change nothing; Esc exits with status 0.
+- No test of this change needed adapting, because none used the built-in areas.
