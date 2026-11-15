@@ -4,6 +4,7 @@
 use std::process::ExitCode;
 
 mod app;
+mod areas;
 mod keys;
 mod session;
 mod text;
