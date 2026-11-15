@@ -6,7 +6,7 @@ Types, signatures and wording are in `design.md` (D-numbers point there). Every 
 
 ## 1. Start hint on the Welcome screen
 
-- [ ] 1.1 Add the start hint.
+- [x] 1.1 Add the start hint.
   - `src/text.rs`: add `pub const START_HINT: &str = "Press Enter to start";` with the doc comment from D6, after `GREETING`.
   - `src/ui.rs`, `draw_welcome`: insert `Line::from(text::START_HINT)` and then `Line::default()` right after the blank line that follows the greeting, so the block has the nine lines of D5 in that order. Change nothing else in `draw_welcome`.
   - `CHANGELOG.md`, *Unreleased* / *Added*: add one entry, `Welcome screen (issue #19): shows "Press Enter to start" below the greeting.`
