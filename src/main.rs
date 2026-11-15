@@ -11,6 +11,7 @@ use std::process::ExitCode;
 )]
 mod answer_field;
 mod app;
+mod areas;
 // No screen uses this module yet: the practice question screen (issue #21)
 // does, and removes this attribute. Tests use every item already.
 #[cfg_attr(

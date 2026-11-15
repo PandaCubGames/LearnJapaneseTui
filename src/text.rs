@@ -29,11 +29,26 @@ pub const START_HINT: &str = "Press Enter to start";
 /// Welcome screen: how to leave the app.
 pub const QUIT_HINT: &str = "Press q or Ctrl+C to quit";
 
-/// Area selection, until the list of areas exists.
-pub const AREA_SELECTION_SOON: &str = "Area selection is coming soon.";
+/// Area selection: the heading above the list.
+pub const AREA_SELECTION_TITLE: &str = "What do you want to practise?";
 
-/// Area selection: how to leave the app. Only Ctrl+C works there for now.
-pub const AREA_SELECTION_QUIT_HINT: &str = "Press Ctrl+C to quit";
+/// Area selection: the keys.
+pub const AREA_SELECTION_HINT: &str = "Up/Down to move, Enter to choose, Esc to leave";
+
+/// Area selection: in front of the highlighted area.
+pub const AREA_MARKER: &str = "> ";
+
+/// Area selection: in front of every other area, as wide as `AREA_MARKER`.
+pub const AREA_NO_MARKER: &str = "  ";
+
+/// Area selection: shown in place of the list when the app has no areas.
+pub const AREA_SELECTION_EMPTY: &str = "Nothing to practise yet";
+
+/// Shown when the chosen area has no questions.
+pub const NO_QUESTIONS: &str = "No questions in this area yet";
+
+/// How to leave the "no questions" screen.
+pub const NO_QUESTIONS_HINT: &str = "Press Enter to go back";
 
 /// Welcome screen: shown in place of the last key before any key is typed.
 pub const NO_KEY: &str = "-";
@@ -106,10 +121,13 @@ mod tests {
 
     #[test]
     fn area_selection_messages_are_plain_ascii_text() {
-        assert_eq!(AREA_SELECTION_SOON, "Area selection is coming soon.");
-        assert_eq!(AREA_SELECTION_QUIT_HINT, "Press Ctrl+C to quit");
-        assert!(AREA_SELECTION_SOON.is_ascii());
-        assert!(AREA_SELECTION_QUIT_HINT.is_ascii());
+        assert_eq!(AREA_SELECTION_TITLE, "What do you want to practise?");
+        assert_eq!(
+            AREA_SELECTION_HINT,
+            "Up/Down to move, Enter to choose, Esc to leave"
+        );
+        assert!(AREA_SELECTION_TITLE.is_ascii());
+        assert!(AREA_SELECTION_HINT.is_ascii());
     }
 
     #[test]
@@ -117,5 +135,31 @@ mod tests {
         for message in [APP_NAME, TITLE, GREETING, QUIT_HINT, NO_KEY] {
             assert!(!message.is_empty());
         }
+    }
+
+    #[test]
+    fn no_questions_wording_is_plain_ascii_text() {
+        for (text, expected) in [
+            (NO_QUESTIONS, "No questions in this area yet"),
+            (NO_QUESTIONS_HINT, "Press Enter to go back"),
+        ] {
+            assert_eq!(text, expected);
+            assert!(text.is_ascii());
+        }
+    }
+
+    #[test]
+    fn area_markers_are_the_same_width() {
+        assert_eq!(AREA_MARKER, "> ");
+        assert_eq!(AREA_NO_MARKER, "  ");
+        assert_eq!(AREA_MARKER.len(), AREA_NO_MARKER.len());
+        assert!(AREA_MARKER.is_ascii());
+        assert!(AREA_NO_MARKER.is_ascii());
+    }
+
+    #[test]
+    fn empty_area_list_wording_is_plain_ascii_text() {
+        assert_eq!(AREA_SELECTION_EMPTY, "Nothing to practise yet");
+        assert!(AREA_SELECTION_EMPTY.is_ascii());
     }
 }

@@ -5,10 +5,10 @@ Copyright (C) 2026 PandaCubGames
 
 # Architecture (draft)
 
-> **Status: mostly planned.** Only the core loop and the Welcome screen exist in code
-> (`app`, `keys`, `session` and `ui`). Answer input and checking (`answer_field`,
-> `grading`, `kana`, `romaji`) exist, but no screen uses them yet. Area selection is a
-> placeholder. Everything else here is still planned.
+> **Status: mostly planned.** Only the core loop, the Welcome screen and area selection exist in code
+> (`app`, `areas`, `keys`, `session` and `ui`). No area is registered yet, so area selection says "Nothing to practise yet". Esc on area selection quits directly until the Thank you screen exists. Answer input and checking (`answer_field`,
+> `grading`, `kana`, `romaji`) exist, but no screen uses them yet. Everything else
+> here is still planned.
 > These diagrams describe the intended design and will change as it gets built.
 
 The diagrams use [Mermaid](https://mermaid.js.org/), which GitHub renders directly.
@@ -392,7 +392,7 @@ flowchart LR
 - **Area contract.** The core never sees a Vocabulary, Kanji or Grammar entry. It asks an
   area for questions at the chosen levels, and each question carries only a prompt, its
   accepted answers and its exercise kind. Adding a new area means implementing the
-  contract and adding its content. No existing area changes.
+  contract and adding its content. No existing area changes. Its first part exists: `src/areas.rs` lists the registered areas, each with a name and whether it has any questions. None is registered yet; each area adds its own file under `src/areas/` and one entry in that list.
 - **`keys`** turns a terminal key into an action for the current screen. **`app`** hands
   that action to **`session`**, which holds the whole screen flow as one step: the current
   state and an action give the next state. Neither draws anything, so the flow can be unit
