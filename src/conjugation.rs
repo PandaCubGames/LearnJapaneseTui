@@ -21,6 +21,11 @@ pub enum Group {
     Iku,
     /// ある: godan, but its plain negatives are ない and なかった.
     Aru,
+    /// い-adjectives: 高い.
+    IAdjective,
+    /// いい: non-past いい or よい, other forms on よ, and each よ form also
+    /// written with 良.
+    Ii,
 }
 
 /// The five forms asked of a word.
@@ -57,6 +62,21 @@ pub fn conjugate(
     form: Form,
     formality: Formality,
 ) -> Vec<Answer> {
+    if group == Group::Ii {
+        let (Some(written_stem), Some(reading_stem)) =
+            (written.strip_suffix("いい"), reading.strip_suffix("いい"))
+        else {
+            return Vec::new();
+        };
+        return ii_endings(form, formality)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(written_ending, reading_ending)| Answer {
+                written: format!("{written_stem}{written_ending}"),
+                reading: format!("{reading_stem}{reading_ending}"),
+            })
+            .collect();
+    }
     let written = inflect(written, group, form, formality);
     let reading = inflect(reading, group, form, formality);
     if written.is_empty() || written.len() != reading.len() {
@@ -95,6 +115,47 @@ const GODAN: [(&str, &str, &str, &str, &str); 9] = [
     ("む", "ま", "み", "んで", "んだ"),
     ("る", "ら", "り", "って", "った"),
 ];
+
+/// いい's endings after its stem, as (written, reading) pairs: each variant in kana, then with 良.
+fn ii_endings(form: Form, formality: Formality) -> Option<Vec<(&'static str, &'static str)>> {
+    pick(
+        form,
+        formality,
+        [
+            vec![("いい", "いい"), ("よい", "よい"), ("良い", "よい")],
+            vec![("よくない", "よくない"), ("良くない", "よくない")],
+            vec![("よかった", "よかった"), ("良かった", "よかった")],
+            vec![
+                ("よくなかった", "よくなかった"),
+                ("良くなかった", "よくなかった"),
+            ],
+            vec![("よくて", "よくて"), ("良くて", "よくて")],
+        ],
+        [
+            vec![
+                ("いいです", "いいです"),
+                ("よいです", "よいです"),
+                ("良いです", "よいです"),
+            ],
+            vec![
+                ("よくないです", "よくないです"),
+                ("良くないです", "よくないです"),
+                ("よくありません", "よくありません"),
+                ("良くありません", "よくありません"),
+            ],
+            vec![
+                ("よかったです", "よかったです"),
+                ("良かったです", "よかったです"),
+            ],
+            vec![
+                ("よくなかったです", "よくなかったです"),
+                ("良くなかったです", "よくなかったです"),
+                ("よくありませんでした", "よくありませんでした"),
+                ("良くありませんでした", "よくありませんでした"),
+            ],
+        ],
+    )
+}
 
 /// What to cut from the end of `text` and the endings to put there instead.
 /// Looks at the text only where the group needs it.
@@ -163,6 +224,34 @@ fn endings(
             )?;
             Some(("ある", vec![ending.to_string()]))
         }
+        Group::IAdjective => {
+            let endings = pick(
+                form,
+                formality,
+                [
+                    vec!["い"],
+                    vec!["くない"],
+                    vec!["かった"],
+                    vec!["くなかった"],
+                    vec!["くて"],
+                ],
+                [
+                    vec!["いです"],
+                    vec!["くないです", "くありません"],
+                    vec!["かったです"],
+                    vec!["くなかったです", "くありませんでした"],
+                ],
+            )?;
+            Some((
+                "い",
+                endings
+                    .into_iter()
+                    .map(|ending| ending.to_string())
+                    .collect(),
+            ))
+        }
+        // conjugate builds いい's answers from ii_endings
+        Group::Ii => None,
         Group::Godan => {
             let last = text.chars().last()?;
             let &(k, a, i, te, ta) = GODAN.iter().find(|row| row.0.starts_with(last))?;
@@ -726,5 +815,162 @@ mod tests {
     fn iku_and_aru_need_their_ending() {
         assert!(conjugate("飲む", "のむ", Group::Iku, Form::Te, Formality::Plain).is_empty());
         assert!(conjugate("いる", "いる", Group::Aru, Form::Negative, Formality::Plain).is_empty());
+    }
+
+    #[test]
+    fn i_adjective_plain_forms() {
+        assert_eq!(
+            nine("高い", "たかい", Group::IAdjective)[..5],
+            single5([
+                ("高い", "たかい"),
+                ("高くない", "たかくない"),
+                ("高かった", "たかかった"),
+                ("高くなかった", "たかくなかった"),
+                ("高くて", "たかくて"),
+            ])
+        );
+    }
+
+    /// One answer per form, for the first five forms.
+    fn single5(pairs: [(&str, &str); 5]) -> Vec<Vec<Answer>> {
+        pairs
+            .iter()
+            .map(|&(written, reading)| vec![a(written, reading)])
+            .collect()
+    }
+
+    #[test]
+    fn i_adjective_polite_forms_and_variants() {
+        assert_eq!(
+            nine("高い", "たかい", Group::IAdjective)[5..],
+            [
+                vec![a("高いです", "たかいです")],
+                vec![
+                    a("高くないです", "たかくないです"),
+                    a("高くありません", "たかくありません"),
+                ],
+                vec![a("高かったです", "たかかったです")],
+                vec![
+                    a("高くなかったです", "たかくなかったです"),
+                    a("高くありませんでした", "たかくありませんでした"),
+                ],
+            ]
+        );
+    }
+
+    #[test]
+    fn i_adjective_polite_past_is_katta_desu() {
+        assert_eq!(
+            conjugate(
+                "高い",
+                "たかい",
+                Group::IAdjective,
+                Form::Past,
+                Formality::Polite
+            ),
+            vec![a("高かったです", "たかかったです")]
+        );
+    }
+
+    #[test]
+    fn ii_forms() {
+        assert_eq!(
+            nine("いい", "いい", Group::Ii),
+            vec![
+                vec![a("いい", "いい"), a("よい", "よい"), a("良い", "よい")],
+                vec![a("よくない", "よくない"), a("良くない", "よくない")],
+                vec![a("よかった", "よかった"), a("良かった", "よかった")],
+                vec![
+                    a("よくなかった", "よくなかった"),
+                    a("良くなかった", "よくなかった"),
+                ],
+                vec![a("よくて", "よくて"), a("良くて", "よくて")],
+                vec![
+                    a("いいです", "いいです"),
+                    a("よいです", "よいです"),
+                    a("良いです", "よいです"),
+                ],
+                vec![
+                    a("よくないです", "よくないです"),
+                    a("良くないです", "よくないです"),
+                    a("よくありません", "よくありません"),
+                    a("良くありません", "よくありません"),
+                ],
+                vec![
+                    a("よかったです", "よかったです"),
+                    a("良かったです", "よかったです"),
+                ],
+                vec![
+                    a("よくなかったです", "よくなかったです"),
+                    a("良くなかったです", "よくなかったです"),
+                    a("よくありませんでした", "よくありませんでした"),
+                    a("良くありませんでした", "よくありませんでした"),
+                ],
+            ]
+        );
+    }
+
+    #[test]
+    fn ii_non_past_starts_with_ii() {
+        let plain = conjugate("いい", "いい", Group::Ii, Form::NonPast, Formality::Plain);
+        assert_eq!(plain[0], a("いい", "いい"));
+        let polite = conjugate("いい", "いい", Group::Ii, Form::NonPast, Formality::Polite);
+        assert_eq!(polite[0], a("いいです", "いいです"));
+    }
+
+    #[test]
+    fn ii_keeps_what_comes_before_it() {
+        assert_eq!(
+            conjugate(
+                "かっこいい",
+                "かっこいい",
+                Group::Ii,
+                Form::Negative,
+                Formality::Plain
+            ),
+            vec![
+                a("かっこよくない", "かっこよくない"),
+                a("かっこ良くない", "かっこよくない"),
+            ]
+        );
+    }
+
+    #[test]
+    fn adjectives_have_no_polite_te_form() {
+        assert!(
+            conjugate(
+                "高い",
+                "たかい",
+                Group::IAdjective,
+                Form::Te,
+                Formality::Polite
+            )
+            .is_empty()
+        );
+        assert!(conjugate("いい", "いい", Group::Ii, Form::Te, Formality::Polite).is_empty());
+    }
+
+    #[test]
+    fn i_adjective_needs_its_ending() {
+        assert!(
+            conjugate(
+                "静か",
+                "しずか",
+                Group::IAdjective,
+                Form::Negative,
+                Formality::Plain
+            )
+            .is_empty()
+        );
+        assert!(
+            conjugate(
+                "高い",
+                "たかい",
+                Group::Ii,
+                Form::Negative,
+                Formality::Plain
+            )
+            .is_empty()
+        );
     }
 }

@@ -107,6 +107,14 @@ const WORDS: &[Word] = &[
     word("来る", "くる", "to come", Group::Kuru, Level::N5),
     word("行く", "いく", "to go", Group::Iku, Level::N5),
     word("ある", "ある", "to exist", Group::Aru, Level::N5),
+    word("高い", "たかい", "expensive", Group::IAdjective, Level::N5),
+    word("安い", "やすい", "cheap", Group::IAdjective, Level::N5),
+    word("大きい", "おおきい", "big", Group::IAdjective, Level::N5),
+    word("新しい", "あたらしい", "new", Group::IAdjective, Level::N5),
+    word("寒い", "さむい", "cold", Group::IAdjective, Level::N5),
+    word("いい", "いい", "good", Group::Ii, Level::N5),
+    word("優しい", "やさしい", "kind", Group::IAdjective, Level::N4),
+    word("悲しい", "かなしい", "sad", Group::IAdjective, Level::N4),
 ];
 
 /// The Grammar area.
@@ -446,5 +454,84 @@ mod tests {
         assert_eq!(question.accepted, strings(&["ない"]));
         assert!(is_correct(&question, "nai"));
         assert!(!is_correct(&question, "aranai"));
+    }
+
+    #[test]
+    fn i_adjective_polite_negative_accepts_both_variants() {
+        let question = ask("高い", Form::Negative, Formality::Polite);
+        assert_eq!(
+            question.accepted,
+            strings(&[
+                "高くないです",
+                "たかくないです",
+                "高くありません",
+                "たかくありません"
+            ])
+        );
+        for typed in ["takakunaidesu", "takakuarimasen", "高くありません"] {
+            assert!(is_correct(&question, typed), "{typed}");
+        }
+        assert!(!is_correct(&question, "takainaidesu"));
+    }
+
+    #[test]
+    fn ii_uses_yo() {
+        let question = ask("いい", Form::Past, Formality::Plain);
+        assert_eq!(question.accepted, strings(&["よかった", "良かった"]));
+        for typed in ["yokatta", "よかった", "良かった"] {
+            assert!(is_correct(&question, typed), "{typed}");
+        }
+        assert!(!is_correct(&question, "iikatta"));
+    }
+
+    #[test]
+    fn ii_accepts_yoi() {
+        let question = ask("いい", Form::NonPast, Formality::Plain);
+        assert_eq!(
+            question.prompt,
+            "What is the plain non-past of いい (good)?"
+        );
+        assert_eq!(question.shown, strings(&["いい"]));
+        assert_eq!(question.accepted, strings(&["いい", "よい", "良い"]));
+        for typed in ["ii", "yoi", "いい", "よい", "イイ", "良い"] {
+            assert!(is_correct(&question, typed), "{typed}");
+        }
+        assert!(!is_correct(&question, "yoku"));
+        let polite = ask("いい", Form::NonPast, Formality::Polite);
+        assert_eq!(
+            polite.accepted,
+            strings(&["いいです", "よいです", "良いです"])
+        );
+        for typed in ["iidesu", "yoidesu", "良いです"] {
+            assert!(is_correct(&polite, typed), "{typed}");
+        }
+    }
+
+    #[test]
+    fn ii_accepted_answers_of_every_form() {
+        let expected: [&[&str]; 9] = [
+            &["いい", "よい", "良い"],
+            &["よくない", "良くない"],
+            &["よかった", "良かった"],
+            &["よくなかった", "良くなかった"],
+            &["よくて", "良くて"],
+            &["いいです", "よいです", "良いです"],
+            &[
+                "よくないです",
+                "良くないです",
+                "よくありません",
+                "良くありません",
+            ],
+            &["よかったです", "良かったです"],
+            &[
+                "よくなかったです",
+                "良くなかったです",
+                "よくありませんでした",
+                "良くありませんでした",
+            ],
+        ];
+        for (&(form, formality), list) in ASKED.iter().zip(expected) {
+            assert_eq!(ask("いい", form, formality).accepted, strings(list));
+        }
     }
 }
