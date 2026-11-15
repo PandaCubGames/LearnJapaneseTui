@@ -17,6 +17,10 @@ pub enum Group {
     Suru,
     /// 来る: the kanji stays, the reading changes.
     Kuru,
+    /// 行く: godan, but its te-form is って and its past った.
+    Iku,
+    /// ある: godan, but its plain negatives are ない and なかった.
+    Aru,
 }
 
 /// The five forms asked of a word.
@@ -137,6 +141,27 @@ fn endings(
             };
             let ending = pick(form, formality, plain, polite)?;
             Some((cut, vec![ending.to_string()]))
+        }
+        Group::Iku => {
+            if !text.ends_with('く') {
+                return None;
+            }
+            let ending = pick(
+                form,
+                formality,
+                ["く", "かない", "った", "かなかった", "って"],
+                ["きます", "きません", "きました", "きませんでした"],
+            )?;
+            Some(("く", vec![ending.to_string()]))
+        }
+        Group::Aru => {
+            let ending = pick(
+                form,
+                formality,
+                ["ある", "ない", "あった", "なかった", "あって"],
+                ["あります", "ありません", "ありました", "ありませんでした"],
+            )?;
+            Some(("ある", vec![ending.to_string()]))
         }
         Group::Godan => {
             let last = text.chars().last()?;
@@ -640,5 +665,66 @@ mod tests {
             )
             .is_empty()
         );
+    }
+
+    #[test]
+    fn iku_nine_forms() {
+        assert_eq!(
+            nine("行く", "いく", Group::Iku),
+            single([
+                ("行く", "いく"),
+                ("行かない", "いかない"),
+                ("行った", "いった"),
+                ("行かなかった", "いかなかった"),
+                ("行って", "いって"),
+                ("行きます", "いきます"),
+                ("行きません", "いきません"),
+                ("行きました", "いきました"),
+                ("行きませんでした", "いきませんでした"),
+            ])
+        );
+    }
+
+    #[test]
+    fn iku_differs_from_godan_only_in_te_form_and_past() {
+        let iku = nine("行く", "いく", Group::Iku);
+        let godan = nine("行く", "いく", Group::Godan);
+        for index in 0..9 {
+            if index == 2 || index == 4 {
+                assert_ne!(iku[index], godan[index], "{index}");
+            } else {
+                assert_eq!(iku[index], godan[index], "{index}");
+            }
+        }
+    }
+
+    #[test]
+    fn aru_nine_forms() {
+        assert_eq!(
+            nine("ある", "ある", Group::Aru),
+            single([
+                ("ある", "ある"),
+                ("ない", "ない"),
+                ("あった", "あった"),
+                ("なかった", "なかった"),
+                ("あって", "あって"),
+                ("あります", "あります"),
+                ("ありません", "ありません"),
+                ("ありました", "ありました"),
+                ("ありませんでした", "ありませんでした"),
+            ])
+        );
+    }
+
+    #[test]
+    fn iku_and_aru_have_no_polite_te_form() {
+        assert!(conjugate("行く", "いく", Group::Iku, Form::Te, Formality::Polite).is_empty());
+        assert!(conjugate("ある", "ある", Group::Aru, Form::Te, Formality::Polite).is_empty());
+    }
+
+    #[test]
+    fn iku_and_aru_need_their_ending() {
+        assert!(conjugate("飲む", "のむ", Group::Iku, Form::Te, Formality::Plain).is_empty());
+        assert!(conjugate("いる", "いる", Group::Aru, Form::Negative, Formality::Plain).is_empty());
     }
 }

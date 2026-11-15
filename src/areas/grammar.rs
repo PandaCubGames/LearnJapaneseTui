@@ -105,6 +105,8 @@ const WORDS: &[Word] = &[
         Level::N4,
     ),
     word("来る", "くる", "to come", Group::Kuru, Level::N5),
+    word("行く", "いく", "to go", Group::Iku, Level::N5),
+    word("ある", "ある", "to exist", Group::Aru, Level::N5),
 ];
 
 /// The Grammar area.
@@ -426,5 +428,23 @@ mod tests {
             assert!(is_correct(&question, typed), "{typed}");
         }
         assert!(!is_correct(&question, "kinai"));
+    }
+
+    #[test]
+    fn te_form_of_iku() {
+        let question = ask("行く", Form::Te, Formality::Plain);
+        assert_eq!(
+            question.prompt,
+            "What is the te-form of 行く (いく, to go)?"
+        );
+        assert_eq!(question.accepted, strings(&["行って", "いって"]));
+    }
+
+    #[test]
+    fn aru_negative_is_nai() {
+        let question = ask("ある", Form::Negative, Formality::Plain);
+        assert_eq!(question.accepted, strings(&["ない"]));
+        assert!(is_correct(&question, "nai"));
+        assert!(!is_correct(&question, "aranai"));
     }
 }

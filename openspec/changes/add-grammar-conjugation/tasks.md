@@ -79,7 +79,7 @@ Types, signatures, rule tables, the word list and the expected forms are in `des
     - `kuru_answers_use_its_reading`: `ask("来る", Form::Negative, Formality::Plain).accepted == strings(&["来ない", "こない"])`; `is_correct` for `konai`, `こない` and `来ない`; not for `kinai`.
   - Verify as in 1.1. Commit, e.g. `feat(grammar): conjugate suru and kuru`.
 
-- [ ] 1.5 Add 行く and ある.
+- [x] 1.5 Add 行く and ある.
   - `src/conjugation.rs`: add `Group::Iku` and `Group::Aru` (docs as D2) and their rows of D3: Iku needs a last kana `く` (else `None`), cuts it, and uses the godan く row except te `って` and past `った`; Aru cuts `ある`.
   - `src/areas/grammar.rs`: append words 33 and 34 of Appendix A.
   - New tests, `src/conjugation.rs`: `iku_nine_forms` (行く / いく, all nine pairs); `iku_differs_from_godan_only_in_te_form_and_past` (`nine("行く", "いく", Group::Iku)` and `nine("行く", "いく", Group::Godan)` are equal except at index 2, plain past, and index 4, te-form); `aru_nine_forms` (ある, all nine); `iku_and_aru_have_no_polite_te_form`; `iku_and_aru_need_their_ending` (`conjugate("飲む", "のむ", Group::Iku, Form::Te, Formality::Plain)` and `conjugate("いる", "いる", Group::Aru, Form::Negative, Formality::Plain)` are empty).
