@@ -33,6 +33,9 @@ impl Level {
 pub struct Levels(u8);
 
 impl Levels {
+    /// Every level.
+    pub const ALL: Levels = Levels(0b1_1111);
+
     pub fn only(level: Level) -> Levels {
         Levels(level.bit())
     }
@@ -47,6 +50,10 @@ impl Levels {
 
     pub fn is_empty(self) -> bool {
         self.0 == 0
+    }
+
+    pub fn intersects(self, other: Levels) -> bool {
+        self.0 & other.0 != 0
     }
 }
 
@@ -83,5 +90,22 @@ mod tests {
     fn empty_set() {
         assert!(Levels::only(Level::N5).toggled(Level::N5).is_empty());
         assert!(!Levels::only(Level::N5).is_empty());
+    }
+
+    #[test]
+    fn all_contains_every_level() {
+        for level in Level::ALL {
+            assert!(Levels::ALL.contains(level));
+        }
+    }
+
+    #[test]
+    fn intersects_needs_a_common_level() {
+        let two = Levels::only(Level::N5).toggled(Level::N4);
+        assert!(Levels::only(Level::N5).intersects(two));
+        assert!(!Levels::only(Level::N5).intersects(Levels::only(Level::N1)));
+        let none = Levels::only(Level::N5).toggled(Level::N5);
+        assert!(!none.intersects(Levels::ALL));
+        assert!(!Levels::ALL.intersects(none));
     }
 }

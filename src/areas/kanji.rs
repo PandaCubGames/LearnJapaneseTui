@@ -13,10 +13,6 @@ impl Area for Kanji {
     fn name(&self) -> &'static str {
         text::AREA_KANJI
     }
-
-    fn has_questions(&self) -> bool {
-        false
-    }
 }
 
 #[cfg(test)]

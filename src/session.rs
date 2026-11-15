@@ -548,4 +548,12 @@ mod tests {
         session.apply(Action::Toggle);
         assert_eq!(session.levels(), Levels::only(Level::N5));
     }
+
+    const SAMPLE: &[&dyn Area] = &[&crate::areas::sample::Sample];
+
+    #[test]
+    fn the_sample_area_opens_the_level_picker() {
+        let session = on_picker(SAMPLE);
+        assert_eq!(session.screen(), Screen::LevelPicker);
+    }
 }

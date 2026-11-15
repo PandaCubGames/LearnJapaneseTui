@@ -69,7 +69,7 @@ Types, signatures, algorithms and wording are in `design.md` (D-numbers point th
 
 ## 2. The area contract
 
-- [ ] 2.1 Add the contract types, `Area::questions`, the default `has_questions` and the test-only Sample area.
+- [x] 2.1 Add the contract types, `Area::questions`, the default `has_questions` and the test-only Sample area.
   - `src/practice/question.rs` (new): doc `//! A question and the entry it belongs to, as areas supply them.`; `Kind`, `Question`, `Entry` exactly as in D2, with the doc comments.
   - `src/practice.rs`: `mod question;`, `pub use question::{Entry, Kind, Question};`, and `pub fn selection` (D7) with its doc comment.
   - `src/practice/level.rs`: add `Levels::ALL` and `Levels::intersects` (D2).

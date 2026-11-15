@@ -13,10 +13,6 @@ impl Area for Vocabulary {
     fn name(&self) -> &'static str {
         text::AREA_VOCABULARY
     }
-
-    fn has_questions(&self) -> bool {
-        false
-    }
 }
 
 #[cfg(test)]

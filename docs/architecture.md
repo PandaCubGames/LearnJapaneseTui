@@ -393,7 +393,7 @@ flowchart LR
 - **Area contract.** The core never sees a Vocabulary, Kanji or Grammar entry. It asks an
   area for questions at the chosen levels, and each question carries only a prompt, its
   accepted answers and its exercise kind. Adding a new area means implementing the
-  contract and adding its content. No existing area changes. Its first part exists: `src/areas.rs` lists the areas, each with a name and whether it has any questions.
+  contract and adding its content. No existing area changes. It exists as `Area::questions(levels)` in `src/areas.rs`: the area's entries that have any of the chosen levels, each with its levels and its questions (prompt, accepted answers, the Japanese text the prompt shows, and the kind, Japanese or meaning). Whether an area has questions is worked out from it.
 - **`keys`** turns a terminal key into an action for the current screen. **`app`** hands
   that action to **`session`**, which holds the whole screen flow as one step: the current
   state and an action give the next state. Neither draws anything, so the flow can be unit

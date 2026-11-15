@@ -13,10 +13,6 @@ impl Area for Grammar {
     fn name(&self) -> &'static str {
         text::AREA_GRAMMAR
     }
-
-    fn has_questions(&self) -> bool {
-        false
-    }
 }
 
 #[cfg(test)]
