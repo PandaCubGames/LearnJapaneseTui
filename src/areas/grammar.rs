@@ -68,6 +68,27 @@ const WORDS: &[Word] = &[
         Group::Ichidan,
         Level::N4,
     ),
+    word("買う", "かう", "to buy", Group::Godan, Level::N5),
+    word("会う", "あう", "to meet", Group::Godan, Level::N5),
+    word("手伝う", "てつだう", "to help", Group::Godan, Level::N4),
+    word("書く", "かく", "to write", Group::Godan, Level::N5),
+    word("聞く", "きく", "to listen", Group::Godan, Level::N5),
+    word("働く", "はたらく", "to work", Group::Godan, Level::N4),
+    word("泳ぐ", "およぐ", "to swim", Group::Godan, Level::N5),
+    word("急ぐ", "いそぐ", "to hurry", Group::Godan, Level::N4),
+    word("話す", "はなす", "to speak", Group::Godan, Level::N5),
+    word("貸す", "かす", "to lend", Group::Godan, Level::N5),
+    word("待つ", "まつ", "to wait", Group::Godan, Level::N5),
+    word("持つ", "もつ", "to hold", Group::Godan, Level::N5),
+    word("死ぬ", "しぬ", "to die", Group::Godan, Level::N5),
+    word("遊ぶ", "あそぶ", "to play", Group::Godan, Level::N5),
+    word("運ぶ", "はこぶ", "to carry", Group::Godan, Level::N4),
+    word("飲む", "のむ", "to drink", Group::Godan, Level::N5),
+    word("読む", "よむ", "to read", Group::Godan, Level::N5),
+    word("住む", "すむ", "to live", Group::Godan, Level::N4),
+    word("帰る", "かえる", "to go home", Group::Godan, Level::N5),
+    word("分かる", "わかる", "to understand", Group::Godan, Level::N5),
+    word("送る", "おくる", "to send", Group::Godan, Level::N4),
 ];
 
 /// The Grammar area.
@@ -337,5 +358,25 @@ mod tests {
         assert!(!is_correct(&question, "食べる"));
         assert!(is_correct(&question, "たべる"));
         assert!(is_correct(&question, "taberu"));
+    }
+
+    #[test]
+    fn godan_words_cover_every_ending() {
+        let last: Vec<char> = WORDS
+            .iter()
+            .filter(|word| word.group == Group::Godan)
+            .filter_map(|word| word.reading.chars().last())
+            .collect();
+        for ending in ['う', 'く', 'ぐ', 'す', 'つ', 'ぬ', 'ぶ', 'む', 'る'] {
+            assert!(last.contains(&ending), "{ending}");
+        }
+    }
+
+    #[test]
+    fn kaeru_is_godan() {
+        assert_eq!(
+            ask("帰る", Form::Negative, Formality::Plain).accepted,
+            strings(&["帰らない", "かえらない"])
+        );
     }
 }

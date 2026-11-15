@@ -62,7 +62,7 @@ Types, signatures, rule tables, the word list and the expected forms are in `des
   - No new test: this changes no behaviour.
   - Verify: `cargo clippy -- -D warnings` and `cargo clippy --all-targets -- -D warnings` clean, `cargo fmt --all -- --check` clean, `cargo test` passes. If clippy reports the moved expectation as unfulfilled, or reports `Japanese` as never constructed, stop and report. Commit, e.g. `refactor(practice): expect only the meaning kind to be unused`.
 
-- [ ] 1.3 Add godan verbs: all nine endings.
+- [x] 1.3 Add godan verbs: all nine endings.
   - `src/conjugation.rs`: add `Group::Godan` (doc as D2); the constant `GODAN` of D3a (doc: `/// A godan verb's last kana, its negative stem, its polite stem, its te-form and past endings.`); `endings` gets a first parameter `text: &str` (update its one caller in `inflect`), and the Godan rows: the last char of `text` selects the `GODAN` row (none → `None`); cut that kana; plain *k*, *a*`ない`, *ta*, *a*`なかった`, *te*; polite *i*`ます`, *i*`ません`, *i*`ました`, *i*`ませんでした`.
   - `src/areas/grammar.rs`: append words 8 to 28 of Appendix A to `WORDS`.
   - New tests, `src/conjugation.rs`, one per ending, each asserting all nine forms (`nine(..)` against Appendix B; the reading of each form is the reading stem plus the same ending): `godan_u_kau` (also the full readings given in Appendix B), `godan_ku_kaku`, `godan_gu_oyogu`, `godan_su_hanasu`, `godan_tsu_matsu`, `godan_nu_shinu` (also the full readings given in Appendix B), `godan_bu_asobu`, `godan_mu_nomu`, `godan_ru_kaeru`. Plus `godan_has_no_polite_te_form` (書く) and `a_verb_without_a_godan_ending_gives_nothing` (`conjugate("高い", "たかい", Group::Godan, Form::Negative, Formality::Plain)` and the same for `静か` / `しずか` are empty).
