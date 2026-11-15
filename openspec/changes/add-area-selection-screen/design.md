@@ -279,8 +279,8 @@ Removed: `AREA_SELECTION_SOON` and `AREA_SELECTION_QUIT_HINT` (unused once the p
 
 Each task is one commit that builds and passes fmt, clippy and tests (`AGENTS.md` §5):
 
-- **Tasks 1.1 – 1.4: one task per conflicting existing test** (D10), each waiting for the owner's approval of that test. They come first because each edit or removal passes both before and after the feature, while the feature cannot pass with the old tests in place.
-- **Task 2.1: the list and choosing an area:** the `areas` module, the session state, `Choose`/`Back`, `Screen::NoQuestions`, Enter on both screens, drawing both screens, the wording, removal of the placeholder constants, the `CHANGELOG.md` entry and the `docs/architecture.md` notes. Kept together because `Screen::NoQuestions` needs arms in `keys` and `ui` to compile, the placeholder constants must disappear in the commit that stops drawing them, and `has_questions` and the fake areas need a non-test caller (checked, see Context).
+- **Task 1.1: the owner-approved edit of `keys::tests::other_keys_do_nothing_on_area_selection`** (D10). It comes first because the edited test passes both before and after the feature, while the feature's Enter arm cannot pass with the old test in place.
+- **Task 2.1: the list and choosing an area:** the `areas` module, the session state, `Choose`/`Back`, `Screen::NoQuestions`, Enter on both screens, drawing both screens, the wording, removal of the placeholder constants, the owner-approved edits of the three other existing tests (D10), the `CHANGELOG.md` entry and the `docs/architecture.md` notes. Kept together because `Screen::NoQuestions` needs arms in `keys` and `ui` to compile, the placeholder constants must disappear in the commit that stops drawing them, `has_questions` and the fake areas need a non-test caller (checked, see Context), and the three edited tests assert the new screen and wording, so they fail before it exists and the old versions fail after it.
 - **Task 3.1: Up and Down** (extends the `CHANGELOG.md` entry).
 - **Task 4.1: Esc**, quit on the list and back on "no questions" (extends the `CHANGELOG.md` entry and the architecture status note).
 - **Task 5.1:** scripted check of the release binary in a pseudo-terminal (no file changes).
@@ -296,17 +296,34 @@ All 51 tests on `main` were checked against this design.
 | `keys::tests::enter_starts_on_welcome`, `enter_release_does_nothing`, `modified_enter_does_nothing_on_welcome` | Unaffected: Welcome arm unchanged. |
 | `keys::tests::ctrl_c_quits_on_area_selection`, `resize_is_followed_on_area_selection` | Unaffected: rules 1 and 3 still come before the per-screen arms. |
 | `keys::tests::enter_then_ctrl_c_through_the_key_table` | Unaffected: Enter on Welcome → `AreaSelection`; `q` there still does nothing (D5); `Ctrl+C` quits. |
-| **`keys::tests::other_keys_do_nothing_on_area_selection`** | **Conflict.** Asserts Enter, Esc and Up give `None` on area selection; they now give `Choose`, `Quit` and `Previous`. |
+| **`keys::tests::other_keys_do_nothing_on_area_selection`** | **Conflict, edit approved (task 1.1).** Asserts Enter, Esc and Up give `None` on area selection; they now give `Choose`, `Quit` and `Previous`. |
 | `session::tests::*` (9) | Unaffected. `Session::new(w, h)` keeps its signature and starts on Welcome; `Start` still moves Welcome → `AreaSelection` once; `start_is_one_way` applies only `Start`, `Typed`, `Tick`, `Resized`, none of which leave area selection; `only_quit_sets_should_quit` applies none of the new actions. |
 | `text::tests::title_is_the_name_and_version`, `status_shows_size_and_tenths_of_a_second`, `last_key_shows_the_character_or_a_placeholder`, `fatal_error_names_the_app`, `start_hint_is_plain_ascii_text`, `fixed_messages_are_not_empty` | Unaffected: the constants and functions they use are unchanged. |
-| **`text::tests::area_selection_messages_are_plain_ascii_text`** | **Conflict.** Uses `AREA_SELECTION_SOON` and `AREA_SELECTION_QUIT_HINT`, which this change removes (unused constants fail clippy), so the test no longer compiles. |
+| **`text::tests::area_selection_messages_are_plain_ascii_text`** | **Conflict, edit approved (task 2.1).** Uses `AREA_SELECTION_SOON` and `AREA_SELECTION_QUIT_HINT`, which this change removes (unused constants fail clippy), so the test no longer compiles. |
 | `ui::tests::` all Welcome tests (`greeting_*`, `a_fresh_session_shows_every_line`, `typed_character_and_elapsed_time_are_shown`, `fresh_welcome_shows_the_start_hint`, `welcome_*`, `start_hint_is_centred_by_display_width`, `any_size_draws_without_panicking`) | Unaffected: `draw_welcome` and `draw_centred` do not change. |
 | `ui::tests::area_selection_draws_at_any_size_without_panicking` | Unaffected: now draws the list at those sizes. |
 | `ui::tests::area_selection_uses_no_colour` | Unaffected: the marker is text and nothing sets a colour; it now also covers the highlighted line. |
-| **`ui::tests::area_selection_placeholder_is_shown`** | **Conflict.** Asserts the screen contains `Area selection is coming soon.` and `Press Ctrl+C to quit`, which are no longer drawn. |
-| **`ui::tests::area_selection_follows_a_resize`** | **Conflict.** Looks for the row containing `Press Ctrl+C to quit` and panics when it is missing. |
+| **`ui::tests::area_selection_placeholder_is_shown`** | **Conflict, edit approved (task 2.1).** Asserts the screen contains `Area selection is coming soon.` and `Press Ctrl+C to quit`, which are no longer drawn. |
+| **`ui::tests::area_selection_follows_a_resize`** | **Conflict, edit approved (task 2.1).** Looks for the row containing `Press Ctrl+C to quit` and panics when it is missing. |
 
-The four conflicts and the recommended edits are listed under Open Questions 6. The owner has not approved any of them. Keeping the placeholder text on screen only to keep these tests passing was considered and rejected: the issue replaces the placeholder, a `Press Ctrl+C to quit` line next to a hint that says `Esc to leave` would mislead, and the tests' purpose (placeholder content) no longer exists.
+Keeping the placeholder text on screen only to keep these tests passing was considered and rejected: the issue replaces the placeholder, a `Press Ctrl+C to quit` line next to a hint that says `Esc to leave` would mislead, and the tests' purpose (placeholder content) no longer exists.
+
+**Decision: the owner approved editing these four tests for issue #20 and asked that none be removed.** Each keeps its name, its place in its file and its intent; only what the new screen forces changes. The full new bodies are in `tasks.md`.
+
+- a. `keys::tests::other_keys_do_nothing_on_area_selection` (`src/keys.rs`), task 1.1: the array becomes `[KeyCode::Char('q'), KeyCode::Char('a'), KeyCode::Char('あ')]` (`KeyCode::Enter`, `KeyCode::Esc` and `KeyCode::Up` removed). The loop body and the `Event::FocusGained` assertion stay. It still pins that `q`, letters and kana do nothing on area selection, and passes before and after the feature, so it is its own commit before it.
+- b. `ui::tests::area_selection_placeholder_is_shown` (`src/ui.rs`), task 2.1: the two positive assertions change from `"Area selection is coming soon."` and `"Press Ctrl+C to quit"` to `"What do you want to practise?"` and `"Up/Down to move, Enter to choose, Esc to leave"` (the heading and the hint that take their place). The negative loop over `"日"`, `"Press Enter to start"` and `"Last key:"` stays as it is.
+- c. `ui::tests::area_selection_follows_a_resize` (`src/ui.rs`), task 2.1: the needle `"Press Ctrl+C to quit"` becomes `text::AREA_SELECTION_HINT`, the expected symbol `"P"` becomes `"U"`, and both `40`s become `27`. The resize to 100x30 stays.
+- d. `text::tests::area_selection_messages_are_plain_ascii_text` (`src/text.rs`), task 2.1: `AREA_SELECTION_SOON` / `"Area selection is coming soon."` becomes `AREA_SELECTION_TITLE` / `"What do you want to practise?"`, and `AREA_SELECTION_QUIT_HINT` / `"Press Ctrl+C to quit"` becomes `AREA_SELECTION_HINT` / `"Up/Down to move, Enter to choose, Esc to leave"`, in both the equality and the `is_ascii()` checks. The two placeholder constants are still removed in the same commit (unused constants fail clippy).
+
+Edits b, c and d assert the new screen and wording, so they cannot pass before the feature and are part of task 2.1's commit, each labelled in the task as an owner-approved edit. No other existing test changes (re-checked against `src/keys.rs`, `src/ui.rs`, `src/text.rs` and `src/session.rs` after this decision).
+
+**Columns, checked by rendering.** `ratatui` centres a line at `area_width / 2 - line_width / 2`, each division rounded down (this is also why the existing greeting test finds `日` at column 28 in both 80 and 81 columns). The hint is 46 columns wide: column `40 - 23 = 17` at 80, `50 - 23 = 27` at 100. The area block is 12 columns (marker 2 + `Vocabulary` 10, shorter names padded): marker at `40 - 6 = 34`, names at 36 at 80; marker at 44, names at 46 at 100. The heading (29 columns) starts at 26 at 80, and so does `No questions in this area yet` (29 columns). The new bodies of b, c and d, a prototype of D6's drawing and D8's constants were run in a scratch copy of the crate: all existing tests, including the three edited ones, pass, and `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` are clean.
+
+**Planned new tests trimmed so they do not repeat the edited ones:**
+- `area_selection_lists_the_areas_in_order` keeps the order of the heading and the three areas and the absence of `Area selection is coming soon.`; it no longer checks that the heading is present or that `日`, `Press Enter to start` and `Last key:` are absent (edit b does).
+- `area_list_stays_centred_after_a_resize` keeps the area block after the resize (marker at 44, names at 46); it no longer checks the hint at 27 (edit c does).
+- `area_selection_wording_is_plain_ascii_text` becomes `area_and_no_questions_wording_is_plain_ascii_text` and checks only the area names and the two "no questions" constants; the heading and hint are covered by edit d, the markers by `area_markers_are_the_same_width`, which now checks their exact strings.
+- No planned new test is dropped entirely: each still checks something the edited tests do not.
 
 ### D11. New tests, and what they deliberately do not pin
 
@@ -323,7 +340,7 @@ All new tests are unit tests in the file they cover, without a terminal; they ar
 - [Most Unix terminals report a held key as repeated presses, so a held Enter can still pass Welcome → list → "no questions" → list] → Harmless (no screen is skipped irreversibly; Esc is not reached). The `Press` guard helps where repeats are reported (Windows, kitty protocol).
 - [Esc is detected by crossterm only after a short wait, to tell it from escape sequences] → Standard terminal behaviour; the scripted check (task 5.1) confirms Esc quits.
 - [Area names in `text.rs` mean adding an area touches one more file] → D8; Open Questions 5.
-- [Tasks 1.1-1.4 wait on the owner] → Each is independent and small; task 2.1 cannot start until all four are approved and done.
+- [Task 2.1 edits three existing tests in the same commit as the feature, which makes the edits harder to review than separate commits] → Each edit is labelled in the task and the commit body, its exact body is written out in `tasks.md`, and the verify step checks that no test is removed or renamed.
 
 ## Open Questions
 
@@ -334,9 +351,7 @@ For the owner:
 3. **Empty areas in the list (D7):** recommended **not marked**; they look like the others until chosen.
 4. **Highlight after coming back from "no questions" (D4):** recommended **stays on the area just chosen**. Alternative: back to the first area each time.
 5. **Where area names live (D8):** recommended **`src/text.rs`** (issue #20 and the `text.rs` rule). Alternative: each area's own file, so that adding an area changes no shared wording file; this would be an exception to "all wording in `text.rs`".
-6. **Existing tests that conflict (D10).** Each needs your approval for that specific test before its task is done:
-   - a. `keys::tests::other_keys_do_nothing_on_area_selection` (`src/keys.rs`): **edit**. Change the array to `[KeyCode::Char('q'), KeyCode::Char('a'), KeyCode::Char('あ')]`, i.e. remove `KeyCode::Enter`, `KeyCode::Esc` and `KeyCode::Up`. Keep the name, the loop body and the `Event::FocusGained` assertion. It then still pins that `q`, letters and kana do nothing on area selection.
-   - b. `ui::tests::area_selection_placeholder_is_shown` (`src/ui.rs`): **remove**. Its subject, the placeholder text, is gone. Its negative checks (no greeting, no start hint, no `Last key:`) move into the new test `area_selection_lists_the_areas_in_order`.
-   - c. `ui::tests::area_selection_follows_a_resize` (`src/ui.rs`): **remove**, replaced by the new test `area_list_stays_centred_after_a_resize`. Alternative if you prefer an edit: in the feature commit, change the needle `"Press Ctrl+C to quit"` to `text::AREA_SELECTION_HINT` and both `40`s to `27`.
-   - d. `text::tests::area_selection_messages_are_plain_ascii_text` (`src/text.rs`): **remove**, together with the two constants it checks. The new test `area_selection_wording_is_plain_ascii_text` covers the new wording the same way.
-7. **Archive order (D1):** please archive `add-welcome-screen` (and preferably `add-main-application-loop` first) before archiving this change. Both are complete. Archiving this one first does not fail but leaves the old placeholder requirements in the main spec.
+6. **Archive order (D1):** please archive `add-welcome-screen` (and preferably `add-main-application-loop` first) before archiving this change. Both are complete. Archiving this one first does not fail but leaves the old placeholder requirements in the main spec.
+7. **Test names that read oddly after the approved edits (D10), for a possible later rename:** `ui::tests::area_selection_placeholder_is_shown` now checks the real screen, not a placeholder (a later name could be e.g. `area_selection_heading_and_hint_are_shown`). The other three names still fit. This change keeps every name, because a rename was not approved; renaming would be a separate owner decision.
+
+(The former question 6, approval of the four conflicting tests, is decided: see D10.)

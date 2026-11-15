@@ -128,7 +128,7 @@ The heading, the hint and the "no questions" lines SHALL each be centred horizon
 
 #### Scenario: No questions message centred
 - **WHEN** the "no questions" screen is shown in a terminal 80 columns wide
-- **THEN** `No questions in this area yet` (29 columns) starts at column 25
+- **THEN** `No questions in this area yet` (29 columns) starts at column 26
 
 ### Requirement: Area selection at any size
 The area selection screen and the "no questions" screen MUST draw without panicking at any terminal size, down to one column by one row.

@@ -7,22 +7,19 @@ Types, signatures and wording are in `design.md` (D-numbers point there). Every 
 // Copyright (C) 2026 PandaCubGames
 ```
 
-**Existing tests:** do not change, rename, move, skip, `#[ignore]` or delete any existing test, except the four in group 1, and each of those only after the owner has approved that specific test (design.md, Open Questions 6). Adding new tests, new test helpers, new test constants and new `use` lines inside the existing `mod tests` blocks is allowed. If any other existing test fails, fix the code, not the test; if that is impossible, stop and report.
+**Existing tests:** the owner approved editing exactly four existing tests for issue #20, and asked that none be removed (design.md D10): `keys::tests::other_keys_do_nothing_on_area_selection` (task 1.1), and `ui::tests::area_selection_placeholder_is_shown`, `ui::tests::area_selection_follows_a_resize` and `text::tests::area_selection_messages_are_plain_ascii_text` (all three inside task 2.1). Make exactly the edits written in those tasks: keep each test's name and its place in the file, and do not delete any of them. Do not change, rename, move, skip, `#[ignore]` or delete any other existing test. Adding new tests, new test helpers, new test constants and new `use` lines inside the existing `mod tests` blocks is allowed. If any other existing test fails, fix the code, not the test; if that is impossible, stop and report.
 
 **Tests added here must not pin** that a real area (Vocabulary, Kanji, Grammar) has no questions, that the list has exactly three areas, or that Enter on an area with questions stays on the list (design.md D11). Use `areas::fake::FakeArea` for those cases.
 
-## 1. Existing tests that pin the placeholder (each needs the owner's approval)
+## 1. Existing key test that pins Enter, Esc and Up as no-ops
 
-Do these four tasks first, in order. Each changes only the named test, no production code, and passes both before and after the feature. **If the owner has not approved a task's specific test, stop before that task and report; do not start group 2.** In each commit body, say that the owner approved this edit for issue #20.
+Do this task first. It changes only the named test, no production code, and passes both before and after the feature. The other three approved edits cannot pass before the new screen exists, so they are part of task 2.1, not of this group.
 
-- [ ] 1.1 **Requires the owner's approval for this specific test before it is done.** In `src/keys.rs`, test `other_keys_do_nothing_on_area_selection`: replace the array `[KeyCode::Char('q'), KeyCode::Char('a'), KeyCode::Char('あ'), KeyCode::Enter, KeyCode::Esc, KeyCode::Up]` with `[KeyCode::Char('q'), KeyCode::Char('a'), KeyCode::Char('あ')]`. Keep the test's name, its loop body and its `Event::FocusGained` assertion. Verify `cargo test keys` passes and `git diff --stat` shows only `src/keys.rs` and this `tasks.md`. Commit, e.g. `test(keys): stop pinning Enter, Esc and Up as no-ops on area selection`.
-- [ ] 1.2 **Requires the owner's approval for this specific test before it is done.** In `src/ui.rs`, delete the test `area_selection_placeholder_is_shown` (the whole `#[test] fn`). Keep the `started` helper (still used by `area_selection_draws_at_any_size_without_panicking` and `area_selection_uses_no_colour`). Verify `cargo test` and clippy pass and `git diff --stat` shows only `src/ui.rs` and this `tasks.md`. Commit, e.g. `test(ui): drop the area selection placeholder text test`.
-- [ ] 1.3 **Requires the owner's approval for this specific test before it is done.** In `src/ui.rs`, delete the test `area_selection_follows_a_resize`. Keep `row_index` (used by the Welcome tests). Verify as in 1.2. Commit, e.g. `test(ui): drop the area selection placeholder resize test`.
-- [ ] 1.4 **Requires the owner's approval for this specific test before it is done.** In `src/text.rs`, delete the test `area_selection_messages_are_plain_ascii_text`. Do not remove the constants yet (`ui` still draws them until 2.1). Verify as in 1.2 with `src/text.rs`. Commit, e.g. `test(text): drop the area selection placeholder wording test`.
+- [ ] 1.1 **Owner-approved edit of existing test `other_keys_do_nothing_on_area_selection` (issue #20).** In `src/keys.rs`, test `other_keys_do_nothing_on_area_selection`: replace the array `[KeyCode::Char('q'), KeyCode::Char('a'), KeyCode::Char('あ'), KeyCode::Enter, KeyCode::Esc, KeyCode::Up]` with `[KeyCode::Char('q'), KeyCode::Char('a'), KeyCode::Char('あ')]`. Keep the test's name, its place in the file, its loop body and its `Event::FocusGained` assertion. Verify `cargo test`, fmt and clippy pass and `git diff --stat` shows only `src/keys.rs` and this `tasks.md`. Commit, e.g. `test(keys): stop pinning Enter, Esc and Up as no-ops on area selection`; in the commit body, say that the owner approved this edit for issue #20.
 
 ## 2. The list of areas, and choosing an area
 
-- [ ] 2.1 Show the list and let Enter choose an area, in one commit (design.md D9 explains why it cannot be split).
+- [ ] 2.1 Show the list and let Enter choose an area, in one commit (design.md D9 explains why it cannot be split). This commit also holds three owner-approved edits of existing tests (below), because they assert the new screen and wording and cannot pass before it.
   - **`src/areas.rs` (new):** module doc `//! The practice areas the app knows about, listed in one place.` Then `mod grammar; mod kanji; mod vocabulary;`, `use` of the three structs, the trait `Area: std::fmt::Debug` with `fn name(&self) -> &'static str` and `fn has_questions(&self) -> bool` (doc comments from D2), `const ALL: &[&dyn Area] = &[&Vocabulary, &Kanji, &Grammar];` with the doc comment from D2, and `pub fn all() -> &'static [&'static dyn Area] { ALL }`. At the end, `#[cfg(test)] pub mod fake` with `FakeArea` exactly as in D3, then `#[cfg(test)] mod tests`.
   - **`src/areas/vocabulary.rs`, `src/areas/kanji.rs`, `src/areas/grammar.rs` (new):** each has a module doc (`//! The Vocabulary area. Its words and questions come with issue #11.`; Kanji: `#12`; Grammar: `#13`), `#[derive(Debug)] pub struct Vocabulary;` (`Kanji`, `Grammar`) and `impl Area for ...` with `name()` returning `text::AREA_VOCABULARY` (`AREA_KANJI`, `AREA_GRAMMAR`) and `has_questions()` returning `false`.
   - **`src/main.rs`:** add `mod areas;` right after `mod app;` (alphabetical order). Nothing else.
@@ -32,13 +29,56 @@ Do these four tasks first, in order. Each changes only the named test, no produc
   - **`src/ui.rs`:** `draw_area_selection(frame, session)` and the new `draw_no_questions(frame, session)` exactly as in D6, both through the unchanged `draw_centred`; add the `Screen::NoQuestions` arm to `draw`. Import `ratatui::text::Span`. Do not change `draw_welcome` or `draw_centred`.
   - **`CHANGELOG.md`**, *Unreleased* / *Added*, as the **last** entry of the list: `- Area selection screen (issue #20): lists Vocabulary, Kanji and Grammar, with the first one highlighted by a "> " marker. Enter on an area with no questions shows "No questions in this area yet", and Enter there goes back to the list; all three areas are empty until their content exists. The areas are listed in one place, \`src/areas.rs\`, so adding one adds a line.`
   - **`docs/architecture.md`:** in the status note at the top, replace `Only the core loop and the Welcome screen exist in code` … `here is still planned.` (the first three lines of the note) with `Only the core loop, the Welcome screen and area selection exist in code (\`app\`, \`areas\`, \`keys\`, \`session\` and \`ui\`). The areas have no questions yet. Everything else here is still planned.` In §5, at the end of the **Area contract** bullet, add: `Its first part exists: \`src/areas.rs\` lists the areas, each with a name and whether it has any questions.` Change nothing else.
+  - **Owner-approved edit of existing test `area_selection_placeholder_is_shown` (issue #20).** In `src/ui.rs`, keep the test's name, its `#[test]` attribute and its place in the file (between the `started` helper and `area_selection_follows_a_resize`). Change only its two positive `assert!` lines (`"Area selection is coming soon."` and `"Press Ctrl+C to quit"`). The full new body is:
+
+    ```rust
+    #[test]
+    fn area_selection_placeholder_is_shown() {
+        let screen = text(&render(&started(80, 24)));
+        assert!(screen.contains("What do you want to practise?"));
+        assert!(screen.contains("Up/Down to move, Enter to choose, Esc to leave"));
+        for unexpected in ["日", "Press Enter to start", "Last key:"] {
+            assert!(!screen.contains(unexpected), "unexpected {unexpected:?}");
+        }
+    }
+    ```
+  - **Owner-approved edit of existing test `area_selection_follows_a_resize` (issue #20).** In `src/ui.rs`, keep the test's name and place. Change only the row's needle (from `"Press Ctrl+C to quit"` to `text::AREA_SELECTION_HINT`), the expected symbol (`"P"` to `"U"`) and the column (both `40`s to `27`: at 100 columns the 46-column hint starts at `100/2 - 46/2 = 27`). The full new body is:
+
+    ```rust
+    #[test]
+    fn area_selection_follows_a_resize() {
+        let mut session = started(80, 24);
+        session.apply(Action::Resized {
+            width: 100,
+            height: 30,
+        });
+        let rows = render(&session);
+        let row = &rows[row_index(&rows, text::AREA_SELECTION_HINT)];
+        assert_eq!(row[27], "U");
+        assert!(row[..27].iter().all(|symbol| symbol == " "));
+    }
+    ```
+  - **Owner-approved edit of existing test `area_selection_messages_are_plain_ascii_text` (issue #20).** In `src/text.rs`, keep the test's name and place (between `start_hint_is_plain_ascii_text` and `fixed_messages_are_not_empty`). It switches from the two removed placeholder constants to the two constants that take their place on the screen: the heading and the key hint. The full new body is (this is `cargo fmt` output, keep the line breaks):
+
+    ```rust
+    #[test]
+    fn area_selection_messages_are_plain_ascii_text() {
+        assert_eq!(AREA_SELECTION_TITLE, "What do you want to practise?");
+        assert_eq!(
+            AREA_SELECTION_HINT,
+            "Up/Down to move, Enter to choose, Esc to leave"
+        );
+        assert!(AREA_SELECTION_TITLE.is_ascii());
+        assert!(AREA_SELECTION_HINT.is_ascii());
+    }
+    ```
   - **New tests, `src/areas.rs` `mod tests`:**
     - `the_list_starts_with_vocabulary_kanji_grammar`: the names of `all()` start with `["Vocabulary", "Kanji", "Grammar"]` (use `starts_with`, not equality).
     - `area_names_are_unique_and_not_empty`: no name in `all()` is empty, and no two are equal.
   - **New tests, one per area file `mod tests`:** `is_named_vocabulary` (`Vocabulary.name() == "Vocabulary"`), `is_named_kanji`, `is_named_grammar`. Do not test `has_questions` on the real areas.
   - **New tests, `src/text.rs` `mod tests`:**
-    - `area_selection_wording_is_plain_ascii_text`: each of the nine D8 constants equals its exact string and `is_ascii()`.
-    - `area_markers_are_the_same_width`: `AREA_MARKER.len() == 2`, `AREA_NO_MARKER == "  "`, `AREA_MARKER.starts_with('>')`.
+    - `area_and_no_questions_wording_is_plain_ascii_text`: each of `AREA_VOCABULARY`, `AREA_KANJI`, `AREA_GRAMMAR`, `NO_QUESTIONS` and `NO_QUESTIONS_HINT` equals its exact string from D8 and `is_ascii()`. (`AREA_SELECTION_TITLE` and `AREA_SELECTION_HINT` are checked by the edited `area_selection_messages_are_plain_ascii_text`; the markers by the next test.)
+    - `area_markers_are_the_same_width`: `AREA_MARKER == "> "`, `AREA_NO_MARKER == "  "`, `AREA_MARKER.len() == AREA_NO_MARKER.len()`, and both `is_ascii()`.
   - **New tests, `src/session.rs` `mod tests`** (add `use crate::areas::{self, Area, fake::FakeArea};` and constants `EMPTY_THREE` = fakes named `"A"`, `"B"`, `"C"` with `has_questions: false`, and `ONE_FULL` = one fake `"Full"` with `has_questions: true`):
     - `new_session_lists_the_apps_areas`: `Session::new(80, 24).areas().len() == areas::all().len()` and `highlighted() == 0`.
     - `start_highlights_the_first_area`: `Session::new`, `Start`; `highlighted_area().map(|area| area.name()) == Some("Vocabulary")`.
@@ -57,19 +97,19 @@ Do these four tasks first, in order. Each changes only the named test, no produc
     - `other_keys_do_nothing_on_no_questions`: `q`, `a`, `あ`, Up, Down (no modifiers) and `Event::FocusGained` → `None`. Do not include Esc (it goes back from 4.1 on).
     - `enter_through_the_key_table_with_an_empty_area`: `Session::with_areas(80, 24, EMPTY_ONE)`; feed events through `action_for(session.screen(), &event)` and `apply` each `Some` result, like `enter_then_ctrl_c_through_the_key_table`: Enter → `AreaSelection`; Enter → `NoQuestions`; Enter → `AreaSelection`; never quitting.
   - **New tests, `src/ui.rs` `mod tests`** (add helpers `fn started_with(areas: &'static [&'static dyn Area], width: u16, height: u16) -> Session` = `Session::with_areas` + `Start`, and `fn chosen_with(...)` = `started_with` + `Choose`; constants `EMPTY_KANJI` = one fake `"Kanji"` without questions, `FOUR` = fakes `"Alpha"`, `"Beta"`, `"Gamma"`, `"Delta"` without questions, `WIDE_PAIR` = fakes `"Vocabulary"` and `"漢字"` without questions):
-    - `area_selection_lists_the_areas_in_order`: `started(80, 24)`: the screen contains `text::AREA_SELECTION_TITLE`; `row_index` of the title < `"Vocabulary"` < `"Kanji"` < `"Grammar"`; the screen does not contain `"Area selection is coming soon."`, `"日"`, `"Press Enter to start"` or `"Last key:"`.
+    - `area_selection_lists_the_areas_in_order`: `started(80, 24)`: `row_index` of `text::AREA_SELECTION_TITLE` < `"Vocabulary"` < `"Kanji"` < `"Grammar"`; the screen does not contain `"Area selection is coming soon."`. (The title and hint being present, and `"日"`, `"Press Enter to start"` and `"Last key:"` being absent, are checked by the edited `area_selection_placeholder_is_shown`.)
     - `first_area_is_highlighted_with_a_marker`: `started(80, 24)`: exactly one row contains `"> "`, and it contains `"> Vocabulary"`.
     - `area_list_is_centred_by_display_width`: `started(80, 24)`: in the `Vocabulary` row, cell 34 is `">"`, cell 36 is `"V"` and cells 0..34 are `" "`; in the `Kanji` and `Grammar` rows, cells 34 and 35 are `" "` and cell 36 is `"K"` / `"G"`.
     - `area_names_line_up_by_display_width`: `started_with(WIDE_PAIR, 80, 24)`: the `Vocabulary` row has `"V"` at 36 and the `漢字` row has `"漢"` at 36.
     - `another_area_adds_a_line`: `started_with(FOUR, 80, 24)`: `row_index` of `"Alpha"` < `"Beta"` < `"Gamma"` < `"Delta"`.
     - `area_selection_hint_is_centred_below_the_list`: `started(80, 24)`: the hint row (`row_index(&rows, text::AREA_SELECTION_HINT)`) is below the `Grammar` row, has `"U"` at cell 17 and `" "` in cells 0..17.
-    - `area_list_stays_centred_after_a_resize`: `started(80, 24)`, then `Resized { width: 100, height: 30 }`: the `Vocabulary` row has `"V"` at 46; the hint row has `"U"` at 27.
+    - `area_list_stays_centred_after_a_resize`: `started(80, 24)`, then `Resized { width: 100, height: 30 }`: the `Vocabulary` row has `">"` at 44 and `"V"` at 46; the `Kanji` row has `"K"` at 46. (The hint at 27 after the same resize is checked by the edited `area_selection_follows_a_resize`.)
     - `area_selection_with_no_areas_still_draws`: `started_with(&[], 80, 24)`: the screen contains the title and the hint; also render at 1x1 without panicking.
     - `no_questions_screen_shows_the_area_and_the_message`: `chosen_with(EMPTY_KANJI, 80, 24)`: `row_index` of `"Kanji"` < `text::NO_QUESTIONS` < `text::NO_QUESTIONS_HINT`; the screen does not contain `text::AREA_SELECTION_TITLE` or `text::AREA_SELECTION_HINT`.
-    - `no_questions_message_is_centred`: `chosen_with(EMPTY_KANJI, 80, 24)`: the message row has `"N"` at 25 and `" "` in cells 0..25.
+    - `no_questions_message_is_centred`: `chosen_with(EMPTY_KANJI, 80, 24)`: the message row has `"N"` at 26 and `" "` in cells 0..26. (`ratatui` centres a line at `area_width / 2 - line_width / 2` with integer division: `40 - 14 = 26` for the 29-column message.)
     - `no_questions_draws_at_any_size_without_panicking`: `chosen_with(EMPTY_KANJI, w, h)` at 1x1, 5x2, 20x3 and 200x60.
     - `no_questions_uses_no_colour`: at 80x24, every cell of `buffer(...)` has `fg == Color::Reset` and `bg == Color::Reset`.
-  - Verify: all new tests pass; every remaining existing test passes unchanged (in particular `enter_then_ctrl_c_through_the_key_table`, `area_selection_uses_no_colour`, `area_selection_draws_at_any_size_without_panicking` and `start_is_one_way`); fmt and clippy are clean with no dead-code warning; `git diff main -- VERSION Cargo.toml Cargo.lock` prints nothing. Commit, e.g. `feat(areas): list the areas and choose one on area selection`.
+  - Verify: all new tests pass; the three edited tests pass with exactly the bodies above; every other existing test passes unchanged (in particular `enter_then_ctrl_c_through_the_key_table`, `area_selection_uses_no_colour`, `area_selection_draws_at_any_size_without_panicking` and `start_is_one_way`); `git diff main -- src/ui.rs src/text.rs` shows no removed `#[test]` and no renamed test; fmt and clippy are clean with no dead-code warning; `git diff main -- VERSION Cargo.toml Cargo.lock` prints nothing. Commit, e.g. `feat(areas): list the areas and choose one on area selection`; in the commit body, name the three edited tests and say that the owner approved these edits for issue #20.
 
 ## 3. Moving the highlight
 
