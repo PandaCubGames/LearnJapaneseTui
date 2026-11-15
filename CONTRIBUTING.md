@@ -6,6 +6,8 @@ Thanks for your interest in helping! This guide explains how changes are made in
 
 Codex users should also read [Codex setup](docs/codex-setup.md).
 
+**Shortcut:** `scripts/setup-dev.sh` does steps 1 and 2 for you. It installs Rust if it is missing, adds `rustfmt`, `clippy` and the musl target, installs OpenSpec, Commitizen and pre-commit at the versions this repository pins, and enables the hooks. It needs git, curl, Node.js with npm, and uv or pipx. It doesn't set up commit signing; see [Commit with Conventional Commits](#2-commit-with-conventional-commits).
+
 1. **Install the tools:**
    - [Rust](https://www.rust-lang.org/tools/install) 1.88+ with `rustfmt` and `clippy`:
      ```sh
