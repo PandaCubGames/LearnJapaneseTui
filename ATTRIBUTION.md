@@ -8,6 +8,8 @@ This file lists third-party **learning content** (dictionaries, vocabulary lists
 |---|---|---|---|
 | _None yet_ | | | |
 
+Content written for this project is licensed under GPL-3.0-or-later, like the code, and is not listed in the table. This includes the Grammar word list in `src/areas/grammar.rs` (words, readings, English meanings). Its JLPT levels are the project's own approximate judgment; the JLPT publishes no official vocabulary list, and none of the unofficial lists was used.
+
 When adding content:
 - add a row here,
 - keep the license text or notice the source requires,

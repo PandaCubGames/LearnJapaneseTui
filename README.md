@@ -4,7 +4,7 @@
 
 `tui-learnjapanese` is a terminal app (TUI) for learning Japanese, written in Rust. It's organized into independent learning modules, ships as a single executable, and works anywhere you have a terminal, including over SSH.
 
-> **Status: early development.** The project is just getting started. There's no usable learning content yet, and the features below are the plan, not what exists today.
+> **Status: early development.** The project is just getting started. The first learning module, Grammar (conjugation practice for common verbs and adjectives), works; the rest of the features below are the plan, not what exists today.
 
 ## Planned features
 
