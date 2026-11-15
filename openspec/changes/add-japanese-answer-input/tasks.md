@@ -113,7 +113,7 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
 
 ## 3. Answer checking
 
-- [ ] 3.1 Add `src/grading.rs` with `Outcome` and `check` (D2, D6).
+- [x] 3.1 Add `src/grading.rs` with `Outcome` and `check` (D2, D6).
   - `src/main.rs`: add `mod grading;` with the D1 attribute.
   - `Outcome` exactly as in D2, with its derives and doc comments.
   - Private helpers: `fn normalise_japanese(text: &str) -> String`, `fn blocked(shown: &[&str]) -> Vec<String>` and `fn is_marked_vowel(c: char) -> bool` as in D6. Remove whitespace with `text.chars().filter(|c| !c.is_whitespace())`. `blocked` keeps `normalise_japanese(s)` for each `s` whose normalised text satisfies `.chars().any(kana::is_kanji)`, in order.
