@@ -106,7 +106,7 @@ Types, signatures, rule tables, the word list and the expected forms are in `des
     - `ii_accepted_answers_of_every_form`: for each of the nine `ASKED` forms, `ask("いい", form, formality).accepted` equals the list for that form in design.md Appendix B, *Accepted answers of a question*, いい (copy the nine lists exactly).
   - Verify as in 1.1. Commit, e.g. `feat(grammar): conjugate i-adjectives`.
 
-- [ ] 2.3 Accept the romaji `dewa` for the では of an accepted answer (design.md D18, owner decision).
+- [x] 2.3 Accept the romaji `dewa` for the では of an accepted answer (design.md D18, owner decision).
   - **First, check:** `src/grading.rs` has `fn is_romaji_char`, and `check` ends with the `if let Some(read_as) = readings.iter().find(|r| accepted.contains(r)) { .. }` block followed by `Outcome::Wrong { read_as: readings.into_iter().next() }`, as in design.md D18. If not, stop and report.
   - `src/grading.rs`: add the private `fn dewa_for_deha` exactly as design.md D18 (with its doc comment), right above `pub fn check`. In `check`, add `let from_romaji = text.chars().all(is_romaji_char);` right after the `if text.is_empty() { return Outcome::Empty; }` block, and the `if from_romaji { .. }` block of D18 between the exact-match block and the final `Outcome::Wrong { .. }`. Change nothing else in the file, including `TypoGuard` and every existing test.
   - New tests, `src/grading.rs`, appended at the end of the existing `mod tests` (use the existing `correct`, `wrong` and `NOTHING`; do not edit them):

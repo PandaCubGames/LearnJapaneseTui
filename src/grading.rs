@@ -73,12 +73,29 @@ fn is_romaji_char(c: char) -> bool {
     is_latin_letter(c) || c == '\'' || c == '-'
 }
 
+/// Whether the romaji reading `reading` is the accepted answer `answer` with
+/// some of its では typed as `dewa` (read でわ), the way では is pronounced.
+/// Only a は right after で may be read わ; everything else must be equal.
+fn dewa_for_deha(reading: &str, answer: &str) -> bool {
+    let reading: Vec<char> = reading.chars().collect();
+    let answer: Vec<char> = answer.chars().collect();
+    reading.len() == answer.len()
+        && reading
+            .iter()
+            .zip(&answer)
+            .enumerate()
+            .all(|(i, (&r, &a))| {
+                r == a || (a == 'は' && r == 'わ' && i > 0 && answer[i - 1] == 'で')
+            })
+}
+
 /// Checks one answer. Pure: same input, same result. Never remembers anything.
 pub fn check(typed: &str, accepted: &[&str], shown: &[&str]) -> Outcome {
     let text: String = typed.chars().filter(|c| !c.is_whitespace()).collect();
     if text.is_empty() {
         return Outcome::Empty;
     }
+    let from_romaji = text.chars().all(is_romaji_char);
 
     let readings: Vec<String> =
         if text.chars().any(kana::is_japanese) && text.chars().any(is_latin_letter) {
@@ -108,6 +125,15 @@ pub fn check(typed: &str, accepted: &[&str], shown: &[&str]) -> Outcome {
         return Outcome::Correct {
             read_as: read_as.clone(),
         };
+    }
+    if from_romaji {
+        for reading in &readings {
+            if let Some(answer) = accepted.iter().find(|a| dewa_for_deha(reading, a)) {
+                return Outcome::Correct {
+                    read_as: answer.clone(),
+                };
+            }
+        }
     }
     Outcome::Wrong {
         read_as: readings.into_iter().next(),
@@ -471,5 +497,115 @@ mod tests {
             Outcome::LooksLikeTypo
         );
         assert_eq!(guard.submit("konnichiq", &accepted, NOTHING), unread());
+    }
+
+    #[test]
+    fn dewa_is_accepted_for_deha_in_romaji() {
+        let accepted = ["静かではない", "しずかではない"];
+        let shown = ["静か", "しずか"];
+        for typed in [
+            "shizukadewanai",
+            "shizukadehanai",
+            "SHIZUKADEWANAI",
+            "shizuka dewa nai",
+        ] {
+            assert_eq!(
+                check(typed, &accepted, &shown),
+                correct("しずかではない"),
+                "{typed}"
+            );
+        }
+    }
+
+    #[test]
+    fn dewa_in_a_polite_form() {
+        assert_eq!(
+            check(
+                "shizukadewaarimasen",
+                &["静かではありません", "しずかではありません"],
+                &["静か", "しずか"]
+            ),
+            correct("しずかではありません")
+        );
+    }
+
+    #[test]
+    fn kana_dewa_stays_wrong() {
+        let accepted = ["静かではない", "しずかではない"];
+        let shown = ["静か", "しずか"];
+        for typed in ["しずかでわない", "シズカデワナイ"] {
+            assert_eq!(
+                check(typed, &accepted, &shown),
+                wrong("しずかでわない"),
+                "{typed}"
+            );
+        }
+        assert_eq!(
+            check("静かではない", &accepted, &shown),
+            correct("静かではない")
+        );
+        assert_eq!(
+            check("しずかではない", &accepted, &shown),
+            correct("しずかではない")
+        );
+    }
+
+    #[test]
+    fn dewa_composes_with_nn() {
+        let accepted = ["今日ではない", "こんにちではない"];
+        for typed in ["konnichidewanai", "konnnichidewanai", "konnichidehanai"] {
+            assert_eq!(
+                check(typed, &accepted, NOTHING),
+                correct("こんにちではない"),
+                "{typed}"
+            );
+        }
+        assert_eq!(
+            check(
+                "kinnendewanai",
+                &["禁煙ではない", "きんえんではない"],
+                NOTHING
+            ),
+            correct("きんえんではない")
+        );
+    }
+
+    #[test]
+    fn each_deha_may_be_typed_either_way() {
+        for typed in ["dewadewa", "dehadewa", "dewadeha"] {
+            assert_eq!(
+                check(typed, &["ではでは"], NOTHING),
+                correct("ではでは"),
+                "{typed}"
+            );
+        }
+    }
+
+    #[test]
+    fn other_ha_are_still_typed_ha() {
+        assert_eq!(
+            check("konnichiwa", &["こんにちは"], NOTHING),
+            wrong("こんにちわ")
+        );
+        assert_eq!(
+            check("watashiwa", &["わたしは"], NOTHING),
+            wrong("わたしわ")
+        );
+    }
+
+    #[test]
+    fn dewa_does_not_work_the_other_way_round() {
+        assert_eq!(
+            check("tedehakeru", &["てでわける"], NOTHING),
+            wrong("てではける")
+        );
+    }
+
+    #[test]
+    fn a_wrong_dewa_answer_keeps_its_reading() {
+        assert_eq!(
+            check("shizukadewaarimasu", &["しずかではありません"], NOTHING),
+            wrong("しずかでわあります")
+        );
     }
 }

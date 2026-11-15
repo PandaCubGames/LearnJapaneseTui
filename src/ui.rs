@@ -1330,4 +1330,65 @@ mod tests {
             render(&session);
         }
     }
+
+    #[derive(Debug)]
+    struct NotQuiet;
+
+    impl Area for NotQuiet {
+        fn name(&self) -> &'static str {
+            "NotQuiet"
+        }
+
+        fn questions(&self, _levels: crate::practice::Levels) -> Vec<crate::practice::Entry> {
+            use crate::practice::question::Question;
+            vec![crate::practice::Entry {
+                levels: crate::practice::Levels::only(Level::N5),
+                questions: vec![Question {
+                    prompt: "What is the plain negative of 静か (しずか, quiet)?".to_string(),
+                    accepted: [
+                        "静かじゃない",
+                        "しずかじゃない",
+                        "静かではない",
+                        "しずかではない",
+                    ]
+                    .iter()
+                    .map(|answer| answer.to_string())
+                    .collect(),
+                    shown: vec!["静か".to_string(), "しずか".to_string()],
+                    kind: Kind::Japanese,
+                }],
+            }]
+        }
+    }
+
+    const NOT_QUIET: &[&dyn Area] = &[&NotQuiet];
+
+    #[test]
+    fn dewa_reads_as_deha_on_the_feedback_screen() {
+        let mut session = practising(NOT_QUIET, 80, 24);
+        submit(&mut session, "shizukadewanai");
+        let screen = squashed(&render(&session));
+        assert!(screen.contains("Read as: しずかではない"));
+        assert!(screen.contains(text::CORRECT));
+        assert!(!screen.contains("でわ"));
+    }
+
+    #[test]
+    fn kana_dewa_is_wrong_on_the_feedback_screen() {
+        let mut session = practising(NOT_QUIET, 80, 24);
+        submit(&mut session, "しずかでわない");
+        let screen = squashed(&render(&session));
+        assert!(screen.contains("Your answer: しずかでわない"));
+        assert!(screen.contains(text::WRONG));
+        assert!(screen.lines().any(|line| line.contains(
+            "Correct answers: 静かじゃない, しずかじゃない, 静かではない, しずかではない"
+        )));
+        assert!(!screen.contains("Read as:"));
+        let with_dewa: Vec<&str> = screen
+            .lines()
+            .filter(|line| line.contains("でわ"))
+            .collect();
+        assert_eq!(with_dewa.len(), 1, "{with_dewa:?}");
+        assert!(with_dewa[0].contains("Your answer:"));
+    }
 }
