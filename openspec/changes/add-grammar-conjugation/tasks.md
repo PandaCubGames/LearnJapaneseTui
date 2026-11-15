@@ -158,7 +158,7 @@ Types, signatures, rule tables, the word list and the expected forms are in `des
 
 ## 4. Integration check
 
-- [ ] 4.1 Drive the release binary through a terminal (design.md D17, no person needed).
+- [x] 4.1 Drive the release binary through a terminal (design.md D17, no person needed).
   - `cargo build --release`, then run the steps of D17 with `tmux` at 80x24 against `target/release/tui-learnjapanese`. Keep the script outside the repository. After every key, wait about 0.3 s before `tmux capture-pane -p`.
   - Confirm in order: `Press Enter to start`; `What do you want to practise?` with `> Grammar`; the level picker with `Grammar` and `> [x] N5`; a question starting `What is the ` with `Answer in Japanese or romaji` and `Score: 0 of 0`; `neko` gives `Your answer: neko`, `Read as: ねこ`, `Not quite.` and a `Correct answer` line; a repeated prompt answered in romaji gives `Correct!` and `Read as:` with the kana; Esc shows `What do you want to practise?`; Esc exits with status 0.
   - Record each result (and how many questions it took to see a repeated prompt) in the report. If a step fails, stop and report; do not change code in this task.
