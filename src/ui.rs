@@ -482,4 +482,13 @@ mod tests {
                 .all(|cell| cell.fg == Color::Reset && cell.bg == Color::Reset)
         );
     }
+
+    #[test]
+    fn moving_the_highlight_moves_the_marker() {
+        let mut session = started(80, 24);
+        session.apply(Action::Next);
+        let rows = render(&session);
+        assert_eq!(rows[row_index(&rows, "Kanji")][34], ">");
+        assert_eq!(rows[row_index(&rows, "Vocabulary")][34], " ");
+    }
 }

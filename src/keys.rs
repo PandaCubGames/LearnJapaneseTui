@@ -42,6 +42,8 @@ pub fn action_for(screen: Screen, event: &Event) -> Option<Action> {
             _ => None,
         },
         Screen::AreaSelection => match key.code {
+            KeyCode::Up if key.modifiers.is_empty() => Some(Action::Previous),
+            KeyCode::Down if key.modifiers.is_empty() => Some(Action::Next),
             KeyCode::Enter if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
                 Some(Action::Choose)
             }
@@ -340,5 +342,54 @@ mod tests {
         feed(&mut session, press(KeyCode::Enter, KeyModifiers::NONE));
         assert_eq!(session.screen(), Screen::AreaSelection);
         assert!(!session.should_quit());
+    }
+
+    #[test]
+    fn arrows_move_on_area_selection() {
+        assert_eq!(
+            on_area_selection(press(KeyCode::Up, KeyModifiers::NONE)),
+            Some(Action::Previous)
+        );
+        assert_eq!(
+            on_area_selection(press(KeyCode::Down, KeyModifiers::NONE)),
+            Some(Action::Next)
+        );
+    }
+
+    #[test]
+    fn held_arrows_keep_moving() {
+        assert_eq!(
+            on_area_selection(with_kind(KeyCode::Down, KeyEventKind::Repeat)),
+            Some(Action::Next)
+        );
+        assert_eq!(
+            on_area_selection(with_kind(KeyCode::Up, KeyEventKind::Repeat)),
+            Some(Action::Previous)
+        );
+    }
+
+    #[test]
+    fn modified_arrows_do_nothing_on_area_selection() {
+        for (code, modifiers) in [
+            (KeyCode::Down, KeyModifiers::SHIFT),
+            (KeyCode::Down, KeyModifiers::CONTROL),
+            (KeyCode::Up, KeyModifiers::ALT),
+        ] {
+            assert_eq!(on_area_selection(press(code, modifiers)), None);
+        }
+    }
+
+    #[test]
+    fn unbound_keys_do_nothing_on_area_selection() {
+        for code in [
+            KeyCode::Char('j'),
+            KeyCode::Char('k'),
+            KeyCode::Char('1'),
+            KeyCode::Left,
+            KeyCode::Right,
+            KeyCode::Tab,
+        ] {
+            assert_eq!(on_area_selection(press(code, KeyModifiers::NONE)), None);
+        }
     }
 }

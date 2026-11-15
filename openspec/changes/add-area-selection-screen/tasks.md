@@ -113,7 +113,7 @@ Do this task first. It changes only the named test, no production code, and pass
 
 ## 3. Moving the highlight
 
-- [ ] 3.1 Up and Down move the highlight.
+- [x] 3.1 Up and Down move the highlight.
   - `src/session.rs`: add `Action::Previous` and `Action::Next` with their doc comments and the two arms of D4.
   - `src/keys.rs`: in the `Screen::AreaSelection` arm, add `KeyCode::Up` → `Previous` and `KeyCode::Down` → `Next`, both only without modifiers, repeats allowed (D5), before the Enter arm.
   - `CHANGELOG.md`: append to the entry from 2.1: ` Up and Down move the highlight and stop at the first and last area.`

@@ -30,6 +30,10 @@ pub enum Action {
     Tick,
     /// Leave the Welcome screen for area selection.
     Start,
+    /// Move the highlight to the previous area.
+    Previous,
+    /// Move the highlight to the next area.
+    Next,
     /// Choose the highlighted area.
     Choose,
     /// Leave the "no questions" screen for the list.
@@ -81,6 +85,16 @@ impl Session {
                 if self.screen == Screen::Welcome {
                     self.screen = Screen::AreaSelection;
                     self.highlighted = 0;
+                }
+            }
+            Action::Previous => {
+                if self.screen == Screen::AreaSelection {
+                    self.highlighted = self.highlighted.saturating_sub(1);
+                }
+            }
+            Action::Next => {
+                if self.screen == Screen::AreaSelection && self.highlighted + 1 < self.areas.len() {
+                    self.highlighted += 1;
                 }
             }
             Action::Choose => {
@@ -317,5 +331,68 @@ mod tests {
         session.apply(Action::Choose);
         assert_eq!(session.screen(), Screen::AreaSelection);
         assert!(session.highlighted_area().is_none());
+    }
+
+    #[test]
+    fn next_and_previous_move_the_highlight() {
+        let mut session = Session::with_areas(80, 24, EMPTY_THREE);
+        session.apply(Action::Start);
+        session.apply(Action::Next);
+        assert_eq!(session.highlighted(), 1);
+        session.apply(Action::Next);
+        assert_eq!(session.highlighted(), 2);
+        session.apply(Action::Previous);
+        assert_eq!(session.highlighted(), 1);
+    }
+
+    #[test]
+    fn highlight_stops_at_the_last_area() {
+        let mut session = Session::with_areas(80, 24, EMPTY_THREE);
+        session.apply(Action::Start);
+        for _ in 0..3 {
+            session.apply(Action::Next);
+        }
+        assert_eq!(session.highlighted(), 2);
+    }
+
+    #[test]
+    fn highlight_stops_at_the_first_area() {
+        let mut session = Session::with_areas(80, 24, EMPTY_THREE);
+        session.apply(Action::Start);
+        session.apply(Action::Previous);
+        assert_eq!(session.highlighted(), 0);
+    }
+
+    #[test]
+    fn moving_only_works_on_area_selection() {
+        let mut session = Session::with_areas(80, 24, EMPTY_THREE);
+        session.apply(Action::Next);
+        assert_eq!(session.highlighted(), 0);
+        session.apply(Action::Start);
+        session.apply(Action::Choose);
+        assert_eq!(session.screen(), Screen::NoQuestions);
+        session.apply(Action::Next);
+        assert_eq!(session.highlighted(), 0);
+    }
+
+    #[test]
+    fn back_keeps_the_moved_highlight() {
+        let mut session = Session::with_areas(80, 24, EMPTY_THREE);
+        session.apply(Action::Start);
+        session.apply(Action::Next);
+        session.apply(Action::Choose);
+        assert_eq!(name_of(&session), Some("B"));
+        session.apply(Action::Back);
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        assert_eq!(session.highlighted(), 1);
+    }
+
+    #[test]
+    fn moving_with_no_areas_does_nothing() {
+        let mut session = Session::with_areas(80, 24, &[]);
+        session.apply(Action::Start);
+        session.apply(Action::Next);
+        session.apply(Action::Previous);
+        assert_eq!(session.highlighted(), 0);
     }
 }
