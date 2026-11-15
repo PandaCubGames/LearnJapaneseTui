@@ -38,6 +38,8 @@ pub struct Drill {
     guard: TypoGuard,
     typo_warning: bool,
     feedback: Option<Feedback>,
+    answered: u32,
+    correct: u32,
 }
 
 /// What the user is told after submitting an answer.
@@ -67,6 +69,8 @@ impl Drill {
             guard: TypoGuard::default(),
             typo_warning: false,
             feedback: None,
+            answered: 0,
+            correct: 0,
         })
     }
 
@@ -124,6 +128,10 @@ impl Drill {
             answer,
             read_as,
         });
+        self.answered = self.answered.saturating_add(1);
+        if correct {
+            self.correct = self.correct.saturating_add(1);
+        }
         true
     }
 
@@ -142,6 +150,16 @@ impl Drill {
     /// Whether the "this does not read as Japanese" warning is shown.
     pub fn typo_warning(&self) -> bool {
         self.typo_warning
+    }
+
+    /// How many answers were counted.
+    pub fn answered(&self) -> u32 {
+        self.answered
+    }
+
+    /// How many of the counted answers were correct.
+    pub fn correct(&self) -> u32 {
+        self.correct
     }
 
     /// The feedback, once the answer was checked.
@@ -483,5 +501,49 @@ mod tests {
         }
         assert!(seen.iter().any(|prompt| prompt == "one"));
         assert!(seen.iter().any(|prompt| prompt == "two"));
+    }
+
+    #[test]
+    fn each_answer_is_counted_once() {
+        let mut drill = drill_of(reading());
+        type_text(&mut drill, "takai");
+        assert!(drill.submit());
+        drill.next(&mut Rng::new(1));
+        type_text(&mut drill, "neko");
+        assert!(drill.submit());
+        assert_eq!(drill.answered(), 2);
+        assert_eq!(drill.correct(), 1);
+    }
+
+    #[test]
+    fn warnings_empty_submits_and_continuing_are_not_counted() {
+        let mut drill = drill_of(reading());
+        assert!(!drill.submit());
+        type_text(&mut drill, "tabxru");
+        assert!(!drill.submit());
+        assert_eq!(drill.answered(), 0);
+        drill.edit(Edit::DeleteBack);
+        drill.edit(Edit::DeleteBack);
+        drill.edit(Edit::DeleteBack);
+        drill.edit(Edit::DeleteBack);
+        drill.edit(Edit::DeleteBack);
+        drill.edit(Edit::DeleteBack);
+        type_text(&mut drill, "takai");
+        assert!(drill.submit());
+        assert!(!drill.submit());
+        assert_eq!(drill.answered(), 1);
+        drill.next(&mut Rng::new(1));
+        assert_eq!(drill.answered(), 1);
+        assert_eq!(drill.correct(), 1);
+    }
+
+    #[test]
+    fn a_warned_text_submitted_again_counts_as_wrong() {
+        let mut drill = drill_of(reading());
+        type_text(&mut drill, "tabxru");
+        assert!(!drill.submit());
+        assert!(drill.submit());
+        assert_eq!(drill.answered(), 1);
+        assert_eq!(drill.correct(), 0);
     }
 }

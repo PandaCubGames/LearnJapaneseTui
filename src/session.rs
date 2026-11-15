@@ -946,4 +946,16 @@ mod tests {
             assert_eq!(session.screen(), Screen::Question);
         }
     }
+
+    #[test]
+    fn counts_start_at_zero_each_time() {
+        let mut session = practising(READING_ONLY, 0);
+        answer_correctly(&mut session);
+        assert_eq!(session.drill().unwrap().answered(), 1);
+        session.apply(Action::Back);
+        session.apply(Action::Choose);
+        session.apply(Action::Confirm);
+        assert_eq!(session.drill().unwrap().answered(), 0);
+        assert_eq!(session.drill().unwrap().correct(), 0);
+    }
 }

@@ -119,6 +119,11 @@ pub fn expected(accepted: &[String]) -> String {
     }
 }
 
+/// Question and feedback screens: how many answers were right.
+pub fn score(correct: u32, answered: u32) -> String {
+    format!("Score: {correct} of {answered}")
+}
+
 /// Level picker: the name of a level.
 pub fn level_name(level: Level) -> &'static str {
     match level {
@@ -343,5 +348,11 @@ mod tests {
             expected(&["食べました".to_string(), "たべました".to_string()]),
             "Correct answers: 食べました, たべました"
         );
+    }
+
+    #[test]
+    fn score_text() {
+        assert_eq!(score(0, 0), "Score: 0 of 0");
+        assert_eq!(score(2, 3), "Score: 2 of 3");
     }
 }

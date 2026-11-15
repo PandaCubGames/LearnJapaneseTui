@@ -10,8 +10,8 @@ use ratatui::style::Stylize;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Paragraph, Wrap};
 
-use crate::practice::Level;
 use crate::practice::question::Kind;
+use crate::practice::{Drill, Level};
 use crate::session::{Screen, Session};
 use crate::text::{self, GREETING};
 
@@ -164,7 +164,7 @@ fn draw_question(frame: &mut Frame, session: &Session) {
         _,
         typo_row,
         _,
-        _,
+        score_row,
         hint_row,
     ] = Layout::vertical([
         Constraint::Length(1),
@@ -198,6 +198,7 @@ fn draw_question(frame: &mut Frame, session: &Session) {
     if drill.typo_warning() {
         centred(frame, typo_row, Line::from(text::TYPO_WARNING));
     }
+    centred(frame, score_row, Line::from(score_text(drill)));
     centred(frame, hint_row, Line::from(text::QUESTION_HINT));
 }
 
@@ -221,7 +222,7 @@ fn draw_feedback(frame: &mut Frame, session: &Session) {
         verdict_row,
         expected_row,
         _,
-        _,
+        score_row,
         hint_row,
     ] = Layout::vertical([
         Constraint::Length(1),
@@ -263,7 +264,12 @@ fn draw_feedback(frame: &mut Frame, session: &Session) {
             Line::from(text::expected(&question.accepted)),
         );
     }
+    centred(frame, score_row, Line::from(score_text(drill)));
     centred(frame, hint_row, Line::from(text::FEEDBACK_HINT));
+}
+
+fn score_text(drill: &Drill) -> String {
+    text::score(drill.correct(), drill.answered())
 }
 
 /// Draws a prompt over `area`, wrapped, each line centred.
@@ -1142,5 +1148,42 @@ mod tests {
                 .iter()
                 .all(|cell| cell.fg == Color::Reset && cell.bg == Color::Reset)
         );
+    }
+
+    #[test]
+    fn score_starts_at_zero() {
+        let screen = text(&render(&practising(READING_ONLY, 80, 24)));
+        assert!(screen.contains("Score: 0 of 0"));
+    }
+
+    #[test]
+    fn score_after_two_answers() {
+        let mut session = practising(READING_ONLY, 80, 24);
+        submit(&mut session, "takai");
+        session.apply(Action::Continue);
+        submit(&mut session, "neko");
+        session.apply(Action::Continue);
+        let screen = text(&render(&session));
+        assert!(screen.contains("Score: 1 of 2"));
+    }
+
+    #[test]
+    fn continue_is_not_counted() {
+        let mut session = practising(READING_ONLY, 80, 24);
+        submit(&mut session, "takai");
+        assert!(text(&render(&session)).contains("Score: 1 of 1"));
+        session.apply(Action::Continue);
+        assert!(text(&render(&session)).contains("Score: 1 of 1"));
+    }
+
+    #[test]
+    fn typo_warning_is_not_counted() {
+        let mut session = practising(READING_ONLY, 80, 24);
+        submit(&mut session, "tabxru");
+        let screen = text(&render(&session));
+        assert!(screen.contains(text::TYPO_WARNING));
+        assert!(screen.contains("Score: 0 of 0"));
+        session.apply(Action::Submit);
+        assert!(text(&render(&session)).contains("Score: 0 of 1"));
     }
 }

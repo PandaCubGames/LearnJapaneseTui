@@ -104,7 +104,7 @@ fixed header or footer, and no separate logout.
   including after the last question, before the results appear.
 - **Feedback** shows the answer, its reading when it differs, whether it was right, and every accepted answer when it was wrong.
 - Each submitted answer is **counted once**, correct or not. Continuing from feedback
-  doesn't count it again.
+  doesn't count it again. Until the results screen exists, the score is shown on the question and feedback screens and practice goes on until Esc.
 
 ### Checking answers
 - **Japanese answers don't depend on the script.** Romaji and katakana are both turned

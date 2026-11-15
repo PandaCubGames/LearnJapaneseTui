@@ -153,7 +153,7 @@ Types, signatures, algorithms and wording are in `design.md` (D-numbers point th
   - New tests, `src/ui.rs`: `typo_warning_is_shown` (`tabxru` submitted once → contains `text::TYPO_WARNING`, field row still shows `tabxru`); `feedback_for_a_correct_romaji_answer` (`Your answer: takai`, `Read as: たかい`, `Correct!`; no `Correct answer`); `feedback_for_a_correct_kana_answer` (no `Read as:`); `feedback_for_a_wrong_answer` (`POLITE_PAST`, `ねこ` → `Your answer: ねこ`, `Not quite.`, `Correct answers: 食べました, たべました`); `feedback_lines_are_in_order` (`"Sample"` < prompt < your answer < verdict < hint); `feedback_hint_is_centred` (`"P"` at 17); `feedback_draws_at_any_size_without_panicking`; `feedback_uses_no_colour`.
   - Verify as in 1.1; also `grep -n "expect(dead_code" src/main.rs` prints nothing. Commit, e.g. `feat(practice): check answers and show feedback`.
 
-- [ ] 4.2 Count answers and show the score.
+- [x] 4.2 Count answers and show the score.
   - `src/practice.rs`: `Drill` gets `answered` and `correct` (0 in `start`), the counting lines of D9 in `submit`, and the getters `answered()` and `correct()`.
   - `src/text.rs`: `pub fn score(correct: u32, answered: u32) -> String`.
   - `src/ui.rs`: fill the score rows of the question and feedback screens.
