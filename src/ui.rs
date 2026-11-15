@@ -48,6 +48,9 @@ fn draw_area_selection(frame: &mut Frame, session: &Session) {
         .unwrap_or(0);
 
     let mut lines = vec![Line::from(text::AREA_SELECTION_TITLE), Line::default()];
+    if session.areas().is_empty() {
+        lines.push(Line::from(text::AREA_SELECTION_EMPTY));
+    }
     for (index, name) in names.enumerate() {
         let marker = if index == session.highlighted() {
             text::AREA_MARKER
@@ -490,5 +493,60 @@ mod tests {
         let rows = render(&session);
         assert_eq!(rows[row_index(&rows, "Kanji")][34], ">");
         assert_eq!(rows[row_index(&rows, "Vocabulary")][34], " ");
+    }
+
+    #[test]
+    fn empty_area_list_says_there_is_nothing_to_practise() {
+        let rows = render(&started_with(&[], 80, 24));
+        let order = [
+            row_index(&rows, text::AREA_SELECTION_TITLE),
+            row_index(&rows, text::AREA_SELECTION_EMPTY),
+            row_index(&rows, text::AREA_SELECTION_HINT),
+        ];
+        assert!(order.windows(2).all(|pair| pair[0] < pair[1]), "{order:?}");
+        assert!(!text(&rows).contains(text::AREA_MARKER));
+    }
+
+    #[test]
+    fn a_list_with_areas_does_not_say_it_is_empty() {
+        let screen = text(&render(&started_with(FOUR, 80, 24)));
+        assert!(!screen.contains(text::AREA_SELECTION_EMPTY));
+    }
+
+    #[test]
+    fn empty_area_list_is_centred() {
+        let mut session = started_with(&[], 80, 24);
+        let rows = render(&session);
+        let empty = &rows[row_index(&rows, text::AREA_SELECTION_EMPTY)];
+        assert_eq!(empty[29], "N");
+        assert!(empty[..29].iter().all(|symbol| symbol == " "));
+        assert_eq!(rows[row_index(&rows, text::AREA_SELECTION_HINT)][17], "U");
+        session.apply(Action::Resized {
+            width: 100,
+            height: 30,
+        });
+        let rows = render(&session);
+        let empty = &rows[row_index(&rows, text::AREA_SELECTION_EMPTY)];
+        assert_eq!(empty[39], "N");
+        assert!(empty[..39].iter().all(|symbol| symbol == " "));
+        assert_eq!(rows[row_index(&rows, text::AREA_SELECTION_HINT)][27], "U");
+    }
+
+    #[test]
+    fn empty_area_list_draws_at_any_size_without_panicking() {
+        for (width, height) in [(1, 1), (5, 2), (20, 3), (200, 60)] {
+            render(&started_with(&[], width, height));
+        }
+    }
+
+    #[test]
+    fn empty_area_list_uses_no_colour() {
+        let buffer = buffer(&started_with(&[], 80, 24));
+        assert!(
+            buffer
+                .content()
+                .iter()
+                .all(|cell| cell.fg == Color::Reset && cell.bg == Color::Reset)
+        );
     }
 }

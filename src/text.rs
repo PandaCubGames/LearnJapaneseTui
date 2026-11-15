@@ -41,6 +41,9 @@ pub const AREA_MARKER: &str = "> ";
 /// Area selection: in front of every other area, as wide as `AREA_MARKER`.
 pub const AREA_NO_MARKER: &str = "  ";
 
+/// Area selection: shown in place of the list when the app has no areas.
+pub const AREA_SELECTION_EMPTY: &str = "Nothing to practise yet";
+
 /// Area names, as shown in the list.
 pub const AREA_VOCABULARY: &str = "Vocabulary";
 pub const AREA_KANJI: &str = "Kanji";
@@ -160,5 +163,11 @@ mod tests {
         assert_eq!(AREA_MARKER.len(), AREA_NO_MARKER.len());
         assert!(AREA_MARKER.is_ascii());
         assert!(AREA_NO_MARKER.is_ascii());
+    }
+
+    #[test]
+    fn empty_area_list_wording_is_plain_ascii_text() {
+        assert_eq!(AREA_SELECTION_EMPTY, "Nothing to practise yet");
+        assert!(AREA_SELECTION_EMPTY.is_ascii());
     }
 }

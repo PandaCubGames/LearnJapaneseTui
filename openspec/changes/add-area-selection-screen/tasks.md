@@ -185,7 +185,7 @@ The owner does not want this change to add a Vocabulary, Kanji or Grammar area: 
 | `no_questions_message_is_centred`, `no_questions_draws_at_any_size_without_panicking`, `no_questions_uses_no_colour` | `src/ui.rs` | 6.2 | Rewrite only the constant name `EMPTY_KANJI` → `ONE_EMPTY` (columns unchanged: the message is centred on its own). |
 | `moving_the_highlight_moves_the_marker` | `src/ui.rs` | 6.2 | Rewrite with `THREE`: after `Next`, `Second` has `>` at 36 and `First` has `" "` at 36. |
 
-- [ ] 6.1 Show `Nothing to practise yet` when the list of areas is empty. The three built-in areas still exist in this task, so the real list does not change; the new state is reached only through `Session::with_areas(.., &[])`.
+- [x] 6.1 Show `Nothing to practise yet` when the list of areas is empty. The three built-in areas still exist in this task, so the real list does not change; the new state is reached only through `Session::with_areas(.., &[])`.
   - **`src/text.rs`:** add, right after `AREA_NO_MARKER` and before the `/// Area names, as shown in the list.` block:
 
     ```rust
