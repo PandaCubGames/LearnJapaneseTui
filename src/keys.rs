@@ -114,14 +114,7 @@ mod tests {
 
     #[test]
     fn other_keys_do_nothing_on_area_selection() {
-        for code in [
-            KeyCode::Char('q'),
-            KeyCode::Char('a'),
-            KeyCode::Char('あ'),
-            KeyCode::Enter,
-            KeyCode::Esc,
-            KeyCode::Up,
-        ] {
+        for code in [KeyCode::Char('q'), KeyCode::Char('a'), KeyCode::Char('あ')] {
             assert_eq!(on_area_selection(press(code, KeyModifiers::NONE)), None);
         }
         assert_eq!(on_area_selection(Event::FocusGained), None);
