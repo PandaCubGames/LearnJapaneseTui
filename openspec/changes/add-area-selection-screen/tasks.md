@@ -135,7 +135,7 @@ Do this task first. It changes only the named test, no production code, and pass
 
 ## 4. Leaving with Esc
 
-- [ ] 4.1 Esc quits from the list and goes back from "no questions".
+- [x] 4.1 Esc quits from the list and goes back from "no questions".
   - `src/keys.rs`: in `Screen::AreaSelection`, add `KeyCode::Esc` → `Some(Action::Quit)` (no modifiers, `Press` only). In `Screen::NoQuestions`, make the Enter arm `KeyCode::Enter | KeyCode::Esc` with the same guard (D5).
   - `CHANGELOG.md`: append to the entry: ` Esc quits from the list (until the Thank you screen exists) and goes back from the "no questions" screen.`
   - `docs/architecture.md`: in the status note, after `The areas have no questions yet.` add ` Esc on area selection quits directly until the Thank you screen exists.`

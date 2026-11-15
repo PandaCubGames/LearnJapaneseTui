@@ -47,10 +47,15 @@ pub fn action_for(screen: Screen, event: &Event) -> Option<Action> {
             KeyCode::Enter if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
                 Some(Action::Choose)
             }
+            KeyCode::Esc if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Quit)
+            }
             _ => None,
         },
         Screen::NoQuestions => match key.code {
-            KeyCode::Enter if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+            KeyCode::Enter | KeyCode::Esc
+                if key.modifiers.is_empty() && key.kind == KeyEventKind::Press =>
+            {
                 Some(Action::Back)
             }
             _ => None,
@@ -391,5 +396,59 @@ mod tests {
         ] {
             assert_eq!(on_area_selection(press(code, KeyModifiers::NONE)), None);
         }
+    }
+
+    #[test]
+    fn esc_quits_on_area_selection() {
+        assert_eq!(
+            on_area_selection(press(KeyCode::Esc, KeyModifiers::NONE)),
+            Some(Action::Quit)
+        );
+    }
+
+    #[test]
+    fn esc_goes_back_on_no_questions() {
+        assert_eq!(
+            on_no_questions(press(KeyCode::Esc, KeyModifiers::NONE)),
+            Some(Action::Back)
+        );
+    }
+
+    #[test]
+    fn modified_or_held_esc_does_nothing() {
+        assert_eq!(
+            on_area_selection(press(KeyCode::Esc, KeyModifiers::ALT)),
+            None
+        );
+        assert_eq!(
+            on_area_selection(with_kind(KeyCode::Esc, KeyEventKind::Repeat)),
+            None
+        );
+        assert_eq!(
+            on_no_questions(press(KeyCode::Esc, KeyModifiers::ALT)),
+            None
+        );
+        assert_eq!(
+            on_no_questions(with_kind(KeyCode::Esc, KeyEventKind::Repeat)),
+            None
+        );
+    }
+
+    #[test]
+    fn esc_through_the_key_table() {
+        let mut session = Session::with_areas(80, 24, EMPTY_ONE);
+        let feed = |session: &mut Session, event: Event| {
+            if let Some(action) = action_for(session.screen(), &event) {
+                session.apply(action);
+            }
+        };
+        feed(&mut session, press(KeyCode::Enter, KeyModifiers::NONE));
+        feed(&mut session, press(KeyCode::Enter, KeyModifiers::NONE));
+        assert_eq!(session.screen(), Screen::NoQuestions);
+        feed(&mut session, press(KeyCode::Esc, KeyModifiers::NONE));
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        assert!(!session.should_quit());
+        feed(&mut session, press(KeyCode::Esc, KeyModifiers::NONE));
+        assert!(session.should_quit());
     }
 }

@@ -6,7 +6,7 @@ Copyright (C) 2026 PandaCubGames
 # Architecture (draft)
 
 > **Status: mostly planned.** Only the core loop, the Welcome screen and area selection exist in code
-> (`app`, `areas`, `keys`, `session` and `ui`). The areas have no questions yet. Everything else
+> (`app`, `areas`, `keys`, `session` and `ui`). The areas have no questions yet. Esc on area selection quits directly until the Thank you screen exists. Everything else
 > here is still planned.
 > These diagrams describe the intended design and will change as it gets built.
 
