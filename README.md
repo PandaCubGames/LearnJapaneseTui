@@ -32,7 +32,7 @@
 
 ## Building from source
 
-You need [Rust](https://www.rust-lang.org/tools/install) **1.85 or newer**.
+You need [Rust](https://www.rust-lang.org/tools/install) **1.88 or newer**.
 
 ```sh
 git clone https://github.com/PandaCubGames/LearnJapaneseTui.git

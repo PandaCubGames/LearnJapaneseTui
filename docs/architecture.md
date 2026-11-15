@@ -5,8 +5,9 @@ Copyright (C) 2026 PandaCubGames
 
 # Architecture (draft)
 
-> **Status: planned.** None of this exists in code yet. These diagrams describe the
-> intended design and will change as it gets built.
+> **Status: mostly planned.** Only the core loop exists in code: `app`, `keys`, `session`
+> and `ui`, showing a placeholder Welcome screen. Everything else here is still planned.
+> These diagrams describe the intended design and will change as it gets built.
 
 The diagrams use [Mermaid](https://mermaid.js.org/), which GitHub renders directly.
 To edit one visually, paste its code into Excalidraw (*More tools → Mermaid to Excalidraw*).
