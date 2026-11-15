@@ -6,20 +6,20 @@
 use super::Levels;
 
 /// How an answer is typed and checked.
-// No real area builds a question yet (issues #11 to #13): the first one that
-// does removes this attribute. Tests construct both variants already.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "constructed by the areas' questions, issues #11 to #13"
-    )
-)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     /// A Japanese answer: romaji, kana or kanji, checked by `grading`.
     Japanese,
     /// A meaning in plain English, checked by `practice::meaning`.
+    // No real area asks for a meaning yet (Vocabulary and Kanji, issues #11 and
+    // #12): the first one that does removes this attribute. Tests construct it already.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "constructed by the Vocabulary and Kanji questions, issues #11 and #12"
+        )
+    )]
     Meaning,
 }
 

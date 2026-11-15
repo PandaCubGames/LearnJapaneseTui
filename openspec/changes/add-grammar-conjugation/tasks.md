@@ -57,7 +57,7 @@ Types, signatures, rule tables, the word list and the expected forms are in `des
     - `copying_the_shown_word_is_wrong`: for `ask("食べる", Form::NonPast, Formality::Plain)`: `食べる` is not correct; `たべる` and `taberu` are.
   - Verify: the new tests pass; the 379 existing tests pass unchanged; fmt and both clippy runs (`cargo clippy -- -D warnings` and `cargo clippy --all-targets -- -D warnings`) clean. Commit, e.g. `feat(grammar): add the Grammar area with ichidan verbs`.
 
-- [ ] 1.2 Narrow the unused-code expectation on `Kind` to `Kind::Meaning` (design.md D12).
+- [x] 1.2 Narrow the unused-code expectation on `Kind` to `Kind::Meaning` (design.md D12).
   - `src/practice/question.rs`: delete the two comment lines (`// No real area builds a question yet ...` and `// does removes this attribute. ...`) and the `#[cfg_attr(not(test), expect(dead_code, ...))]` attribute above `pub enum Kind`; put the comment and attribute of D12 above `Meaning`, after its doc comment, exactly as written there. Change nothing else in the file.
   - No new test: this changes no behaviour.
   - Verify: `cargo clippy -- -D warnings` and `cargo clippy --all-targets -- -D warnings` clean, `cargo fmt --all -- --check` clean, `cargo test` passes. If clippy reports the moved expectation as unfulfilled, or reports `Japanese` as never constructed, stop and report. Commit, e.g. `refactor(practice): expect only the meaning kind to be unused`.
