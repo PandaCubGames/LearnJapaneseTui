@@ -26,12 +26,20 @@ pub fn check(typed: &str, accepted: &[&str]) -> Outcome {
     }
 }
 
-/// Lower case, with no spaces at both ends and one space between words.
+/// Lower case, with no spaces at both ends and one space between words, and
+/// without one leading "to", "a", "an" or "the".
 fn normalise(text: &str) -> String {
-    text.to_lowercase()
+    let text = text
+        .to_lowercase()
         .split_whitespace()
         .collect::<Vec<_>>()
-        .join(" ")
+        .join(" ");
+    for article in ["to ", "a ", "an ", "the "] {
+        if let Some(rest) = text.strip_prefix(article) {
+            return rest.to_string();
+        }
+    }
+    text
 }
 
 #[cfg(test)]
@@ -79,5 +87,23 @@ mod tests {
     #[test]
     fn no_typo_for_unreadable_letters() {
         assert_eq!(check("xqzt", &["tall"]), Outcome::Wrong);
+    }
+
+    #[test]
+    fn leading_to_is_ignored_both_ways() {
+        assert_eq!(check("eat", &["to eat"]), Outcome::Correct);
+        assert_eq!(check("to eat", &["eat"]), Outcome::Correct);
+    }
+
+    #[test]
+    fn articles_are_ignored() {
+        for typed in ["a mountain", "the mountain", "An mountain"] {
+            assert_eq!(check(typed, &["mountain"]), Outcome::Correct, "{typed}");
+        }
+    }
+
+    #[test]
+    fn only_a_whole_leading_word_is_removed() {
+        assert_eq!(check("today", &["day"]), Outcome::Wrong);
     }
 }

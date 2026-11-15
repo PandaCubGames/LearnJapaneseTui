@@ -165,7 +165,7 @@ Types, signatures, algorithms and wording are in `design.md` (D-numbers point th
   - New tests, `src/ui.rs`: `score_starts_at_zero`; `score_after_two_answers` (correct, Enter, wrong, Enter → `Score: 1 of 2` on the question screen); `continue_is_not_counted` (`Score: 1 of 1` on feedback and on the next question); `typo_warning_is_not_counted` (`Score: 0 of 0` with the warning shown, then `Score: 0 of 1` on feedback).
   - Verify as in 1.1. Commit, e.g. `feat(practice): count answers and show the score`.
 
-- [ ] 4.3 Ignore a leading "to", "a", "an" or "the" in English answers.
+- [x] 4.3 Ignore a leading "to", "a", "an" or "the" in English answers.
   - `src/practice/meaning.rs`: the last step of `normalise` (D15).
   - `CHANGELOG.md`: append ` English answers ignore a leading "to", "a", "an" or "the".`
   - New tests, `src/practice/meaning.rs`: `leading_to_is_ignored_both_ways` (`eat` against `to eat`, `to eat` against `eat`); `articles_are_ignored` (`a mountain`, `the mountain`, `An mountain` against `mountain`); `only_a_whole_leading_word_is_removed` (`today` against `day` → `Wrong`).

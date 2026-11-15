@@ -546,4 +546,17 @@ mod tests {
         assert_eq!(drill.answered(), 1);
         assert_eq!(drill.correct(), 0);
     }
+
+    #[test]
+    fn meaning_answer_without_to_is_correct() {
+        let mut drill = drill_of(question(
+            Kind::Meaning,
+            "What does 食べる mean?",
+            &["to eat"],
+            &[],
+        ));
+        type_text(&mut drill, "eat");
+        assert!(drill.submit());
+        assert!(feedback_of(&drill).correct);
+    }
 }
