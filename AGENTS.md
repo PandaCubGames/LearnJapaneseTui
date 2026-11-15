@@ -147,6 +147,11 @@ Never push, tag, close a PR, or delete a remote branch without the user's explic
   - After cloning, run `pre-commit install --hook-type commit-msg --hook-type pre-commit`.
   - The hooks also block commits directly on `main`.
   - For Rust files, the hooks run `cargo fmt --check` and `cargo clippy -D warnings`. Code must be formatted and free of warnings to commit.
+- **AI agents make sure the hooks run locally.** Before its first commit in a clone or a cloud session, every agent checks that `pre-commit` and Commitizen (`cz`) are installed and that the hooks are enabled. A fresh environment usually has neither.
+  - **Check:** `pre-commit --version` and `cz version` both answer, and `.git/hooks/` holds `pre-commit` and `commit-msg`.
+  - **Install what is missing:** Commitizen at the version pinned in `.pre-commit-config.yaml`, and `pre-commit`, then run `pre-commit install --hook-type commit-msg --hook-type pre-commit`.
+  - **If they can't be installed,** finish the edits, leave them uncommitted and tell the user. Never commit without the hooks, and never skip them with `--no-verify`.
+  - **Commits made before the hooks were enabled** are checked afterwards with `pre-commit run --from-ref <base> --to-ref HEAD` and `cz check --rev-range <base>..HEAD`.
 - **AI agents commit after every task.** When an agent works through an OpenSpec change's `tasks.md`, it commits as soon as each checkbox task is done, before starting the next one. It doesn't wait to be asked.
   - **One task, one commit.** The commit is atomic: it holds everything that task needed (code, tests, docs and the ticked checkbox in `tasks.md`) and nothing from any other task.
   - **Every commit stands on its own.** The project builds, the tests pass and the hooks pass at each commit. A task isn't done, and isn't committed, until they do.
