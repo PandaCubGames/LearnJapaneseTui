@@ -91,7 +91,7 @@ fixed header or footer, and no separate logout.
 - **Both are mixed.** An entry's custom questions join its template questions in one pool.
   A custom question never switches the templates off.
 - **Picking the next question:** pick an entry at random, then one of its questions at
-  random. An entry is not repeated until every entry in the selection has been seen.
+  random. An entry is not repeated until every entry in the selection has been seen. A new round never starts with the entry just asked. The random order comes from a small built-in generator seeded from the clock, so tests can fix it.
 
 ### Answering and feedback
 - **Input rules belong to the kind of exercise**, not to each exercise and not to one

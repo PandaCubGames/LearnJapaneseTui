@@ -5,12 +5,13 @@
 //! all wording from [`crate::text`].
 
 use ratatui::Frame;
-use ratatui::layout::{Alignment, Constraint, Flex, Layout};
+use ratatui::layout::{Alignment, Constraint, Flex, Layout, Rect};
 use ratatui::style::Stylize;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
+use ratatui::widgets::{Paragraph, Wrap};
 
 use crate::practice::Level;
+use crate::practice::question::Kind;
 use crate::session::{Screen, Session};
 use crate::text::{self, GREETING};
 
@@ -21,6 +22,7 @@ pub fn draw(frame: &mut Frame, session: &Session) {
         Screen::NoQuestions => draw_no_questions(frame, session),
         Screen::LevelPicker => draw_level_picker(frame, session),
         Screen::NoQuestionsAtLevels => draw_no_questions_at_levels(frame, session),
+        Screen::Question => draw_question(frame, session),
     }
 }
 
@@ -130,6 +132,63 @@ fn draw_no_questions_at_levels(frame: &mut Frame, session: &Session) {
     ];
 
     draw_centred(frame, lines);
+}
+
+/// Rows the prompt of a question may use.
+const PROMPT_ROWS: u16 = 3;
+
+fn draw_question(frame: &mut Frame, session: &Session) {
+    let Some(drill) = session.drill() else {
+        return;
+    };
+    let question = drill.question();
+    let name = session.highlighted_area().map_or("", |area| area.name());
+    let how_to_answer = match question.kind {
+        Kind::Japanese => text::ANSWER_IN_JAPANESE,
+        Kind::Meaning => text::ANSWER_IN_ENGLISH,
+    };
+    let [
+        name_row,
+        _,
+        prompt_row,
+        _,
+        _,
+        how_to_answer_row,
+        _,
+        _,
+        _,
+        _,
+        hint_row,
+    ] = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(PROMPT_ROWS),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+    ])
+    .flex(Flex::Center)
+    .areas(frame.area());
+
+    centred(frame, name_row, Line::from(name));
+    frame.render_widget(
+        Paragraph::new(question.prompt.as_str())
+            .alignment(Alignment::Center)
+            .wrap(Wrap { trim: true }),
+        prompt_row,
+    );
+    centred(frame, how_to_answer_row, Line::from(how_to_answer));
+    centred(frame, hint_row, Line::from(text::QUESTION_HINT));
+}
+
+/// Draws one line centred in `area` by display width.
+fn centred(frame: &mut Frame, area: Rect, line: Line) {
+    frame.render_widget(Paragraph::new(line).alignment(Alignment::Center), area);
 }
 
 /// Draws `lines` as a block centred both ways, each line by display width.
@@ -709,6 +768,95 @@ mod tests {
     #[test]
     fn no_questions_at_levels_uses_no_colour() {
         let buffer = buffer(&at_no_questions_at_levels(80, 24));
+        assert!(
+            buffer
+                .content()
+                .iter()
+                .all(|cell| cell.fg == Color::Reset && cell.bg == Color::Reset)
+        );
+    }
+
+    const READING_ONLY: &[&dyn Area] = &[&crate::areas::sample::READING];
+    const MEANING_ONLY: &[&dyn Area] = &[&crate::areas::sample::MEANING];
+
+    #[derive(Debug)]
+    struct LongPrompt;
+
+    impl Area for LongPrompt {
+        fn name(&self) -> &'static str {
+            "Long"
+        }
+
+        fn questions(&self, _levels: crate::practice::Levels) -> Vec<crate::practice::Entry> {
+            use crate::practice::question::Question;
+            vec![crate::practice::Entry {
+                levels: crate::practice::Levels::only(Level::N5),
+                questions: vec![Question {
+                    prompt: "word ".repeat(20).trim().to_string(),
+                    accepted: vec!["あ".to_string()],
+                    shown: Vec::new(),
+                    kind: Kind::Japanese,
+                }],
+            }]
+        }
+    }
+
+    const LONG: &[&dyn Area] = &[&LongPrompt];
+
+    fn practising(areas: &'static [&'static dyn Area], width: u16, height: u16) -> Session {
+        let mut session = on_picker(areas, width, height);
+        session.apply(Action::Confirm);
+        session
+    }
+
+    #[test]
+    fn question_screen_shows_the_prompt() {
+        let rows = render(&practising(READING_ONLY, 80, 24));
+        let order = [
+            row_index(&rows, "Sample"),
+            row_index(&rows, "How do you read"),
+            row_index(&rows, text::ANSWER_IN_JAPANESE),
+            row_index(&rows, text::QUESTION_HINT),
+        ];
+        assert!(order.windows(2).all(|pair| pair[0] < pair[1]), "{order:?}");
+        assert!(!text(&rows).contains(text::LEVEL_PICKER_TITLE));
+    }
+
+    #[test]
+    fn meaning_question_says_answer_in_english() {
+        let screen = text(&render(&practising(MEANING_ONLY, 80, 24)));
+        assert!(screen.contains(text::ANSWER_IN_ENGLISH));
+        assert!(!screen.contains(text::ANSWER_IN_JAPANESE));
+    }
+
+    #[test]
+    fn question_hint_is_centred() {
+        let rows = render(&practising(READING_ONLY, 80, 24));
+        let row = &rows[row_index(&rows, text::QUESTION_HINT)];
+        assert_eq!(row[26], "E");
+        assert!(row[..26].iter().all(|symbol| symbol == " "));
+    }
+
+    #[test]
+    fn long_prompt_wraps() {
+        let rows = render(&practising(LONG, 80, 24));
+        let with_word = rows
+            .iter()
+            .filter(|row| row.concat().contains("word"))
+            .count();
+        assert!(with_word >= 2, "{with_word}");
+    }
+
+    #[test]
+    fn question_screen_draws_at_any_size_without_panicking() {
+        for (width, height) in [(1, 1), (5, 2), (20, 3), (200, 60)] {
+            render(&practising(READING_ONLY, width, height));
+        }
+    }
+
+    #[test]
+    fn question_screen_uses_no_colour() {
+        let buffer = buffer(&practising(READING_ONLY, 80, 24));
         assert!(
             buffer
                 .content()

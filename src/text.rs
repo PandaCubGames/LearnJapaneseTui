@@ -76,6 +76,15 @@ pub const NO_QUESTIONS_AT_LEVELS: &str = "No questions at these levels yet";
 /// "No questions at these levels" screen: how to go on.
 pub const NO_QUESTIONS_AT_LEVELS_HINT: &str = "Press Enter to choose other levels";
 
+/// Question screen: how to answer a Japanese question.
+pub const ANSWER_IN_JAPANESE: &str = "Answer in Japanese or romaji";
+
+/// Question screen: how to answer a meaning question.
+pub const ANSWER_IN_ENGLISH: &str = "Answer in English";
+
+/// Question screen: the keys.
+pub const QUESTION_HINT: &str = "Enter to answer, Esc to stop";
+
 /// Level picker: the name of a level.
 pub fn level_name(level: Level) -> &'static str {
     match level {
@@ -244,6 +253,18 @@ mod tests {
                 NO_QUESTIONS_AT_LEVELS_HINT,
                 "Press Enter to choose other levels",
             ),
+        ] {
+            assert_eq!(text, expected);
+            assert!(text.is_ascii());
+        }
+    }
+
+    #[test]
+    fn question_wording_is_plain_ascii_text() {
+        for (text, expected) in [
+            (ANSWER_IN_JAPANESE, "Answer in Japanese or romaji"),
+            (ANSWER_IN_ENGLISH, "Answer in English"),
+            (QUESTION_HINT, "Enter to answer, Esc to stop"),
         ] {
             assert_eq!(text, expected);
             assert!(text.is_ascii());

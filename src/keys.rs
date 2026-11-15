@@ -74,6 +74,12 @@ pub fn action_for(screen: Screen, event: &Event) -> Option<Action> {
             }
             _ => None,
         },
+        Screen::Question => match key.code {
+            KeyCode::Esc if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Back)
+            }
+            _ => None,
+        },
         Screen::NoQuestionsAtLevels => match key.code {
             KeyCode::Enter if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
                 Some(Action::Continue)
@@ -120,6 +126,10 @@ mod tests {
 
     fn on_no_questions_at_levels(event: Event) -> Option<Action> {
         action_for(Screen::NoQuestionsAtLevels, &event)
+    }
+
+    fn on_question(event: Event) -> Option<Action> {
+        action_for(Screen::Question, &event)
     }
 
     const SAMPLE: &[&dyn Area] = &[&crate::areas::sample::Sample];
@@ -649,5 +659,37 @@ mod tests {
         feed(&mut session, KeyCode::Esc);
         assert_eq!(session.screen(), Screen::AreaSelection);
         assert!(!session.should_quit());
+    }
+
+    #[test]
+    fn esc_stops_on_the_question_screen() {
+        assert_eq!(
+            on_question(press(KeyCode::Esc, KeyModifiers::NONE)),
+            Some(Action::Back)
+        );
+        assert_eq!(on_question(press(KeyCode::Esc, KeyModifiers::ALT)), None);
+        assert_eq!(
+            on_question(with_kind(KeyCode::Esc, KeyEventKind::Repeat)),
+            None
+        );
+    }
+
+    #[test]
+    fn ctrl_c_quits_on_the_question_screen() {
+        assert_eq!(
+            on_question(press(KeyCode::Char('c'), KeyModifiers::CONTROL)),
+            Some(Action::Quit)
+        );
+    }
+
+    #[test]
+    fn resize_is_followed_on_the_question_screen() {
+        assert_eq!(
+            on_question(Event::Resize(100, 30)),
+            Some(Action::Resized {
+                width: 100,
+                height: 30
+            })
+        );
     }
 }

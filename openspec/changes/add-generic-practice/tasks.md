@@ -99,7 +99,7 @@ Types, signatures, algorithms and wording are in `design.md` (D-numbers point th
 
 ## 3. The question screen
 
-- [ ] 3.1 Pick questions at random and show the first one.
+- [x] 3.1 Pick questions at random and show the first one.
   - `src/practice/rng.rs` (new, D6) and `src/practice/pool.rs` (new, D7), with module docs. `src/practice.rs`: `mod pool; mod rng; pub use rng::Rng;`, `Drill` with only the fields `entries`, `entry`, `question`, and only `start` and `question` (D8). In this task `start` uses a local `Pool` and does not keep it: a stored `pool` field would never be read until `next` exists (4.1), and clippy rejects that.
   - `src/session.rs`: `Screen::Question`; private `const DEFAULT_SEED: u64 = 0;`; fields `rng` (`Rng::new(DEFAULT_SEED)`) and `drill: Option<Drill>` (`None`); `pub fn with_seed(self, seed: u64) -> Session`; `pub fn drill(&self) -> Option<&Drill>`; `Confirm` now uses `Drill::start` (D10) and removes the 2.2 comment; `Back` also on `Question` and sets `drill = None`.
   - `src/app.rs`: `pub fn seed_from(now: SystemTime) -> u64` (D6); `run_loop` builds `Session::new(...).with_seed(seed_from(SystemTime::now()))`. Nothing else in `app.rs` changes.

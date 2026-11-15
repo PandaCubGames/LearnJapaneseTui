@@ -4,10 +4,15 @@
 //! The generic practice module: what every area has in common. It never sees an area's own words, kanji or verbs, only questions (issue #21).
 
 mod level;
+mod pool;
 pub(crate) mod question;
+mod rng;
+
+use pool::Pool;
 
 pub use level::{Level, Levels};
-pub use question::Entry;
+pub use question::{Entry, Question};
+pub use rng::Rng;
 
 /// The entries practised at `levels`: those with any of `levels` and at least one
 /// question, in the order given.
@@ -18,9 +23,38 @@ pub fn selection(entries: Vec<Entry>, levels: Levels) -> Vec<Entry> {
         .collect()
 }
 
+/// One run of practice: the entries being asked and the question on screen.
+#[derive(Debug)]
+pub struct Drill {
+    entries: Vec<Entry>,
+    entry: usize,
+    question: usize,
+}
+
+impl Drill {
+    /// Starts practice on the entries of `entries` that have a chosen level and a
+    /// question; `None` when there are none.
+    pub fn start(entries: Vec<Entry>, levels: Levels, rng: &mut Rng) -> Option<Drill> {
+        let entries = selection(entries, levels);
+        let mut pool = Pool::new(entries.len());
+        let entry = pool.next(rng)?;
+        let question = rng.below(entries[entry].questions.len());
+        Some(Drill {
+            entries,
+            entry,
+            question,
+        })
+    }
+
+    /// The question on screen.
+    pub fn question(&self) -> &Question {
+        &self.entries[self.entry].questions[self.question]
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::question::{Kind, Question};
+    use super::question::Kind;
     use super::*;
 
     fn entry(levels: Levels, prompts: &[&str]) -> Entry {
@@ -80,5 +114,37 @@ mod tests {
             prompts(&selection(entries, Levels::only(Level::N5))),
             ["c", "a", "b"]
         );
+    }
+
+    #[test]
+    fn start_with_nothing_practised_gives_none() {
+        let mut rng = Rng::new(0);
+        assert!(Drill::start(Vec::new(), Levels::ALL, &mut rng).is_none());
+        let n3 = vec![entry(Levels::only(Level::N3), &["x"])];
+        assert!(Drill::start(n3, Levels::only(Level::N5), &mut rng).is_none());
+    }
+
+    #[test]
+    fn start_asks_a_practised_entry() {
+        for seed in 0..20 {
+            let entries = vec![
+                entry(Levels::only(Level::N5), &["a"]),
+                entry(Levels::only(Level::N1), &["b"]),
+            ];
+            let drill = Drill::start(entries, Levels::only(Level::N5), &mut Rng::new(seed));
+            assert_eq!(drill.unwrap().question().prompt, "a");
+        }
+    }
+
+    #[test]
+    fn start_skips_entries_without_questions() {
+        for seed in 0..20 {
+            let entries = vec![
+                entry(Levels::only(Level::N5), &[]),
+                entry(Levels::only(Level::N5), &["kept"]),
+            ];
+            let drill = Drill::start(entries, Levels::only(Level::N5), &mut Rng::new(seed));
+            assert_eq!(drill.unwrap().question().prompt, "kept");
+        }
     }
 }

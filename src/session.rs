@@ -8,7 +8,10 @@ use std::time::Duration;
 
 use crate::app::TICK_INTERVAL;
 use crate::areas::{self, Area};
-use crate::practice::{self, Level, Levels};
+use crate::practice::{Drill, Level, Levels, Rng};
+
+/// The seed of the order of questions until `with_seed` replaces it.
+const DEFAULT_SEED: u64 = 0;
 
 /// The screen currently shown.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -21,6 +24,8 @@ pub enum Screen {
     LevelPicker,
     /// No question exists at the ticked levels.
     NoQuestionsAtLevels,
+    /// A question waits for its answer.
+    Question,
 }
 
 /// Something that happened, already translated from a terminal event.
@@ -63,6 +68,8 @@ pub struct Session {
     highlighted: usize,
     levels: Levels,
     level_highlighted: usize,
+    rng: Rng,
+    drill: Option<Drill>,
 }
 
 impl Session {
@@ -84,7 +91,15 @@ impl Session {
             highlighted: 0,
             levels: Levels::only(Level::N5),
             level_highlighted: 0,
+            rng: Rng::new(DEFAULT_SEED),
+            drill: None,
         }
+    }
+
+    /// Replaces the seed of the order of questions.
+    pub fn with_seed(mut self, seed: u64) -> Session {
+        self.rng = Rng::new(seed);
+        self
     }
 
     pub fn apply(&mut self, action: Action) {
@@ -139,11 +154,15 @@ impl Session {
                 if self.screen == Screen::LevelPicker
                     && !self.levels.is_empty()
                     && let Some(area) = self.highlighted_area()
-                    && practice::selection(area.questions(self.levels), self.levels).is_empty()
                 {
-                    self.screen = Screen::NoQuestionsAtLevels;
+                    match Drill::start(area.questions(self.levels), self.levels, &mut self.rng) {
+                        Some(drill) => {
+                            self.drill = Some(drill);
+                            self.screen = Screen::Question;
+                        }
+                        None => self.screen = Screen::NoQuestionsAtLevels,
+                    }
                 }
-                // Practice starts here (task 3.1).
             }
             Action::Continue => {
                 if self.screen == Screen::NoQuestionsAtLevels {
@@ -153,9 +172,13 @@ impl Session {
             Action::Back => {
                 if matches!(
                     self.screen,
-                    Screen::NoQuestions | Screen::LevelPicker | Screen::NoQuestionsAtLevels
+                    Screen::NoQuestions
+                        | Screen::LevelPicker
+                        | Screen::NoQuestionsAtLevels
+                        | Screen::Question
                 ) {
                     self.screen = Screen::AreaSelection;
+                    self.drill = None;
                 }
             }
         }
@@ -205,6 +228,11 @@ impl Session {
             .get(self.level_highlighted)
             .copied()
             .unwrap_or(Level::N5)
+    }
+
+    /// The practice in progress, while a question or its feedback is shown.
+    pub fn drill(&self) -> Option<&Drill> {
+        self.drill.as_ref()
     }
 
     /// The terminal size as `(width, height)`.
@@ -657,5 +685,76 @@ mod tests {
         session.apply(Action::Choose);
         session.apply(Action::Continue);
         assert_eq!(session.screen(), Screen::LevelPicker);
+    }
+
+    const READING_ONLY: &[&dyn Area] = &[&crate::areas::sample::READING];
+    const MEANING_ONLY: &[&dyn Area] = &[&crate::areas::sample::MEANING];
+
+    fn practising(areas: &'static [&'static dyn Area], seed: u64) -> Session {
+        let mut session = Session::with_areas(80, 24, areas).with_seed(seed);
+        session.apply(Action::Start);
+        session.apply(Action::Choose);
+        session.apply(Action::Confirm);
+        session
+    }
+
+    fn prompt_of(session: &Session) -> String {
+        session.drill().unwrap().question().prompt.clone()
+    }
+
+    #[test]
+    fn confirm_starts_practice() {
+        let session = practising(SAMPLE, 0);
+        assert_eq!(session.screen(), Screen::Question);
+        let prompts: Vec<_> = crate::areas::sample::entries()
+            .iter()
+            .filter(|entry| entry.levels.contains(Level::N5))
+            .flat_map(|entry| entry.questions.iter().map(|q| q.prompt.clone()))
+            .collect();
+        assert_eq!(prompts.len(), 3);
+        assert!(prompts.contains(&prompt_of(&session)));
+    }
+
+    #[test]
+    fn only_n3_asks_the_mountain() {
+        let mut session = Session::with_areas(80, 24, SAMPLE);
+        session.apply(Action::Start);
+        session.apply(Action::Choose);
+        session.apply(Action::Toggle);
+        session.apply(Action::Next);
+        session.apply(Action::Next);
+        session.apply(Action::Toggle);
+        session.apply(Action::Confirm);
+        assert_eq!(prompt_of(&session), "How do you read 山?");
+    }
+
+    #[test]
+    fn back_from_a_question_ends_practice() {
+        let mut session = practising(READING_ONLY, 0);
+        session.apply(Action::Back);
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        assert!(session.drill().is_none());
+    }
+
+    #[test]
+    fn same_seed_same_first_question() {
+        for seed in 0..10 {
+            let a = practising(SAMPLE, seed);
+            let b = practising(SAMPLE, seed);
+            assert_eq!(prompt_of(&a), prompt_of(&b));
+        }
+    }
+
+    #[test]
+    fn with_seed_keeps_the_welcome_screen() {
+        let session = Session::new(80, 24).with_seed(5);
+        assert_eq!(session.screen(), Screen::Welcome);
+        assert!(session.drill().is_none());
+    }
+
+    #[test]
+    fn the_meaning_area_is_practisable() {
+        let session = practising(MEANING_ONLY, 0);
+        assert_eq!(prompt_of(&session), "What does 高い mean?");
     }
 }
