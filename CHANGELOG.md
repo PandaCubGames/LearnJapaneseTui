@@ -31,6 +31,7 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Main application loop (issue #10): `cargo run` opens a full-screen TUI built with `ratatui`. It handles key presses, terminal resizes and a 100 ms tick, quits with `q` or `Ctrl+C`, and restores the terminal on exit, on error and on panic. A placeholder Welcome screen shows Japanese text centred by display width.
 - `scripts/setup-dev.sh`: installs the development tools at the versions the repository pins (Rust with `rustfmt`, `clippy` and the musl target, OpenSpec, Commitizen, pre-commit) and enables the git hooks.
 - Welcome screen (issue #19): shows "Press Enter to start" below the greeting. Enter continues to a placeholder area selection screen, which Ctrl+C quits; the real screen is issue #20.
+- Area selection screen (issue #20): lists the areas the app has registered, with the first one highlighted by a "> " marker. Up and Down move the highlight and stop at the first and last area. Enter on an area with no questions shows "No questions in this area yet", and Enter or Esc there goes back to the list. Esc quits from the list (until the Thank you screen exists). No area is registered yet, so the screen says "Nothing to practise yet"; each area adds its own file under `src/areas/` and one entry in `src/areas.rs`.
 
 ### Changed
 - The minimum Rust version is now 1.88 (was 1.85), which `ratatui` requires.
