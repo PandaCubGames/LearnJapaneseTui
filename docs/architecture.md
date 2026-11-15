@@ -75,7 +75,7 @@ fixed header or footer, and no separate logout.
 - **The level picker is part of the first version.** It comes after the area and before
   the question count, and lets you choose one or more levels.
 - An entry is practised when it has **any** of the chosen levels.
-- **Picker:** N5 to N1, each with a tick box. Up and Down move, Enter starts, Esc goes back to area selection. Only N5 is ticked when the app starts, and the ticks are kept while the app runs.
+- **Picker:** N5 to N1, each with a tick box. Up and Down move, Space ticks or unticks, Enter starts, Esc goes back to area selection. Only N5 is ticked when the app starts, and the ticks are kept while the app runs. With nothing ticked, the picker says so and Enter does nothing.
 
 ### Question count
 - Chosen before practice starts. The default is `10`, and `0` means **unlimited**.
@@ -133,7 +133,7 @@ fixed header or footer, and no separate logout.
 ### Keys
 - Keys depend on the current screen:
   - Area selection: arrows and Enter.
-  - Level picker: arrows to move, a key to tick or untick a level, Enter to confirm.
+  - Level picker: arrows to move, Space to tick or untick a level, Enter to confirm.
   - Question: input suited to the exercise kind.
   - Feedback: waits for Enter.
 - **Esc:**

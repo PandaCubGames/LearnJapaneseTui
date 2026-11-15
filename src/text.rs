@@ -67,6 +67,9 @@ pub const LEVEL_TICKED: &str = "[x] ";
 /// Level picker: in front of an unticked level, as wide as `LEVEL_TICKED`.
 pub const LEVEL_UNTICKED: &str = "[ ] ";
 
+/// Level picker: shown while no level is ticked.
+pub const NO_LEVEL_TICKED: &str = "Tick at least one level";
+
 /// Level picker: the name of a level.
 pub fn level_name(level: Level) -> &'static str {
     match level {
@@ -219,5 +222,11 @@ mod tests {
         assert_eq!(LEVEL_UNTICKED.len(), 4);
         assert!(LEVEL_TICKED.starts_with('['));
         assert!(LEVEL_UNTICKED.starts_with('['));
+    }
+
+    #[test]
+    fn no_level_ticked_is_plain_ascii_text() {
+        assert_eq!(NO_LEVEL_TICKED, "Tick at least one level");
+        assert!(NO_LEVEL_TICKED.is_ascii());
     }
 }

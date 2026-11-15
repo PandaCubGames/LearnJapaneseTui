@@ -52,7 +52,7 @@ Types, signatures, algorithms and wording are in `design.md` (D-numbers point th
     - `level_picker_draws_at_any_size_without_panicking` (1x1, 5x2, 20x3, 200x60) and `level_picker_uses_no_colour` (80x24, every cell `fg` and `bg` `Color::Reset`).
   - Verify: all new tests pass; every existing test passes unchanged, in particular #20's `choosing_an_area_with_questions_does_not_say_it_is_empty`; fmt and clippy clean. Commit, e.g. `feat(practice): open a JLPT level picker after choosing an area`.
 
-- [ ] 1.2 Tick and untick levels with Space.
+- [x] 1.2 Tick and untick levels with Space.
   - `src/practice/level.rs`: add `Levels::toggled` and `Levels::is_empty` (D2).
   - `src/session.rs`: `Action::Toggle` with its doc comment; arm: on `LevelPicker`, `levels = levels.toggled(highlighted_level())`.
   - `src/keys.rs`: in `LevelPicker`, `KeyCode::Char(' ')` pressed → `Toggle`.

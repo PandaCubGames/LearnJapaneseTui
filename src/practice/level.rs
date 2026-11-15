@@ -40,6 +40,14 @@ impl Levels {
     pub fn contains(self, level: Level) -> bool {
         self.0 & level.bit() != 0
     }
+
+    pub fn toggled(self, level: Level) -> Levels {
+        Levels(self.0 ^ level.bit())
+    }
+
+    pub fn is_empty(self) -> bool {
+        self.0 == 0
+    }
 }
 
 #[cfg(test)]
@@ -61,5 +69,19 @@ mod tests {
                 assert_eq!(Levels::only(l).contains(m), l == m);
             }
         }
+    }
+
+    #[test]
+    fn toggled_ticks_and_unticks() {
+        let two = Levels::only(Level::N5).toggled(Level::N4);
+        assert!(two.contains(Level::N5));
+        assert!(two.contains(Level::N4));
+        assert_eq!(two.toggled(Level::N4), Levels::only(Level::N5));
+    }
+
+    #[test]
+    fn empty_set() {
+        assert!(Levels::only(Level::N5).toggled(Level::N5).is_empty());
+        assert!(!Levels::only(Level::N5).is_empty());
     }
 }

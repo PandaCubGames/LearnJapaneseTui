@@ -39,6 +39,8 @@ pub enum Action {
     Next,
     /// Choose the highlighted area.
     Choose,
+    /// Tick or untick the highlighted level.
+    Toggle,
     /// Go back to area selection.
     Back,
 }
@@ -120,6 +122,11 @@ impl Session {
                     } else {
                         self.screen = Screen::NoQuestions;
                     }
+                }
+            }
+            Action::Toggle => {
+                if self.screen == Screen::LevelPicker {
+                    self.levels = self.levels.toggled(self.highlighted_level());
                 }
             }
             Action::Back => {
@@ -502,5 +509,43 @@ mod tests {
         session.apply(Action::Back);
         session.apply(Action::Choose);
         assert_eq!(session.highlighted_level(), Level::N5);
+    }
+
+    #[test]
+    fn toggle_ticks_the_highlighted_level() {
+        let mut session = on_picker(FULL_ONE);
+        session.apply(Action::Next);
+        session.apply(Action::Toggle);
+        assert!(session.levels().contains(Level::N5));
+        assert!(session.levels().contains(Level::N4));
+        session.apply(Action::Toggle);
+        assert!(!session.levels().contains(Level::N4));
+    }
+
+    #[test]
+    fn unticking_the_last_level_leaves_none() {
+        let mut session = on_picker(FULL_ONE);
+        session.apply(Action::Toggle);
+        assert!(session.levels().is_empty());
+    }
+
+    #[test]
+    fn ticks_are_kept_after_going_back() {
+        let mut session = on_picker(FULL_ONE);
+        session.apply(Action::Next);
+        session.apply(Action::Toggle);
+        session.apply(Action::Back);
+        session.apply(Action::Choose);
+        assert!(session.levels().contains(Level::N5));
+        assert!(session.levels().contains(Level::N4));
+        assert_eq!(session.highlighted_level(), Level::N5);
+    }
+
+    #[test]
+    fn toggle_only_works_on_the_picker() {
+        let mut session = Session::with_areas(80, 24, FULL_ONE);
+        session.apply(Action::Start);
+        session.apply(Action::Toggle);
+        assert_eq!(session.levels(), Levels::only(Level::N5));
     }
 }

@@ -109,6 +109,11 @@ fn draw_level_picker(frame: &mut Frame, session: &Session) {
     }
     lines.push(Line::default());
     lines.push(Line::from(text::LEVEL_PICKER_HINT));
+    lines.push(if session.levels().is_empty() {
+        Line::from(text::NO_LEVEL_TICKED)
+    } else {
+        Line::default()
+    });
 
     draw_centred(frame, lines);
 }
@@ -619,5 +624,30 @@ mod tests {
                 .iter()
                 .all(|cell| cell.fg == Color::Reset && cell.bg == Color::Reset)
         );
+    }
+
+    #[test]
+    fn ticked_levels_show_an_x() {
+        let mut session = on_picker(PICKABLE, 80, 24);
+        session.apply(Action::Next);
+        session.apply(Action::Toggle);
+        let rows = render(&session);
+        assert!(rows[row_index(&rows, "N4")].concat().contains("[x] N4"));
+    }
+
+    #[test]
+    fn nothing_ticked_says_so() {
+        let mut session = on_picker(PICKABLE, 80, 24);
+        session.apply(Action::Toggle);
+        let rows = render(&session);
+        assert!(
+            row_index(&rows, text::NO_LEVEL_TICKED) > row_index(&rows, text::LEVEL_PICKER_HINT)
+        );
+    }
+
+    #[test]
+    fn the_message_is_hidden_while_a_level_is_ticked() {
+        let screen = text(&render(&on_picker(PICKABLE, 80, 24)));
+        assert!(!screen.contains(text::NO_LEVEL_TICKED));
     }
 }

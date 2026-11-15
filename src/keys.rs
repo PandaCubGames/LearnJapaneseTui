@@ -63,6 +63,9 @@ pub fn action_for(screen: Screen, event: &Event) -> Option<Action> {
         Screen::LevelPicker => match key.code {
             KeyCode::Up if key.modifiers.is_empty() => Some(Action::Previous),
             KeyCode::Down if key.modifiers.is_empty() => Some(Action::Next),
+            KeyCode::Char(' ') if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Toggle)
+            }
             KeyCode::Esc if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
                 Some(Action::Back)
             }
@@ -529,6 +532,22 @@ mod tests {
         }
         assert_eq!(
             on_level_picker(press(KeyCode::Down, KeyModifiers::SHIFT)),
+            None
+        );
+    }
+
+    #[test]
+    fn space_ticks_on_the_level_picker() {
+        assert_eq!(
+            on_level_picker(press(KeyCode::Char(' '), KeyModifiers::NONE)),
+            Some(Action::Toggle)
+        );
+        assert_eq!(
+            on_level_picker(with_kind(KeyCode::Char(' '), KeyEventKind::Repeat)),
+            None
+        );
+        assert_eq!(
+            on_level_picker(press(KeyCode::Char(' '), KeyModifiers::CONTROL)),
             None
         );
     }
