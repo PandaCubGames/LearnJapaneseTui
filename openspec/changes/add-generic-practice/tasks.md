@@ -85,7 +85,7 @@ Types, signatures, algorithms and wording are in `design.md` (D-numbers point th
   - New tests, `src/session.rs` (constant `SAMPLE: &[&dyn Area] = &[&Sample]`): `the_sample_area_opens_the_level_picker`.
   - Verify as in 1.1, and also that #20's `is_named_*` tests and `areas::tests` still pass. Commit, e.g. `feat(areas): let areas supply questions for chosen levels`.
 
-- [ ] 2.2 Enter on the picker; "No questions at these levels yet".
+- [x] 2.2 Enter on the picker; "No questions at these levels yet".
   - `src/session.rs`: `Screen::NoQuestionsAtLevels`; `Action::Confirm` and `Action::Continue` with doc comments; `Confirm` on `LevelPicker` with a non-empty `levels` and a highlighted area: if `practice::selection(area.questions(levels), levels)` is empty → `NoQuestionsAtLevels`, else nothing yet (comment `// Practice starts here (task 3.1).`); `Continue` on `NoQuestionsAtLevels` → `LevelPicker`; `Back` also on `NoQuestionsAtLevels`.
   - `src/keys.rs`: in `LevelPicker`, Enter pressed → `Confirm`; new arm `NoQuestionsAtLevels`: Enter pressed → `Continue`, Esc pressed → `Back`, `_ => None`.
   - `src/text.rs`: `NO_QUESTIONS_AT_LEVELS`, `NO_QUESTIONS_AT_LEVELS_HINT`.

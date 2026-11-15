@@ -66,6 +66,18 @@ pub fn action_for(screen: Screen, event: &Event) -> Option<Action> {
             KeyCode::Char(' ') if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
                 Some(Action::Toggle)
             }
+            KeyCode::Enter if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Confirm)
+            }
+            KeyCode::Esc if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Back)
+            }
+            _ => None,
+        },
+        Screen::NoQuestionsAtLevels => match key.code {
+            KeyCode::Enter if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Continue)
+            }
             KeyCode::Esc if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
                 Some(Action::Back)
             }
@@ -105,6 +117,12 @@ mod tests {
     fn on_level_picker(event: Event) -> Option<Action> {
         action_for(Screen::LevelPicker, &event)
     }
+
+    fn on_no_questions_at_levels(event: Event) -> Option<Action> {
+        action_for(Screen::NoQuestionsAtLevels, &event)
+    }
+
+    const SAMPLE: &[&dyn Area] = &[&crate::areas::sample::Sample];
 
     const EMPTY_ONE: &[&dyn Area] = &[&FakeArea {
         name: "Empty",
@@ -550,5 +568,86 @@ mod tests {
             on_level_picker(press(KeyCode::Char(' '), KeyModifiers::CONTROL)),
             None
         );
+    }
+
+    #[test]
+    fn enter_starts_on_the_level_picker() {
+        assert_eq!(
+            on_level_picker(press(KeyCode::Enter, KeyModifiers::NONE)),
+            Some(Action::Confirm)
+        );
+        assert_eq!(
+            on_level_picker(press(KeyCode::Enter, KeyModifiers::CONTROL)),
+            None
+        );
+        assert_eq!(
+            on_level_picker(with_kind(KeyCode::Enter, KeyEventKind::Repeat)),
+            None
+        );
+    }
+
+    #[test]
+    fn enter_and_esc_on_no_questions_at_levels() {
+        assert_eq!(
+            on_no_questions_at_levels(press(KeyCode::Enter, KeyModifiers::NONE)),
+            Some(Action::Continue)
+        );
+        assert_eq!(
+            on_no_questions_at_levels(press(KeyCode::Esc, KeyModifiers::NONE)),
+            Some(Action::Back)
+        );
+    }
+
+    #[test]
+    fn other_keys_do_nothing_on_no_questions_at_levels() {
+        for code in [
+            KeyCode::Char('q'),
+            KeyCode::Char('a'),
+            KeyCode::Char(' '),
+            KeyCode::Up,
+            KeyCode::Down,
+        ] {
+            assert_eq!(
+                on_no_questions_at_levels(press(code, KeyModifiers::NONE)),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn ctrl_c_quits_on_no_questions_at_levels() {
+        assert_eq!(
+            on_no_questions_at_levels(press(KeyCode::Char('c'), KeyModifiers::CONTROL)),
+            Some(Action::Quit)
+        );
+    }
+
+    #[test]
+    fn no_questions_at_levels_through_the_key_table() {
+        use crate::practice::{Level, Levels};
+
+        let mut session = Session::with_areas(80, 24, SAMPLE);
+        let feed = |session: &mut Session, code: KeyCode| {
+            let event = press(code, KeyModifiers::NONE);
+            if let Some(action) = action_for(session.screen(), &event) {
+                session.apply(action);
+            }
+        };
+        feed(&mut session, KeyCode::Enter);
+        feed(&mut session, KeyCode::Enter);
+        assert_eq!(session.screen(), Screen::LevelPicker);
+        feed(&mut session, KeyCode::Char(' '));
+        for _ in 0..4 {
+            feed(&mut session, KeyCode::Down);
+        }
+        feed(&mut session, KeyCode::Char(' '));
+        feed(&mut session, KeyCode::Enter);
+        assert_eq!(session.screen(), Screen::NoQuestionsAtLevels);
+        feed(&mut session, KeyCode::Enter);
+        assert_eq!(session.screen(), Screen::LevelPicker);
+        assert_eq!(session.levels(), Levels::only(Level::N1));
+        feed(&mut session, KeyCode::Esc);
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        assert!(!session.should_quit());
     }
 }

@@ -20,6 +20,7 @@ pub fn draw(frame: &mut Frame, session: &Session) {
         Screen::AreaSelection => draw_area_selection(frame, session),
         Screen::NoQuestions => draw_no_questions(frame, session),
         Screen::LevelPicker => draw_level_picker(frame, session),
+        Screen::NoQuestionsAtLevels => draw_no_questions_at_levels(frame, session),
     }
 }
 
@@ -114,6 +115,19 @@ fn draw_level_picker(frame: &mut Frame, session: &Session) {
     } else {
         Line::default()
     });
+
+    draw_centred(frame, lines);
+}
+
+fn draw_no_questions_at_levels(frame: &mut Frame, session: &Session) {
+    let name = session.highlighted_area().map_or("", |area| area.name());
+    let lines = vec![
+        Line::from(name),
+        Line::default(),
+        Line::from(text::NO_QUESTIONS_AT_LEVELS),
+        Line::default(),
+        Line::from(text::NO_QUESTIONS_AT_LEVELS_HINT),
+    ];
 
     draw_centred(frame, lines);
 }
@@ -649,5 +663,57 @@ mod tests {
     fn the_message_is_hidden_while_a_level_is_ticked() {
         let screen = text(&render(&on_picker(PICKABLE, 80, 24)));
         assert!(!screen.contains(text::NO_LEVEL_TICKED));
+    }
+
+    const SAMPLE: &[&dyn Area] = &[&crate::areas::sample::Sample];
+
+    /// The Sample area with only N1 ticked, after Enter.
+    fn at_no_questions_at_levels(width: u16, height: u16) -> Session {
+        let mut session = on_picker(SAMPLE, width, height);
+        session.apply(Action::Toggle);
+        for _ in 0..4 {
+            session.apply(Action::Next);
+        }
+        session.apply(Action::Toggle);
+        session.apply(Action::Confirm);
+        session
+    }
+
+    #[test]
+    fn no_questions_at_levels_shows_the_message() {
+        let rows = render(&at_no_questions_at_levels(80, 24));
+        let order = [
+            row_index(&rows, "Sample"),
+            row_index(&rows, text::NO_QUESTIONS_AT_LEVELS),
+            row_index(&rows, text::NO_QUESTIONS_AT_LEVELS_HINT),
+        ];
+        assert!(order.windows(2).all(|pair| pair[0] < pair[1]), "{order:?}");
+        assert!(!text(&rows).contains(text::LEVEL_PICKER_TITLE));
+    }
+
+    #[test]
+    fn no_questions_at_levels_message_is_centred() {
+        let rows = render(&at_no_questions_at_levels(80, 24));
+        let row = &rows[row_index(&rows, text::NO_QUESTIONS_AT_LEVELS)];
+        assert_eq!(row[24], "N");
+        assert!(row[..24].iter().all(|symbol| symbol == " "));
+    }
+
+    #[test]
+    fn no_questions_at_levels_draws_at_any_size_without_panicking() {
+        for (width, height) in [(1, 1), (5, 2), (20, 3), (200, 60)] {
+            render(&at_no_questions_at_levels(width, height));
+        }
+    }
+
+    #[test]
+    fn no_questions_at_levels_uses_no_colour() {
+        let buffer = buffer(&at_no_questions_at_levels(80, 24));
+        assert!(
+            buffer
+                .content()
+                .iter()
+                .all(|cell| cell.fg == Color::Reset && cell.bg == Color::Reset)
+        );
     }
 }

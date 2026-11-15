@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use crate::app::TICK_INTERVAL;
 use crate::areas::{self, Area};
-use crate::practice::{Level, Levels};
+use crate::practice::{self, Level, Levels};
 
 /// The screen currently shown.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,6 +19,8 @@ pub enum Screen {
     NoQuestions,
     /// Choosing the JLPT levels to practise.
     LevelPicker,
+    /// No question exists at the ticked levels.
+    NoQuestionsAtLevels,
 }
 
 /// Something that happened, already translated from a terminal event.
@@ -41,6 +43,10 @@ pub enum Action {
     Choose,
     /// Tick or untick the highlighted level.
     Toggle,
+    /// Start practice with the ticked levels.
+    Confirm,
+    /// Go on: back to the level picker.
+    Continue,
     /// Go back to area selection.
     Back,
 }
@@ -129,8 +135,26 @@ impl Session {
                     self.levels = self.levels.toggled(self.highlighted_level());
                 }
             }
+            Action::Confirm => {
+                if self.screen == Screen::LevelPicker
+                    && !self.levels.is_empty()
+                    && let Some(area) = self.highlighted_area()
+                    && practice::selection(area.questions(self.levels), self.levels).is_empty()
+                {
+                    self.screen = Screen::NoQuestionsAtLevels;
+                }
+                // Practice starts here (task 3.1).
+            }
+            Action::Continue => {
+                if self.screen == Screen::NoQuestionsAtLevels {
+                    self.screen = Screen::LevelPicker;
+                }
+            }
             Action::Back => {
-                if matches!(self.screen, Screen::NoQuestions | Screen::LevelPicker) {
+                if matches!(
+                    self.screen,
+                    Screen::NoQuestions | Screen::LevelPicker | Screen::NoQuestionsAtLevels
+                ) {
                     self.screen = Screen::AreaSelection;
                 }
             }
@@ -554,6 +578,84 @@ mod tests {
     #[test]
     fn the_sample_area_opens_the_level_picker() {
         let session = on_picker(SAMPLE);
+        assert_eq!(session.screen(), Screen::LevelPicker);
+    }
+
+    fn sample_picker() -> Session {
+        on_picker(SAMPLE)
+    }
+
+    /// Unticks N5 and ticks N2 and N1.
+    fn only_high_levels(session: &mut Session) {
+        session.apply(Action::Toggle);
+        session.apply(Action::Next);
+        session.apply(Action::Next);
+        session.apply(Action::Next);
+        session.apply(Action::Toggle);
+        session.apply(Action::Next);
+        session.apply(Action::Toggle);
+    }
+
+    #[test]
+    fn levels_without_questions_say_so() {
+        let mut session = sample_picker();
+        only_high_levels(&mut session);
+        session.apply(Action::Confirm);
+        assert_eq!(session.screen(), Screen::NoQuestionsAtLevels);
+    }
+
+    #[test]
+    fn levels_with_questions_do_not_say_so() {
+        let mut session = sample_picker();
+        session.apply(Action::Confirm);
+        assert_ne!(session.screen(), Screen::NoQuestionsAtLevels);
+        assert!(!session.should_quit());
+    }
+
+    #[test]
+    fn confirm_with_nothing_ticked_does_nothing() {
+        let mut session = sample_picker();
+        session.apply(Action::Toggle);
+        session.apply(Action::Confirm);
+        assert_eq!(session.screen(), Screen::LevelPicker);
+    }
+
+    #[test]
+    fn continue_returns_to_the_picker_with_the_same_ticks() {
+        let mut session = sample_picker();
+        only_high_levels(&mut session);
+        let ticks = session.levels();
+        session.apply(Action::Confirm);
+        session.apply(Action::Continue);
+        assert_eq!(session.screen(), Screen::LevelPicker);
+        assert_eq!(session.levels(), ticks);
+    }
+
+    #[test]
+    fn back_from_no_questions_at_levels_returns_to_area_selection() {
+        let mut session = sample_picker();
+        only_high_levels(&mut session);
+        session.apply(Action::Confirm);
+        session.apply(Action::Back);
+        assert_eq!(session.screen(), Screen::AreaSelection);
+    }
+
+    #[test]
+    fn an_area_that_supplies_nothing_says_so_at_every_level() {
+        let mut session = on_picker(FULL_ONE);
+        session.apply(Action::Confirm);
+        assert_eq!(session.screen(), Screen::NoQuestionsAtLevels);
+    }
+
+    #[test]
+    fn confirm_and_continue_act_only_on_their_own_screens() {
+        let mut session = Session::with_areas(80, 24, SAMPLE);
+        session.apply(Action::Start);
+        session.apply(Action::Confirm);
+        session.apply(Action::Continue);
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        session.apply(Action::Choose);
+        session.apply(Action::Continue);
         assert_eq!(session.screen(), Screen::LevelPicker);
     }
 }

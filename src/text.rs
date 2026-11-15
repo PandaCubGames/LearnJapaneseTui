@@ -70,6 +70,12 @@ pub const LEVEL_UNTICKED: &str = "[ ] ";
 /// Level picker: shown while no level is ticked.
 pub const NO_LEVEL_TICKED: &str = "Tick at least one level";
 
+/// "No questions at these levels" screen: the message.
+pub const NO_QUESTIONS_AT_LEVELS: &str = "No questions at these levels yet";
+
+/// "No questions at these levels" screen: how to go on.
+pub const NO_QUESTIONS_AT_LEVELS_HINT: &str = "Press Enter to choose other levels";
+
 /// Level picker: the name of a level.
 pub fn level_name(level: Level) -> &'static str {
     match level {
@@ -228,5 +234,19 @@ mod tests {
     fn no_level_ticked_is_plain_ascii_text() {
         assert_eq!(NO_LEVEL_TICKED, "Tick at least one level");
         assert!(NO_LEVEL_TICKED.is_ascii());
+    }
+
+    #[test]
+    fn no_questions_at_levels_wording_is_plain_ascii_text() {
+        for (text, expected) in [
+            (NO_QUESTIONS_AT_LEVELS, "No questions at these levels yet"),
+            (
+                NO_QUESTIONS_AT_LEVELS_HINT,
+                "Press Enter to choose other levels",
+            ),
+        ] {
+            assert_eq!(text, expected);
+            assert!(text.is_ascii());
+        }
     }
 }
