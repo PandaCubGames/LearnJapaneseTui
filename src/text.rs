@@ -14,6 +14,8 @@
 use std::fmt::Display;
 use std::time::Duration;
 
+use crate::practice::Level;
+
 /// The program's name, as shown in messages.
 pub const APP_NAME: &str = env!("CARGO_PKG_NAME");
 
@@ -51,6 +53,30 @@ pub const NO_QUESTIONS: &str = "No questions in this area yet";
 
 /// How to leave the "no questions" screen.
 pub const NO_QUESTIONS_HINT: &str = "Press Enter to go back";
+
+/// Level picker: the heading above the levels.
+pub const LEVEL_PICKER_TITLE: &str = "Which JLPT levels do you want to practise?";
+
+/// Level picker: the keys.
+pub const LEVEL_PICKER_HINT: &str =
+    "Up/Down to move, Space to tick, Enter to start, Esc to go back";
+
+/// Level picker: in front of a ticked level.
+pub const LEVEL_TICKED: &str = "[x] ";
+
+/// Level picker: in front of an unticked level, as wide as `LEVEL_TICKED`.
+pub const LEVEL_UNTICKED: &str = "[ ] ";
+
+/// Level picker: the name of a level.
+pub fn level_name(level: Level) -> &'static str {
+    match level {
+        Level::N5 => "N5",
+        Level::N4 => "N4",
+        Level::N3 => "N3",
+        Level::N2 => "N2",
+        Level::N1 => "N1",
+    }
+}
 
 /// Welcome screen: shown in place of the last key before any key is typed.
 pub const NO_KEY: &str = "-";
@@ -160,5 +186,38 @@ mod tests {
         assert_eq!(AREA_MARKER.len(), AREA_NO_MARKER.len());
         assert!(AREA_MARKER.is_ascii());
         assert!(AREA_NO_MARKER.is_ascii());
+    }
+
+    #[test]
+    fn level_picker_wording_is_plain_ascii_text() {
+        for (text, expected) in [
+            (
+                LEVEL_PICKER_TITLE,
+                "Which JLPT levels do you want to practise?",
+            ),
+            (
+                LEVEL_PICKER_HINT,
+                "Up/Down to move, Space to tick, Enter to start, Esc to go back",
+            ),
+            (LEVEL_TICKED, "[x] "),
+            (LEVEL_UNTICKED, "[ ] "),
+        ] {
+            assert_eq!(text, expected);
+            assert!(text.is_ascii());
+        }
+    }
+
+    #[test]
+    fn level_names() {
+        let names: Vec<_> = Level::ALL.iter().map(|&level| level_name(level)).collect();
+        assert_eq!(names, ["N5", "N4", "N3", "N2", "N1"]);
+    }
+
+    #[test]
+    fn tick_boxes_are_the_same_width() {
+        assert_eq!(LEVEL_TICKED.len(), 4);
+        assert_eq!(LEVEL_UNTICKED.len(), 4);
+        assert!(LEVEL_TICKED.starts_with('['));
+        assert!(LEVEL_UNTICKED.starts_with('['));
     }
 }

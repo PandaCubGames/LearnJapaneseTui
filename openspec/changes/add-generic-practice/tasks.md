@@ -19,7 +19,7 @@ Types, signatures, algorithms and wording are in `design.md` (D-numbers point th
 
 ## 1. Level picker
 
-- [ ] 1.1 Open the level picker after choosing an area with questions; Up/Down move, Esc goes back.
+- [x] 1.1 Open the level picker after choosing an area with questions; Up/Down move, Esc goes back.
   - **First, check the prerequisites:** `src/areas.rs` has `trait Area` with `name` and `has_questions`, `areas::fake::FakeArea { name, has_questions }` exists, `Session::with_areas(u16, u16, &'static [&'static dyn Area])` and `Session::highlighted_area()` exist, `Action` has `Previous`, `Next`, `Choose`, `Back`, `Screen` has `AreaSelection` and `NoQuestions`, and `src/grading.rs` and `src/answer_field.rs` exist with the API listed in design.md Context. If anything differs, stop and report.
   - `src/practice.rs` (new): module doc `//! The generic practice module: what every area has in common. It never sees an area's own words, kanji or verbs, only questions (issue #21).` Then `mod level;` and `pub use level::{Level, Levels};`.
   - `src/practice/level.rs` (new): doc `//! JLPT levels and sets of levels.`; `Level` with `ALL` and private `bit`, and `Levels` with `only` and `contains` only (D2; derives as there).

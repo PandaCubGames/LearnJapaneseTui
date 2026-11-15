@@ -7,7 +7,7 @@ Copyright (C) 2026 PandaCubGames
 
 > **Status: mostly planned.** Only the core loop, the Welcome screen and area selection exist in code
 > (`app`, `areas`, `keys`, `session` and `ui`). The areas have no questions yet. Esc on area selection quits directly until the Thank you screen exists. Answer input and checking (`answer_field`,
-> `grading`, `kana`, `romaji`) exist, but no screen uses them yet. Everything else
+> `grading`, `kana`, `romaji`) exist, but no screen uses them yet. The JLPT level picker exists (`practice`). Everything else
 > here is still planned.
 > These diagrams describe the intended design and will change as it gets built.
 
@@ -75,6 +75,7 @@ fixed header or footer, and no separate logout.
 - **The level picker is part of the first version.** It comes after the area and before
   the question count, and lets you choose one or more levels.
 - An entry is practised when it has **any** of the chosen levels.
+- **Picker:** N5 to N1, each with a tick box. Up and Down move, Enter starts, Esc goes back to area selection. Only N5 is ticked when the app starts, and the ticks are kept while the app runs.
 
 ### Question count
 - Chosen before practice starts. The default is `10`, and `0` means **unlimited**.
@@ -416,7 +417,6 @@ flowchart LR
   "食べてもいい" comes from.
 - **Conjugation details:** the exact rules for irregular verbs and for adjectives.
 - **Multiple choice:** when it arrives and which questions use it.
-- **The level picker's default selection.**
 - **The content file format**, and the step that adds an entry and assigns its id.
 - **Example sentences and example words:** whether they stay display-only or become
   exercise material.

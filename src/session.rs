@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use crate::app::TICK_INTERVAL;
 use crate::areas::{self, Area};
+use crate::practice::{Level, Levels};
 
 /// The screen currently shown.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -16,6 +17,8 @@ pub enum Screen {
     AreaSelection,
     /// The chosen area has no questions.
     NoQuestions,
+    /// Choosing the JLPT levels to practise.
+    LevelPicker,
 }
 
 /// Something that happened, already translated from a terminal event.
@@ -30,13 +33,13 @@ pub enum Action {
     Tick,
     /// Leave the Welcome screen for area selection.
     Start,
-    /// Move the highlight to the previous area.
+    /// Move the highlight up (area selection, level picker).
     Previous,
-    /// Move the highlight to the next area.
+    /// Move the highlight down (area selection, level picker).
     Next,
     /// Choose the highlighted area.
     Choose,
-    /// Leave the "no questions" screen for the list.
+    /// Go back to area selection.
     Back,
 }
 
@@ -50,6 +53,8 @@ pub struct Session {
     quit: bool,
     areas: &'static [&'static dyn Area],
     highlighted: usize,
+    levels: Levels,
+    level_highlighted: usize,
 }
 
 impl Session {
@@ -69,6 +74,8 @@ impl Session {
             quit: false,
             areas,
             highlighted: 0,
+            levels: Levels::only(Level::N5),
+            level_highlighted: 0,
         }
     }
 
@@ -87,27 +94,36 @@ impl Session {
                     self.highlighted = 0;
                 }
             }
-            Action::Previous => {
-                if self.screen == Screen::AreaSelection {
-                    self.highlighted = self.highlighted.saturating_sub(1);
+            Action::Previous => match self.screen {
+                Screen::AreaSelection => self.highlighted = self.highlighted.saturating_sub(1),
+                Screen::LevelPicker => {
+                    self.level_highlighted = self.level_highlighted.saturating_sub(1);
                 }
-            }
-            Action::Next => {
-                if self.screen == Screen::AreaSelection && self.highlighted + 1 < self.areas.len() {
+                _ => {}
+            },
+            Action::Next => match self.screen {
+                Screen::AreaSelection if self.highlighted + 1 < self.areas.len() => {
                     self.highlighted += 1;
                 }
-            }
+                Screen::LevelPicker if self.level_highlighted + 1 < Level::ALL.len() => {
+                    self.level_highlighted += 1;
+                }
+                _ => {}
+            },
             Action::Choose => {
                 if self.screen == Screen::AreaSelection
                     && let Some(area) = self.highlighted_area()
-                    && !area.has_questions()
                 {
-                    self.screen = Screen::NoQuestions;
+                    if area.has_questions() {
+                        self.screen = Screen::LevelPicker;
+                        self.level_highlighted = 0;
+                    } else {
+                        self.screen = Screen::NoQuestions;
+                    }
                 }
-                // An area with questions starts practice here (issue #21).
             }
             Action::Back => {
-                if self.screen == Screen::NoQuestions {
+                if matches!(self.screen, Screen::NoQuestions | Screen::LevelPicker) {
                     self.screen = Screen::AreaSelection;
                 }
             }
@@ -147,6 +163,19 @@ impl Session {
         self.areas.get(self.highlighted).copied()
     }
 
+    /// The levels ticked in the level picker.
+    pub fn levels(&self) -> Levels {
+        self.levels
+    }
+
+    /// The level the level picker's highlight is on.
+    pub fn highlighted_level(&self) -> Level {
+        Level::ALL
+            .get(self.level_highlighted)
+            .copied()
+            .unwrap_or(Level::N5)
+    }
+
     /// The terminal size as `(width, height)`.
     pub fn size(&self) -> (u16, u16) {
         (self.width, self.height)
@@ -157,6 +186,7 @@ impl Session {
 mod tests {
     use super::*;
     use crate::areas::fake::FakeArea;
+    use crate::practice::{Level, Levels};
 
     #[test]
     fn new_session_starts_on_welcome_with_nothing_recorded() {
@@ -394,5 +424,83 @@ mod tests {
         session.apply(Action::Next);
         session.apply(Action::Previous);
         assert_eq!(session.highlighted(), 0);
+    }
+
+    const FULL_ONE: &[&dyn Area] = &[&FakeArea {
+        name: "Full",
+        has_questions: true,
+    }];
+
+    const FULL_TWO: &[&dyn Area] = &[
+        &FakeArea {
+            name: "Full A",
+            has_questions: true,
+        },
+        &FakeArea {
+            name: "Full B",
+            has_questions: true,
+        },
+    ];
+
+    fn on_picker(areas: &'static [&'static dyn Area]) -> Session {
+        let mut session = Session::with_areas(80, 24, areas);
+        session.apply(Action::Start);
+        session.apply(Action::Choose);
+        session
+    }
+
+    #[test]
+    fn choosing_an_area_with_questions_opens_the_level_picker() {
+        let session = on_picker(FULL_ONE);
+        assert_eq!(session.screen(), Screen::LevelPicker);
+        assert_eq!(session.highlighted_level(), Level::N5);
+        assert_eq!(session.levels(), Levels::only(Level::N5));
+    }
+
+    #[test]
+    fn level_highlight_moves_and_stops() {
+        let mut session = on_picker(FULL_ONE);
+        session.apply(Action::Next);
+        session.apply(Action::Next);
+        session.apply(Action::Previous);
+        assert_eq!(session.highlighted_level(), Level::N4);
+        for _ in 0..5 {
+            session.apply(Action::Previous);
+        }
+        assert_eq!(session.highlighted_level(), Level::N5);
+        for _ in 0..6 {
+            session.apply(Action::Next);
+        }
+        assert_eq!(session.highlighted_level(), Level::N1);
+    }
+
+    #[test]
+    fn moving_levels_keeps_the_area_highlight() {
+        let mut session = Session::with_areas(80, 24, FULL_TWO);
+        session.apply(Action::Start);
+        session.apply(Action::Next);
+        session.apply(Action::Choose);
+        session.apply(Action::Next);
+        assert_eq!(session.highlighted(), 1);
+    }
+
+    #[test]
+    fn back_from_the_picker_returns_to_area_selection() {
+        let mut session = Session::with_areas(80, 24, FULL_TWO);
+        session.apply(Action::Start);
+        session.apply(Action::Next);
+        session.apply(Action::Choose);
+        session.apply(Action::Back);
+        assert_eq!(session.screen(), Screen::AreaSelection);
+        assert_eq!(session.highlighted(), 1);
+    }
+
+    #[test]
+    fn picker_opens_on_n5_each_time() {
+        let mut session = on_picker(FULL_ONE);
+        session.apply(Action::Next);
+        session.apply(Action::Back);
+        session.apply(Action::Choose);
+        assert_eq!(session.highlighted_level(), Level::N5);
     }
 }

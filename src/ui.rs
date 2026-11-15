@@ -10,6 +10,7 @@ use ratatui::style::Stylize;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
+use crate::practice::Level;
 use crate::session::{Screen, Session};
 use crate::text::{self, GREETING};
 
@@ -18,6 +19,7 @@ pub fn draw(frame: &mut Frame, session: &Session) {
         Screen::Welcome => draw_welcome(frame, session),
         Screen::AreaSelection => draw_area_selection(frame, session),
         Screen::NoQuestions => draw_no_questions(frame, session),
+        Screen::LevelPicker => draw_level_picker(frame, session),
     }
 }
 
@@ -76,6 +78,37 @@ fn draw_no_questions(frame: &mut Frame, session: &Session) {
         Line::default(),
         Line::from(text::NO_QUESTIONS_HINT),
     ];
+
+    draw_centred(frame, lines);
+}
+
+fn draw_level_picker(frame: &mut Frame, session: &Session) {
+    let name = session.highlighted_area().map_or("", |area| area.name());
+    let mut lines = vec![
+        Line::from(name),
+        Line::default(),
+        Line::from(text::LEVEL_PICKER_TITLE),
+        Line::default(),
+    ];
+    for level in Level::ALL {
+        let marker = if level == session.highlighted_level() {
+            text::AREA_MARKER
+        } else {
+            text::AREA_NO_MARKER
+        };
+        let tick = if session.levels().contains(level) {
+            text::LEVEL_TICKED
+        } else {
+            text::LEVEL_UNTICKED
+        };
+        lines.push(Line::from(vec![
+            Span::raw(marker),
+            Span::raw(tick),
+            Span::raw(text::level_name(level)),
+        ]));
+    }
+    lines.push(Line::default());
+    lines.push(Line::from(text::LEVEL_PICKER_HINT));
 
     draw_centred(frame, lines);
 }
@@ -490,5 +523,101 @@ mod tests {
         let rows = render(&session);
         assert_eq!(rows[row_index(&rows, "Kanji")][34], ">");
         assert_eq!(rows[row_index(&rows, "Vocabulary")][34], " ");
+    }
+
+    const PICKABLE: &[&dyn Area] = &[&FakeArea {
+        name: "Sample",
+        has_questions: true,
+    }];
+
+    fn on_picker(areas: &'static [&'static dyn Area], width: u16, height: u16) -> Session {
+        chosen_with(areas, width, height)
+    }
+
+    fn level_rows(rows: &[Vec<String>]) -> Vec<&Vec<String>> {
+        ["N5", "N4", "N3", "N2", "N1"]
+            .iter()
+            .map(|name| &rows[row_index(rows, name)])
+            .collect()
+    }
+
+    #[test]
+    fn level_picker_shows_the_levels_in_order() {
+        let rows = render(&on_picker(PICKABLE, 80, 24));
+        let order = [
+            row_index(&rows, "Sample"),
+            row_index(&rows, text::LEVEL_PICKER_TITLE),
+            row_index(&rows, "N5"),
+            row_index(&rows, "N4"),
+            row_index(&rows, "N3"),
+            row_index(&rows, "N2"),
+            row_index(&rows, "N1"),
+            row_index(&rows, text::LEVEL_PICKER_HINT),
+        ];
+        assert!(order.windows(2).all(|pair| pair[0] < pair[1]), "{order:?}");
+        assert!(!text(&rows).contains(text::AREA_SELECTION_TITLE));
+    }
+
+    #[test]
+    fn level_picker_starts_with_n5_ticked_and_highlighted() {
+        let rows = render(&on_picker(PICKABLE, 80, 24));
+        assert!(rows[row_index(&rows, "N5")].concat().contains("> [x] N5"));
+        for name in ["N4", "N3", "N2", "N1"] {
+            let row = rows[row_index(&rows, name)].concat();
+            assert!(row.contains(&format!("[ ] {name}")), "{row:?}");
+            assert!(!row.contains('>'), "{row:?}");
+        }
+    }
+
+    #[test]
+    fn level_lines_are_centred_by_display_width() {
+        let rows = render(&on_picker(PICKABLE, 80, 24));
+        let levels = level_rows(&rows);
+        assert_eq!(levels[0][36], ">");
+        assert_eq!(levels[0][38], "[");
+        for row in &levels[1..] {
+            assert_eq!(row[36], " ");
+            assert_eq!(row[38], "[");
+        }
+    }
+
+    #[test]
+    fn level_picker_stays_centred_after_a_resize() {
+        let mut session = on_picker(PICKABLE, 80, 24);
+        session.apply(Action::Resized {
+            width: 100,
+            height: 30,
+        });
+        let rows = render(&session);
+        for row in level_rows(&rows) {
+            assert_eq!(row[48], "[");
+        }
+    }
+
+    #[test]
+    fn moving_on_the_picker_moves_the_marker() {
+        let mut session = on_picker(PICKABLE, 80, 24);
+        session.apply(Action::Next);
+        let rows = render(&session);
+        assert_eq!(rows[row_index(&rows, "N4")][36], ">");
+        assert_eq!(rows[row_index(&rows, "N5")][36], " ");
+    }
+
+    #[test]
+    fn level_picker_draws_at_any_size_without_panicking() {
+        for (width, height) in [(1, 1), (5, 2), (20, 3), (200, 60)] {
+            render(&on_picker(PICKABLE, width, height));
+        }
+    }
+
+    #[test]
+    fn level_picker_uses_no_colour() {
+        let buffer = buffer(&on_picker(PICKABLE, 80, 24));
+        assert!(
+            buffer
+                .content()
+                .iter()
+                .all(|cell| cell.fg == Color::Reset && cell.bg == Color::Reset)
+        );
     }
 }

@@ -60,6 +60,14 @@ pub fn action_for(screen: Screen, event: &Event) -> Option<Action> {
             }
             _ => None,
         },
+        Screen::LevelPicker => match key.code {
+            KeyCode::Up if key.modifiers.is_empty() => Some(Action::Previous),
+            KeyCode::Down if key.modifiers.is_empty() => Some(Action::Next),
+            KeyCode::Esc if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(Action::Back)
+            }
+            _ => None,
+        },
     }
 }
 
@@ -89,6 +97,10 @@ mod tests {
 
     fn on_no_questions(event: Event) -> Option<Action> {
         action_for(Screen::NoQuestions, &event)
+    }
+
+    fn on_level_picker(event: Event) -> Option<Action> {
+        action_for(Screen::LevelPicker, &event)
     }
 
     const EMPTY_ONE: &[&dyn Area] = &[&FakeArea {
@@ -450,5 +462,74 @@ mod tests {
         assert!(!session.should_quit());
         feed(&mut session, press(KeyCode::Esc, KeyModifiers::NONE));
         assert!(session.should_quit());
+    }
+
+    #[test]
+    fn arrows_move_on_the_level_picker() {
+        assert_eq!(
+            on_level_picker(press(KeyCode::Up, KeyModifiers::NONE)),
+            Some(Action::Previous)
+        );
+        assert_eq!(
+            on_level_picker(press(KeyCode::Down, KeyModifiers::NONE)),
+            Some(Action::Next)
+        );
+        assert_eq!(
+            on_level_picker(with_kind(KeyCode::Down, KeyEventKind::Repeat)),
+            Some(Action::Next)
+        );
+    }
+
+    #[test]
+    fn esc_goes_back_on_the_level_picker() {
+        assert_eq!(
+            on_level_picker(press(KeyCode::Esc, KeyModifiers::NONE)),
+            Some(Action::Back)
+        );
+        assert_eq!(
+            on_level_picker(press(KeyCode::Esc, KeyModifiers::ALT)),
+            None
+        );
+        assert_eq!(
+            on_level_picker(with_kind(KeyCode::Esc, KeyEventKind::Repeat)),
+            None
+        );
+    }
+
+    #[test]
+    fn ctrl_c_quits_on_the_level_picker() {
+        assert_eq!(
+            on_level_picker(press(KeyCode::Char('c'), KeyModifiers::CONTROL)),
+            Some(Action::Quit)
+        );
+    }
+
+    #[test]
+    fn resize_is_followed_on_the_level_picker() {
+        assert_eq!(
+            on_level_picker(Event::Resize(100, 30)),
+            Some(Action::Resized {
+                width: 100,
+                height: 30
+            })
+        );
+    }
+
+    #[test]
+    fn unbound_keys_do_nothing_on_the_level_picker() {
+        for code in [
+            KeyCode::Char('q'),
+            KeyCode::Char('a'),
+            KeyCode::Char('x'),
+            KeyCode::Left,
+            KeyCode::Right,
+            KeyCode::Tab,
+        ] {
+            assert_eq!(on_level_picker(press(code, KeyModifiers::NONE)), None);
+        }
+        assert_eq!(
+            on_level_picker(press(KeyCode::Down, KeyModifiers::SHIFT)),
+            None
+        );
     }
 }
