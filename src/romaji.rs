@@ -210,6 +210,9 @@ const TABLE: &[(&str, &str)] = &[
     ("lke", "ゖ"),
 ];
 
+/// The most `nn` spots that give two readings; later spots read textbook only.
+const MAX_FORKS: usize = 4;
+
 /// The kana of the table entry whose key is exactly `key`.
 fn kana_of(key: &str) -> Option<&'static str> {
     TABLE
@@ -225,14 +228,16 @@ fn push_all(readings: &mut [String], kana: &str) {
     }
 }
 
-/// Romaji to hiragana, letter for letter. `None` when the text has no valid
-/// reading.
+/// Romaji to hiragana, letter for letter. Every valid reading, textbook
+/// reading first: `nn` before a vowel can be read two ways. `None` when the
+/// text has no valid reading; `Some(v)` has 1 to 16 readings, all different.
 pub fn to_hiragana(romaji: &str) -> Option<Vec<String>> {
     if !romaji.is_ascii() {
         return None;
     }
     let text = romaji.to_ascii_lowercase();
     let mut readings = vec![String::new()];
+    let mut forks = 0;
     let mut i = 0;
     while i < text.len() {
         if text.as_bytes()[i] == b'-' {
@@ -244,9 +249,39 @@ pub fn to_hiragana(romaji: &str) -> Option<Vec<String>> {
         let next = text.as_bytes().get(i + 1).copied();
         if c == b'n' {
             match next {
-                Some(b'\'' | b'n') => {
+                Some(b'\'') => {
                     push_all(&mut readings, "ん");
                     i += 2;
+                    continue;
+                }
+                Some(b'n') => {
+                    let w = match text.as_bytes().get(i + 2) {
+                        Some(b'a' | b'i' | b'u' | b'e' | b'o') => 1,
+                        _ if matches!(text.get(i + 2..i + 4), Some("ya" | "yu" | "yo")) => 2,
+                        _ => 0,
+                    };
+                    if w == 0 {
+                        push_all(&mut readings, "ん");
+                    } else {
+                        // Two readings: textbook (`nn` is ん plus the `n` of
+                        // an n-row syllable) and keyboard (`nn` is ん alone).
+                        let textbook = text.get(i + 1..i + 2 + w).and_then(kana_of)?;
+                        let keyboard = text.get(i + 2..i + 2 + w).and_then(kana_of)?;
+                        let textbook = format!("ん{textbook}");
+                        let keyboard = format!("ん{keyboard}");
+                        if forks < MAX_FORKS {
+                            forks += 1;
+                            let mut forked = Vec::with_capacity(readings.len() * 2);
+                            for reading in &readings {
+                                forked.push(format!("{reading}{textbook}"));
+                                forked.push(format!("{reading}{keyboard}"));
+                            }
+                            readings = forked;
+                        } else {
+                            push_all(&mut readings, &textbook);
+                        }
+                    }
+                    i += 2 + w;
                     continue;
                 }
                 Some(b'a' | b'i' | b'u' | b'e' | b'o' | b'y') => {}
@@ -569,5 +604,77 @@ mod tests {
         for romaji in ["ny", "nyk", "konnyk", "onnx"] {
             assert_eq!(hira(romaji), None, "{romaji}");
         }
+    }
+
+    fn many(kana: &[&str]) -> Option<Vec<String>> {
+        Some(kana.iter().map(|k| (*k).to_string()).collect())
+    }
+
+    #[test]
+    fn nn_before_a_vowel_has_two_readings() {
+        assert_eq!(hira("konnichiha"), many(&["こんにちは", "こんいちは"]));
+        assert_eq!(hira("KONNICHIHA"), many(&["こんにちは", "こんいちは"]));
+        assert_eq!(hira("onna"), many(&["おんな", "おんあ"]));
+        assert_eq!(hira("kinnen"), many(&["きんねん", "きんえん"]));
+    }
+
+    #[test]
+    fn nn_before_ya_yu_yo_has_two_readings() {
+        assert_eq!(hira("konnya"), many(&["こんにゃ", "こんや"]));
+        assert_eq!(hira("onnyu"), many(&["おんにゅ", "おんゆ"]));
+        assert_eq!(hira("konnyo"), many(&["こんにょ", "こんよ"]));
+    }
+
+    #[test]
+    fn single_n_and_apostrophe_keep_one_reading() {
+        assert_eq!(hira("kinen"), one("きねん"));
+        assert_eq!(hira("kin'en"), one("きんえん"));
+        assert_eq!(hira("kon'ya"), one("こんや"));
+        assert_eq!(hira("konnnichiha"), one("こんにちは"));
+        assert_eq!(hira("onnna"), one("おんな"));
+    }
+
+    #[test]
+    fn two_spots_are_ordered_textbook_first() {
+        assert_eq!(
+            hira("kinnennen"),
+            many(&[
+                "きんねんねん",
+                "きんねんえん",
+                "きんえんねん",
+                "きんえんえん"
+            ])
+        );
+    }
+
+    #[test]
+    fn readings_are_bounded() {
+        let four = hira(&"nna".repeat(4)).unwrap();
+        assert_eq!(four.len(), 16);
+        assert_eq!(four[0], "んなんなんなんな");
+        assert_eq!(four[15], "んあんあんあんあ");
+        let five = hira(&"nna".repeat(5)).unwrap();
+        assert_eq!(five.len(), 16);
+        assert_eq!(five[0], "んなんなんなんなんな");
+        assert_eq!(five[15], "んあんあんあんあんな");
+        let thirty = hira(&"nna".repeat(30)).unwrap();
+        assert_eq!(thirty.len(), 16);
+        for readings in [four, five, thirty] {
+            let different: std::collections::HashSet<&String> = readings.iter().collect();
+            assert_eq!(different.len(), 16);
+        }
+    }
+
+    #[test]
+    fn nn_spot_does_not_make_text_readable() {
+        assert_eq!(hira("konnichiq"), None);
+    }
+
+    #[test]
+    fn nn_is_never_small_tsu() {
+        for reading in hira("onna").unwrap() {
+            assert!(!reading.contains('っ'), "{reading}");
+        }
+        assert_eq!(hira("nn"), one("ん"));
     }
 }

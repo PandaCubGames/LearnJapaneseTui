@@ -93,7 +93,7 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
     - `ny_without_a_vowel`: `ny`, `nyk`, `konnyk`, `onnx` → `None`.
   - Verify: the 11 new tests pass, all earlier tests (including every test of 2.1, unchanged) pass, fmt and clippy are clean. Commit, e.g. `feat(romaji): read small tsu and syllabic n`.
 
-- [ ] 2.3 Give `nn` before a vowel or `ya`/`yu`/`yo` both readings (owner decision; D4 algorithm step 3.2, the two-reading spot, *Two readings of `nn`*, order and bound).
+- [x] 2.3 Give `nn` before a vowel or `ya`/`yu`/`yo` both readings (owner decision; D4 algorithm step 3.2, the two-reading spot, *Two readings of `nn`*, order and bound).
   - `src/romaji.rs`: add `const MAX_FORKS: usize = 4;` and a `let mut forks = 0;` counter in `to_hiragana`.
   - In the `n` + `n` branch from 2.2, before pushing `ん`: let `w` be 1 if the byte at `i + 2` is one of `a i u e o`, 2 if `text.get(i + 2..i + 4)` is `Some("ya")`, `Some("yu")` or `Some("yo")`, else 0. If `w == 0`, keep 2.2's behaviour (push `ん`, advance 2). If `w > 0`:
     - `textbook` = `"ん"` followed by `kana_of(&text[i + 1..i + 2 + w])`; `keyboard` = `"ん"` followed by `kana_of(&text[i + 2..i + 2 + w])`. Both keys are always in the table; if `kana_of` ever returns `None`, return `None` (no `unwrap`, no panic).
