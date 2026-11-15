@@ -138,7 +138,7 @@ Types, signatures, rule tables, the word list and the expected forms are in `des
 
 ## 3. Documentation
 
-- [ ] 3.1 Update `docs/architecture.md` for the Grammar area.
+- [x] 3.1 Update `docs/architecture.md` for the Grammar area.
   - Status note: replace `Area selection lists the registered areas; none is registered yet, so it says "Nothing to practise yet".` with `Area selection lists the registered areas; the only one so far is Grammar (conjugation practice, \`areas::grammar\` with the rules in \`conjugation\`).` and replace `only a test area has questions so far.` with `Grammar is the first area with questions.` (without the backslashes).
   - §3 *Grammar*: after the example and the sentence "The template questions are the conjugations in the next section.", add a paragraph starting `**In this first version:**` followed by these bullets, in this wording:
     - `Each word has one written form (the same as its reading for a word written in kana), one reading, one meaning and one JLPT level. There is no id, description or custom question yet.`
