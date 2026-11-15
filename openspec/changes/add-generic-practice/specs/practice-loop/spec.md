@@ -33,10 +33,18 @@ On the question screen, the keys of the answer field (characters, Backspace) SHA
 - **THEN** the field holds `q` and the app keeps running
 
 ### Requirement: Submitting an answer
-Enter without modifiers, not a repeat, SHALL submit the answer. An empty answer or one made only of spaces MUST be ignored. A Japanese answer SHALL be checked with the shared answer checking (romaji, kana and kanji accepted; the shown text never accepted). A meaning answer SHALL be checked with meaning checking. A counted answer SHALL show the feedback screen.
+Enter without modifiers, not a repeat, SHALL submit the answer. An empty answer or one made only of spaces MUST be ignored. A Japanese answer SHALL be checked with the shared answer checking (romaji, kana and kanji accepted; an answer that is a shown text containing a kanji is wrong, while shown text in kana only never makes an answer wrong). A meaning answer SHALL be checked with meaning checking. A counted answer SHALL show the feedback screen.
 
 #### Scenario: Correct romaji
 - **WHEN** the question accepts `たかい` and the user types `takai` and presses Enter
+- **THEN** the feedback screen says `Correct!`
+
+#### Scenario: Shown kanji copied back
+- **WHEN** the question shows `高い`, accepts `高い` and `たかい`, and the user submits `高い`
+- **THEN** the feedback screen says `Not quite.`, while submitting `takai` says `Correct!`
+
+#### Scenario: Shown kana typed back
+- **WHEN** the question shows `する`, accepts `する`, and the user submits `する` or `suru`
 - **THEN** the feedback screen says `Correct!`
 
 #### Scenario: Empty answer

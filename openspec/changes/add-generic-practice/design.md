@@ -90,8 +90,10 @@ pub struct Question {
     pub prompt: String,
     /// Every accepted answer. Japanese answers are written in kana or kanji, never romaji.
     pub accepted: Vec<String>,
-    /// The Japanese texts the prompt already shows. An answer equal to one of them is
-    /// never accepted. Empty when the prompt shows no Japanese. Ignored for `Meaning`.
+    /// The Japanese texts the prompt already shows. An answer typed back as one of them
+    /// is wrong when that text contains a kanji, so kanji cannot be copied and pasted;
+    /// kana-only texts never make an answer wrong. Empty when the prompt shows no
+    /// Japanese. Ignored for `Meaning`.
     pub shown: Vec<String>,
     pub kind: Kind,
 }
@@ -122,7 +124,7 @@ pub trait Area: std::fmt::Debug {
 - **Grouped by entry** because the picking rule (D7) works on entries. An entry's template and custom questions are simply all in its `questions`.
 - **The area filters by level, and the practice module filters again** (`practice::selection`, D7). The area can skip work for entries it will not need; the any-level rule and "no empty entries" still live in one place and cannot be got wrong by an area. A test with an area that ignores the levels pins this.
 - **`Levels` is a 5-bit set**, `Copy`, so `Session` and tests pass it around freely. Its field is private; outside the module, sets are built with `only` and `toggled` (an empty set is `Levels::only(Level::N5).toggled(Level::N5)`). Methods are added in the task that first uses them (Context fact 2).
-- **`shown` is part of the question** because #18's "an answer that repeats what the question shows is never accepted" needs it, and only the area knows what its prompt shows.
+- **`shown` is part of the question** because #18's repeat rule needs it, and only the area knows what its prompt shows. The rule exists for one reason: when the prompt shows a word written with kanji (`食べる`), the user must not be able to answer by copying that text back. So an answer equal to a shown text is wrong only when that text contains a kanji; a kana-only shown text never makes an answer wrong (#18, design D6). Areas list everything Japanese their prompt shows and need not decide which entries matter.
 - **`has_questions` keeps its name and signature** (as #20's D2 allows) and gets a default body, so it can never disagree with `questions`. The three real areas lose their `fn has_questions(&self) -> bool { false }` (task 2.1): with the default they still have no questions, and #11, #12 and #13 then only add `questions`, instead of having to remember to delete an override that would otherwise hide their content.
 - **`questions` has a default body** (no entries) so #20's `FakeArea`, which only implements `name` and `has_questions`, compiles unchanged and keeps its meaning (D14). An area that forgets `questions` shows "No questions in this area yet", which is honest. Alternative considered: a required `questions`; rejected because it would force an edit of #20's `FakeArea` test helper and of the three real area files for no behaviour.
 
@@ -154,7 +156,7 @@ impl Area for Grammar {
 }
 ```
 
-So the contract is enough for conjugation: one entry per word, nine generated questions plus any custom ones, accepted answers in kanji and kana, and the dictionary form as `shown`. **Note for #13:** for the plain non-past form the answer *is* the dictionary form, so if the prompt shows `食べる` and `shown` lists it, that question can never be answered correctly. #13 must either leave `shown` empty for that form (and show the word some other way, e.g. by its meaning) or not ask it. This is #13's content decision; the contract does not need to change.
+So the contract is enough for conjugation: one entry per word, nine generated questions plus any custom ones, accepted answers in kanji and kana, and the dictionary form as `shown`. **Note for #13:** for the plain non-past form the answer *is* the dictionary form, and that needs no special handling. With `食べる` shown (and `shown = ["食べる", "たべる"]`), typing the kanji form `食べる` back is wrong, but `たべる` and `taberu` are correct, because only shown text with a kanji blocks an answer. For a kana-only word such as `する`, nothing is blocked: `する` and `suru` are correct. So #13 can ask all nine forms with `shown` filled as in the sketch, and the contract does not change. The remaining wrinkle is that this one question is easy: its answer is the reading of the word the prompt shows (and for a kana-only word, the shown text itself). Whether to ask it anyway is #13's content decision.
 
 ### D4. Owned `String`s, not `&'static str` or `Cow`
 
@@ -569,7 +571,7 @@ Each task is one commit that builds and passes fmt, clippy and tests (`AGENTS.md
 - [A prompt longer than three rows is clipped] → Prompts are a sentence at most; content tests in #11 to #13 can bound them.
 - [Seeds from the clock are predictable] → Irrelevant for a learning app; the order only needs to vary.
 - [The score line is shown before the results screen exists] → It reads the counts the issue requires, keeps them live code, and is useful; the results change may move or remove it (no test pins its row).
-- [Area content could put romaji in `accepted`, or an answer equal to `shown` (D3)] → The contract documents both; content changes test their own data.
+- [Area content could put romaji in `accepted`, or accept only the kanji form of a word its prompt shows, which can then never be answered correctly (accept the kana form too, D3)] → The contract documents both; content changes test their own data.
 
 ## Open Questions
 
