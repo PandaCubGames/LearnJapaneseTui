@@ -27,7 +27,7 @@ Types, signatures and wording are in `design.md` (D-numbers point there). Every 
 
 ## 3. Enter continues to a placeholder area selection screen
 
-- [ ] 3.1 Add `Action::Start`, `Screen::AreaSelection` and the placeholder, in one commit (D7 explains why it cannot be split).
+- [x] 3.1 Add `Action::Start`, `Screen::AreaSelection` and the placeholder, in one commit (D7 explains why it cannot be split).
   - `src/session.rs`: add the variant `AreaSelection` to `Screen` and `Start` (with its doc comment) to `Action`, as in D3. Add the `Action::Start` arm to `Session::apply` exactly as in D3.
   - `src/keys.rs`: in the `Screen::Welcome` arm, add `KeyCode::Enter if key.modifiers.is_empty() => Some(Action::Start),` as the first arm. Add `Screen::AreaSelection => None,` to `match screen`. Leave rules 1 to 3 as they are (D4).
   - `src/text.rs`: add `AREA_SELECTION_SOON` and `AREA_SELECTION_QUIT_HINT` from D6.

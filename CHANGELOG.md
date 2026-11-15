@@ -28,7 +28,7 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Agent rule: when working through an OpenSpec change's `tasks.md`, agents commit after every task, one atomic Conventional Commit per task.
 - Testing rules for agents and OpenSpec: every new feature adds tests, every bug fix adds a regression test, and existing tests are never changed without the owner's decision.
 - Main application loop (issue #10): `cargo run` opens a full-screen TUI built with `ratatui`. It handles key presses, terminal resizes and a 100 ms tick, quits with `q` or `Ctrl+C`, and restores the terminal on exit, on error and on panic. A placeholder Welcome screen shows Japanese text centred by display width.
-- Welcome screen (issue #19): shows "Press Enter to start" below the greeting.
+- Welcome screen (issue #19): shows "Press Enter to start" below the greeting. Enter continues to a placeholder area selection screen, which Ctrl+C quits; the real screen is issue #20.
 
 ### Changed
 - The minimum Rust version is now 1.88 (was 1.85), which `ratatui` requires.

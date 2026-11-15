@@ -29,6 +29,12 @@ pub const START_HINT: &str = "Press Enter to start";
 /// Welcome screen: how to leave the app.
 pub const QUIT_HINT: &str = "Press q or Ctrl+C to quit";
 
+/// Area selection, until the list of areas exists.
+pub const AREA_SELECTION_SOON: &str = "Area selection is coming soon.";
+
+/// Area selection: how to leave the app. Only Ctrl+C works there for now.
+pub const AREA_SELECTION_QUIT_HINT: &str = "Press Ctrl+C to quit";
+
 /// Welcome screen: shown in place of the last key before any key is typed.
 pub const NO_KEY: &str = "-";
 
@@ -96,6 +102,14 @@ mod tests {
     fn start_hint_is_plain_ascii_text() {
         assert_eq!(START_HINT, "Press Enter to start");
         assert!(START_HINT.is_ascii());
+    }
+
+    #[test]
+    fn area_selection_messages_are_plain_ascii_text() {
+        assert_eq!(AREA_SELECTION_SOON, "Area selection is coming soon.");
+        assert_eq!(AREA_SELECTION_QUIT_HINT, "Press Ctrl+C to quit");
+        assert!(AREA_SELECTION_SOON.is_ascii());
+        assert!(AREA_SELECTION_QUIT_HINT.is_ascii());
     }
 
     #[test]

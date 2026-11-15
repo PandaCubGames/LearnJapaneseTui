@@ -12,6 +12,7 @@ use crate::app::TICK_INTERVAL;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Screen {
     Welcome,
+    AreaSelection,
 }
 
 /// Something that happened, already translated from a terminal event.
@@ -19,8 +20,13 @@ pub enum Screen {
 pub enum Action {
     Quit,
     Typed(char),
-    Resized { width: u16, height: u16 },
+    Resized {
+        width: u16,
+        height: u16,
+    },
     Tick,
+    /// Leave the Welcome screen for area selection.
+    Start,
 }
 
 #[derive(Debug)]
@@ -55,6 +61,11 @@ impl Session {
                 self.height = height;
             }
             Action::Tick => self.ticks = self.ticks.saturating_add(1),
+            Action::Start => {
+                if self.screen == Screen::Welcome {
+                    self.screen = Screen::AreaSelection;
+                }
+            }
         }
     }
 
@@ -129,6 +140,34 @@ mod tests {
             session.apply(Action::Tick);
         }
         assert_eq!(session.elapsed(), Duration::from_millis(2500));
+    }
+
+    #[test]
+    fn start_moves_from_welcome_to_area_selection() {
+        let mut session = Session::new(80, 24);
+        session.apply(Action::Start);
+        assert_eq!(session.screen(), Screen::AreaSelection);
+    }
+
+    #[test]
+    fn start_is_one_way() {
+        let mut session = Session::new(80, 24);
+        session.apply(Action::Start);
+        session.apply(Action::Start);
+        session.apply(Action::Typed('a'));
+        session.apply(Action::Tick);
+        session.apply(Action::Resized {
+            width: 100,
+            height: 30,
+        });
+        assert_eq!(session.screen(), Screen::AreaSelection);
+    }
+
+    #[test]
+    fn start_does_not_quit() {
+        let mut session = Session::new(80, 24);
+        session.apply(Action::Start);
+        assert!(!session.should_quit());
     }
 
     #[test]
