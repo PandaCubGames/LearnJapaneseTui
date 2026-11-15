@@ -44,11 +44,6 @@ pub const AREA_NO_MARKER: &str = "  ";
 /// Area selection: shown in place of the list when the app has no areas.
 pub const AREA_SELECTION_EMPTY: &str = "Nothing to practise yet";
 
-/// Area names, as shown in the list.
-pub const AREA_VOCABULARY: &str = "Vocabulary";
-pub const AREA_KANJI: &str = "Kanji";
-pub const AREA_GRAMMAR: &str = "Grammar";
-
 /// Shown when the chosen area has no questions.
 pub const NO_QUESTIONS: &str = "No questions in this area yet";
 
@@ -143,11 +138,8 @@ mod tests {
     }
 
     #[test]
-    fn area_and_no_questions_wording_is_plain_ascii_text() {
+    fn no_questions_wording_is_plain_ascii_text() {
         for (text, expected) in [
-            (AREA_VOCABULARY, "Vocabulary"),
-            (AREA_KANJI, "Kanji"),
-            (AREA_GRAMMAR, "Grammar"),
             (NO_QUESTIONS, "No questions in this area yet"),
             (NO_QUESTIONS_HINT, "Press Enter to go back"),
         ] {

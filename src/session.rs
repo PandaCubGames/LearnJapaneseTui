@@ -277,9 +277,9 @@ mod tests {
 
     #[test]
     fn start_highlights_the_first_area() {
-        let mut session = Session::new(80, 24);
+        let mut session = Session::with_areas(80, 24, EMPTY_THREE);
         session.apply(Action::Start);
-        assert_eq!(name_of(&session), Some("Vocabulary"));
+        assert_eq!(name_of(&session), Some("A"));
     }
 
     #[test]

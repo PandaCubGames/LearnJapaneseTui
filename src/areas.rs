@@ -3,14 +3,6 @@
 
 //! The practice areas the app knows about, listed in one place.
 
-mod grammar;
-mod kanji;
-mod vocabulary;
-
-use grammar::Grammar;
-use kanji::Kanji;
-use vocabulary::Vocabulary;
-
 /// One thing the user can practise. #21 grows this into the full area
 /// contract (questions for a set of JLPT levels).
 pub trait Area: std::fmt::Debug {
@@ -21,9 +13,9 @@ pub trait Area: std::fmt::Debug {
     fn has_questions(&self) -> bool;
 }
 
-/// Every area, in the order the list shows them. Adding an area adds one
-/// entry here and its own file under `src/areas/`.
-const ALL: &[&dyn Area] = &[&Vocabulary, &Kanji, &Grammar];
+/// Every area, in the order the list shows them. There are none yet. Adding
+/// an area adds its own file under `src/areas/` and one entry here.
+const ALL: &[&dyn Area] = &[];
 
 pub fn all() -> &'static [&'static dyn Area] {
     ALL
@@ -54,12 +46,6 @@ pub mod fake {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn the_list_starts_with_vocabulary_kanji_grammar() {
-        let names: Vec<_> = all().iter().map(|area| area.name()).collect();
-        assert!(names.starts_with(&["Vocabulary", "Kanji", "Grammar"]));
-    }
 
     #[test]
     fn area_names_are_unique_and_not_empty() {

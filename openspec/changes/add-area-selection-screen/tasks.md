@@ -329,7 +329,7 @@ The owner does not want this change to add a Vocabulary, Kanji or Grammar area: 
   - No `CHANGELOG.md` or `docs/` change in this task (task 6.2 rewrites the entry once the built-in areas are gone).
   - Verify: check once that `empty_area_list_says_there_is_nothing_to_practise` fails with the `if` block in `draw_area_selection` taken out, then put it back. `cargo test` passes with 109 tests (100 before + 9 new); fmt and clippy are clean; `git diff --stat` shows only `src/text.rs`, `src/ui.rs`, `src/session.rs`, `src/keys.rs` and this `tasks.md`; `git diff` removes no line inside any `mod tests` block. Commit, e.g. `feat(areas): say when there is nothing to practise`.
 
-- [ ] 6.2 Remove the built-in areas, so the app registers none. One commit (design.md D9).
+- [x] 6.2 Remove the built-in areas, so the app registers none. One commit (design.md D9).
   - **Delete** `src/areas/vocabulary.rs`, `src/areas/kanji.rs` and `src/areas/grammar.rs` (with their tests `is_named_vocabulary`, `is_named_kanji`, `is_named_grammar`). The `src/areas/` directory is then gone.
   - **`src/areas.rs`:** delete the lines `mod grammar;`, `mod kanji;`, `mod vocabulary;`, `use grammar::Grammar;`, `use kanji::Kanji;`, `use vocabulary::Vocabulary;` and the blank lines after each group, so the module doc is followed by one blank line and the `Area` trait's doc comment. Replace the doc comment and value of `ALL` with:
 
