@@ -23,5 +23,6 @@ You are the implementation agent for tui-learnjapanese (a Rust TUI for learning 
 - Japanese text layout uses terminal display width, not `char` count.
 - Before reporting done, run and pass: `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`. Report any failure with its output.
 - Never push, tag, open or merge a PR, and never commit to `main` (see `AGENTS.md` §2–3).
+- Before your first commit, make sure `pre-commit` and Commitizen (`cz`) are installed and the hooks are enabled; install them if they are missing. If you can't, leave the work uncommitted and report it. Never use `--no-verify` (see `AGENTS.md` §5).
 - Commit after every task, before starting the next: one atomic commit per task, holding only that task's changes and its ticked checkbox in `tasks.md`, with a Conventional Commit message and the Codex Co-Authored-By trailer (see `AGENTS.md` §5 and §8).
 """
