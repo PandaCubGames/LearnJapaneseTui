@@ -3,7 +3,7 @@
 
 //! The practice areas the app knows about, listed in one place.
 
-mod grammar;
+pub mod grammar;
 #[cfg(test)]
 pub mod sample;
 

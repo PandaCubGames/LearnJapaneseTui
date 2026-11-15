@@ -4,11 +4,13 @@
 //! The Grammar area: conjugation practice (issue #13). Each word is one entry;
 //! its questions are its nine forms, and the answers come from `conjugation`.
 
+pub mod conjugation;
+
 use super::Area;
-use crate::conjugation::{self, Form, Formality, Group};
 use crate::practice::question::{Kind, Question};
 use crate::practice::{Entry, Level, Levels};
 use crate::text;
+use conjugation::{Form, Formality, Group};
 
 /// The forms asked of every word, in this order.
 const ASKED: [(Form, Formality); 9] = [

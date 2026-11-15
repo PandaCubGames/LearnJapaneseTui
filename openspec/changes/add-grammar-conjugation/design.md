@@ -759,3 +759,11 @@ Readings in full for two of them, as a check of the rule: かう, かわない, 
   9. polite past negative: `["よくなかったです", "良くなかったです", "よくありませんでした", "良くありませんでした"]`
 
 No accepted answer of any question contains でわ.
+
+## After the design: where the conjugation module lives
+
+The owner asked, after the change was implemented, that everything belonging to Grammar sit in the same folder. The conjugation rules therefore moved from the top-level `src/conjugation.rs` planned in D1 and D2 to `src/areas/grammar/conjugation.rs`, as a submodule of the area (`pub mod conjugation;` in `src/areas/grammar.rs`).
+
+- Wherever this design or `tasks.md` says `src/conjugation.rs`, read `src/areas/grammar/conjugation.rs`. The module's contents, API and tests are unchanged.
+- `src/main.rs` no longer declares the module. `src/areas.rs` declares `pub mod grammar;` so that `src/text.rs` can name `Form` and `Formality` for the prompt wording.
+- A later area that needs conjugation would import it from the Grammar area or ask for it to be moved back to a shared place.

@@ -478,6 +478,7 @@ flowchart LR
   nothing while typing. `keys` asks it which keys edit it and `ui` asks it to draw itself,
   by display width.
 - **`conjugation`** has no state and no terminal access, so its rules are tested directly.
+  It belongs to the Grammar area and lives with it, in `src/areas/grammar/conjugation.rs`.
 - **Content** is embedded in the binary, so the release stays a single file. Sources and
   licenses go in `ATTRIBUTION.md`.
 

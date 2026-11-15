@@ -14,7 +14,7 @@
 use std::fmt::Display;
 use std::time::Duration;
 
-use crate::conjugation::{Form, Formality};
+use crate::areas::grammar::conjugation::{Form, Formality};
 use crate::practice::Level;
 
 /// The program's name, as shown in messages.

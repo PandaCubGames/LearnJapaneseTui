@@ -6,7 +6,6 @@ use std::process::ExitCode;
 mod answer_field;
 mod app;
 mod areas;
-mod conjugation;
 mod grading;
 mod kana;
 mod keys;
