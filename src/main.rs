@@ -12,6 +12,13 @@ mod app;
 )]
 mod kana;
 mod keys;
+// No screen uses this module yet: the practice question screen (issue #21)
+// does, and removes this attribute. Tests use every item already.
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "used by the practice question screen, issue #21")
+)]
+mod romaji;
 mod session;
 mod text;
 mod ui;

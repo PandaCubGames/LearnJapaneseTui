@@ -49,7 +49,7 @@ In test modules, use `use super::*;` like the existing files. Use `assert_eq!` w
 
 ## 2. Romaji to hiragana
 
-- [ ] 2.1 Add `src/romaji.rs` with the table and the basic conversion (D4 table; D4 algorithm steps 1, 2, 3.1, 3.5 and 4 only).
+- [x] 2.1 Add `src/romaji.rs` with the table and the basic conversion (D4 table; D4 algorithm steps 1, 2, 3.1, 3.5 and 4 only).
   - `src/main.rs`: add `mod romaji;` with the D1 attribute.
   - `const TABLE: &[(&str, &str)]`: every spelling of the D4 table as its own pair, 175 pairs, in the order of the D4 table. Keys are lower-case ASCII.
   - Private `fn kana_of(key: &str) -> Option<&'static str>`: the kana of the table entry whose key equals `key` exactly, or `None`. The longest-match lookup below calls it; task 2.3 calls it too.
