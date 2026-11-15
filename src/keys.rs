@@ -138,7 +138,7 @@ mod tests {
 
     #[test]
     fn other_keys_and_events_do_nothing() {
-        for code in [KeyCode::Enter, KeyCode::Esc, KeyCode::Up] {
+        for code in [KeyCode::Esc, KeyCode::Up] {
             assert_eq!(on_welcome(press(code, KeyModifiers::NONE)), None);
         }
         assert_eq!(on_welcome(Event::FocusGained), None);

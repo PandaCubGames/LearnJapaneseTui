@@ -23,7 +23,7 @@ Types, signatures and wording are in `design.md` (D-numbers point there). Every 
 
 ## 2. Owner-approved edit of one existing test
 
-- [ ] 2.1 **Owner-approved exception (issue #19, D8). This is the only existing test this change edits.** In `src/keys.rs`, test `other_keys_and_events_do_nothing`, change `for code in [KeyCode::Enter, KeyCode::Esc, KeyCode::Up] {` to `for code in [KeyCode::Esc, KeyCode::Up] {`. Change nothing else: keep the test's name, its loop body and its `Event::FocusGained` assertion. Do not touch any other test. No production code changes in this commit. Verify `cargo test keys` passes (Enter still does nothing at this point, so the test passes before and after) and `git diff --stat` shows only `src/keys.rs` and this `tasks.md`. Commit, e.g. `test(keys): stop pinning Enter as a no-op on Welcome`, and say in the commit body that the owner approved this edit in issue #19.
+- [x] 2.1 **Owner-approved exception (issue #19, D8). This is the only existing test this change edits.** In `src/keys.rs`, test `other_keys_and_events_do_nothing`, change `for code in [KeyCode::Enter, KeyCode::Esc, KeyCode::Up] {` to `for code in [KeyCode::Esc, KeyCode::Up] {`. Change nothing else: keep the test's name, its loop body and its `Event::FocusGained` assertion. Do not touch any other test. No production code changes in this commit. Verify `cargo test keys` passes (Enter still does nothing at this point, so the test passes before and after) and `git diff --stat` shows only `src/keys.rs` and this `tasks.md`. Commit, e.g. `test(keys): stop pinning Enter as a no-op on Welcome`, and say in the commit body that the owner approved this edit in issue #19.
 
 ## 3. Enter continues to a placeholder area selection screen
 
