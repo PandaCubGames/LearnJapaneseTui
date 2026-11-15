@@ -91,9 +91,33 @@ A Grammar question SHALL accept every answer the conjugation rules give, each in
 - **THEN** the only accepted answer is `します`
 
 #### Scenario: では typed in romaji
-- **WHEN** the polite negative of 静か is answered with `shizukadehaarimasen` and with `shizukajaarimasen`
-- **THEN** both are correct
-- **AND** `shizukadewaarimasen` is wrong, because romaji is read letter for letter
+- **WHEN** the polite negative of 静か is answered with `shizukadehaarimasen`, `shizukadewaarimasen`, `shizukajaarimasen` or `shizukajanaidesu`
+- **THEN** each is correct
+- **AND** no accepted answer of any Grammar question contains でわ
+
+#### Scenario: The plain negative of 静か typed six ways
+- **WHEN** the plain negative of 静か is answered
+- **THEN** `shizukadehanai` is correct, read as `しずかではない`
+- **AND** `shizukadewanai` is correct, read as `しずかではない`
+- **AND** `しずかではない` is correct, read as `しずかではない`
+- **AND** `静かではない` is correct, read as `静かではない`
+- **AND** `しずかでわない` is wrong, read as `しずかでわない`
+- **AND** `shizukajanai` is correct, read as `しずかじゃない`
+
+#### Scenario: dewa in a polite past negative
+- **WHEN** the polite past negative of 静か is answered with `shizukadewaarimasendeshita` and with `shizukadewanakattadesu`
+- **THEN** both are correct, read as `しずかではありませんでした` and `しずかではなかったです`
+
+#### Scenario: いい accepts よい and 良
+- **WHEN** the plain non-past of いい is asked
+- **THEN** the prompt is `What is the plain non-past of いい (good)?` and the shown text is `いい` only
+- **AND** the accepted answers are `いい`, `よい`, `良い`, in this order
+- **AND** `ii`, `yoi`, `いい`, `よい`, `イイ` and `良い` are correct
+
+#### Scenario: いい in the polite non-past and the past
+- **WHEN** the polite non-past and the plain past of いい are asked
+- **THEN** the accepted answers are `いいです`, `よいです`, `良いです`, and `よかった`, `良かった`
+- **AND** `yoidesu`, `良いです`, `yokatta` and `良かった` are correct, while `iikatta` is wrong
 
 #### Scenario: 来る read with the right sound
 - **WHEN** the plain negative of 来る is answered with `konai` and with `kinai`

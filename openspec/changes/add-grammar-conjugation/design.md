@@ -8,7 +8,7 @@ State of `main` this design starts from (all merged; read in full while writing 
 
 - `src/areas.rs`: `pub trait Area: Debug { fn name(&self) -> &'static str; fn questions(&self, _levels: Levels) -> Vec<Entry> { Vec::new() } fn has_questions(&self) -> bool { /* built on questions */ } }`, `const ALL: &[&dyn Area] = &[];`, `pub fn all()`, test-only `pub mod fake` (`FakeArea`) and `pub mod sample` (`src/areas/sample.rs`). Its doc comment says "There are none yet. Adding an area adds its own file under `src/areas/` and one entry here."
 - `src/practice/`: `Level` (`N5`..`N1`, `Level::ALL`), `Levels` (`only`, `contains`, `toggled`, `is_empty`, `intersects`, `ALL`; the field is private and no constructor is `const`), `Entry { levels, questions }`, `Question { prompt, accepted, shown, kind }`, `question::Kind { Japanese, Meaning }` (not re-exported; used as `crate::practice::question::Kind`). The practice module picks an entry at random, then one of its questions at random.
-- `src/grading.rs`: `check(typed, accepted, shown)` removes whitespace, composes voiced marks and folds katakana to hiragana on both sides, keeps kanji, and reads romaji letter for letter (`dewa` is でわ, never では). A Japanese answer equal to a normalised shown text **that contains a kanji** is wrong; kana-only shown texts never block. Romaji readings are kana only, so they can only match accepted answers written in kana: **every question must accept a kana-only form of each answer**, and accepted answers never contain romaji.
+- `src/grading.rs`: `check(typed, accepted, shown)` removes whitespace, composes voiced marks and folds katakana to hiragana on both sides, keeps kanji, and reads romaji letter for letter (`dewa` is でわ, never では; D18 adds one narrow exception in `check`). A Japanese answer equal to a normalised shown text **that contains a kanji** is wrong; kana-only shown texts never block. Romaji readings are kana only, so they can only match accepted answers written in kana: **every question must accept a kana-only form of each answer**, and accepted answers never contain romaji.
 - `src/ui.rs`: the question prompt is a wrapped `Paragraph` over `PROMPT_ROWS = 3` rows; the feedback screen draws `text::expected(&question.accepted)` (`Correct answer: X` / `Correct answers: X, Y, ...`) on **one** centred row, which a long list overflows.
 - `src/text.rs`: every shown text lives here; fixed texts are constants, texts with values are functions; non-Japanese wording is plain ASCII with no ambiguous-width characters, and each constant has an ASCII test.
 - `src/practice/question.rs`: `enum Kind` carries `#[cfg_attr(not(test), expect(dead_code, reason = "constructed by the areas' questions, issues #11 to #13"))]` with a comment saying the first real area removes it.
@@ -21,19 +21,27 @@ Facts checked on a scratch copy of `main` (outside the repository, own `CARGO_TA
 3. **Wrapping the accepted answers** (the feedback row as `Constraint::Length(4)` drawn like the prompt) keeps all 379 tests passing, and the eight answers of the worst case (簡単, polite past negative, 223 columns) fit in three rows at 80 columns (D10).
 4. **The release build can be driven through `tmux`** (`new-session -x 80 -y 24`, `send-keys`, `capture-pane -p`), which reconstructs the screen: Welcome → `> Grammar` → picker → question → `tabemasita` → `Read as: たべました`, `Correct!` → Esc, Esc → exit status 0 (D17).
 5. Every form of the 49 words in D8 was generated with a throwaway model of the D3 rules and read through by hand.
+6. **The `dewa` rule of D18 breaks no existing test.** `dewa_for_deha` and the extra step in `grading::check`, exactly as D18 writes them, on a scratch copy of this branch (whose code is `main`'s), outside the repository, with its own `CARGO_TARGET_DIR`: `cargo fmt --all -- --check`, `cargo clippy -- -D warnings` and `cargo clippy --all-targets -- -D warnings` clean; `cargo test` **385 passed** (the 379 existing, unchanged, plus 4 trial `grading` tests covering the plain and polite forms, kana でわ and katakana デワ, `nn` with `konnichidewanai` and `kinnendewanai`, spaces and capitals, `konnichiwa`, `watashiwa`, `tedehakeru`, `shizukadewaarimasu` and `ではでは`, and the two `ui` feedback tests of task 2.3 with the `NotQuiet` area, drawn without the wrap of task 2.1). The scratch copy was removed afterwards.
+
+**Owner decisions recorded after the first draft** (they replace the former Open Questions 1, 4 and 9):
+
+- **`dewa` is accepted for では** wherever an accepted answer contains では, as well as `deha` (D18). The accepted answers stay correct Japanese only; でわ is never shown as a correct answer.
+- **The reading is always shown in the prompt** (D7): `What is the <form> of 食べる (たべる, to eat)?` for every question, including the plain non-past, which is then answered by typing the shown reading. No behaviour changes.
+- **よい is accepted for いい**: the plain non-past accepts いい and よい, the polite non-past いいです and よいです; the prompt still shows いい, and the いい form stays first (D3b, D5).
 
 ## Goals / Non-Goals
 
 **Goals:**
 - The first real area, reachable in the released app, with rule-generated answers for every group, form and formality, each rule tested (D2 to D5).
-- No change to the practice module, `session`, `keys`, `grading` or any test (D11, D13).
+- No change to the practice module, `session`, `keys` or any test, and only one narrow addition to `grading` (the `dewa` rule, D18) (D11, D13).
 - Content in the binary, checked by tests over the whole list, so later additions to the list are checked too (D6, D14).
 - Every commit builds, passes fmt, clippy and tests, and has no unused code (D15).
 
 **Non-Goals:**
 - Choosing forms, formalities or groups inside Grammar; custom (hand-written) questions on an entry; descriptions; ids; a content file format (D14).
 - Honorific godan verbs, 問う, ～ずる verbs, compounds of 来る and 行く other than the words listed (D4).
-- Accepting non-standard or archaic variants (よい for いい, 静かだったです, 高いでした) (D5).
+- Accepting non-standard variants (静かだったです, 高いでした, でわ written in kana) (D5, D18).
+- Making は and わ interchangeable in general: only the では of an accepted answer may be typed `dewa` (D18).
 
 ## Decisions
 
@@ -41,13 +49,14 @@ Facts checked on a scratch copy of `main` (outside the repository, own `CARGO_TA
 
 | File | Contents | Tasks |
 |---|---|---|
-| `src/conjugation.rs` (new) | `Group`, `Form`, `Formality`, `Answer`, `pub fn conjugate`, private `inflect`, `endings`, `pick`, `GODAN`; tests | 1.1 (ichidan), 1.3, 1.4, 1.5, 2.2, 2.3 |
-| `src/areas/grammar.rs` (new) | `Grammar`, `Word`, `const fn word`, `WORDS`, `ASKED`, `entry`, `question`, `push_unique`; tests | 1.1, 1.3, 1.4, 1.5, 2.2, 2.3 |
+| `src/conjugation.rs` (new) | `Group`, `Form`, `Formality`, `Answer`, `pub fn conjugate`, private `inflect`, `endings`, `ii_endings`, `pick`, `GODAN`; tests | 1.1 (ichidan), 1.3, 1.4, 1.5, 2.2, 2.4 |
+| `src/areas/grammar.rs` (new) | `Grammar`, `Word`, `const fn word`, `WORDS`, `ASKED`, `entry`, `question`, `push_unique`; tests | 1.1, 1.3, 1.4, 1.5, 2.2, 2.4 |
+| `src/grading.rs` | private `dewa_for_deha`, one extra step at the end of `check` (D18); tests | 2.3 |
 | `src/main.rs` | `mod conjugation;` after `mod areas;` (alphabetical, like the others) | 1.1 |
 | `src/areas.rs` | `mod grammar;`, `use grammar::Grammar;`, `&Grammar` in `ALL`, doc comment of `ALL` | 1.1 |
 | `src/text.rs` | `AREA_GRAMMAR`, `form_name`, `conjugation_prompt`; tests | 1.1 |
 | `src/practice/question.rs` | the expectation moves from `Kind` to `Kind::Meaning` | 1.2 |
-| `src/ui.rs` | `EXPECTED_ROWS`, the accepted answers wrap; tests | 2.1 |
+| `src/ui.rs` | `EXPECTED_ROWS`, the accepted answers wrap; tests | 2.1 (code and tests), 2.3 (tests only) |
 
 **Where `conjugation` lives:** `src/conjugation.rs`, a top-level module, as the component diagram in `docs/architecture.md` §5 draws it and like `romaji` and `kana` (pure, no state, no terminal, tested directly). Alternative: `src/areas/grammar/conjugation.rs`, which would spare the `mod` line in `main.rs`; rejected because `text::conjugation_prompt` needs `Form` and `Formality`, which would then be reached through the area's private module tree, and because the architecture names it as its own component.
 
@@ -77,7 +86,8 @@ pub enum Group {
     Aru,
     /// い-adjectives: 高い.
     IAdjective,
-    /// いい: its forms other than the non-past are built on よ.
+    /// いい: non-past いい or よい, other forms on よ, and each よ form also
+    /// written with 良.
     Ii,
     /// な-adjectives, stored without だ or な: 静か.
     NaAdjective,
@@ -102,11 +112,12 @@ pub struct Answer {
 pub fn conjugate(written: &str, reading: &str, group: Group, form: Form, formality: Formality) -> Vec<Answer>
 ```
 
-- `conjugate` = `inflect(written, ..)` and `inflect(reading, ..)` zipped into `Answer`s; if either is empty or their lengths differ, `Vec::new()`.
+- `conjugate` = `inflect(written, ..)` and `inflect(reading, ..)` zipped into `Answer`s; if either is empty or their lengths differ, `Vec::new()`. **Except for `Group::Ii`** (task 2.2): `conjugate` first checks `group == Group::Ii`; then it takes `written.strip_suffix("いい")` and `reading.strip_suffix("いい")` (either `None` → `Vec::new()`) and returns, for each `(written_ending, reading_ending)` of `ii_endings(form, formality)` (`None` → `Vec::new()`), `Answer { written: written_stem + written_ending, reading: reading_stem + reading_ending }`, in order.
+- `fn ii_endings(form: Form, formality: Formality) -> Option<Vec<(&'static str, &'static str)>>`: the pairs of D3b through `pick`. `endings` has an arm `Group::Ii => None` with the comment `// conjugate builds いい's answers from ii_endings`.
 - `fn inflect(text: &str, group: Group, form: Form, formality: Formality) -> Vec<String>`: `endings(..)` gives `(cut, endings)`; `text.strip_suffix(cut)` gives the stem (`None` → empty); the result is `stem + ending` for each ending, in order. For `NaAdjective`, `cut` is `""` and an empty `text` gives nothing.
 - `fn endings(text: &str, group: Group, form: Form, formality: Formality) -> Option<(&'static str, Vec<String>)>`: the tables of D3. It looks at the text only where the group needs it: the last kana for `Godan`, whether it ends in `来る` or `くる` for `Kuru`.
 - `fn pick<T>(form: Form, formality: Formality, plain: [T; 5], polite: [T; 4]) -> Option<T>`: the entry for the asked form, in the order non-past, negative, past, past negative, te-form (plain) and non-past, negative, past, past negative (polite); `None` for `(Te, Polite)`. This one helper is where "no polite te-form" lives for every group.
-- **The rules work on the written form and on the reading separately** with the same tables, because every group's ending is kana in both scripts, except 来る: there the written ending is `来る` and the reading ending `くる`, and `endings` picks the table from the text itself (D3). No flag says "this is the reading", and a kana-only word just passes the same text twice.
+- **The rules work on the written form and on the reading separately** with the same tables, because every group's ending is kana in both scripts, except 来る: there the written ending is `来る` and the reading ending `くる`, and `endings` picks the table from the text itself (D3). No flag says "this is the reading", and a kana-only word just passes the same text twice. The one other exception is いい: the word is いい in both scripts, yet its よ forms have a 良 spelling, so its written and read endings cannot come from one text; `ii_endings` lists them as pairs (D3b).
 - **Why a flat `Group`** rather than `Verb(Irregular(...))` nesting: one `match` per rule, one variant per rule set, and adding an irregular later (say, honorific verbs) is one variant, one table and its tests. Alternatives considered: (a) per-word override tables (stored forms), rejected because the issue requires generated answers; (b) explicit stems stored per word (`stems: ["こ", "き"]`), rejected because the four irregulars in scope each need only a fixed table.
 
 ### D3. The rule tables
@@ -125,7 +136,7 @@ pub fn conjugate(written: &str, reading: &str, group: Group, form: Form, formali
 | Iku (`く`) | `く` | く | かない | った | かなかった | って |
 | Aru (`ある`) | `ある` | ある | ない | あった | なかった | あって |
 | IAdjective (`い`) | `い` | い | くない | かった | くなかった | くて |
-| Ii (`いい`) | `いい` | いい | よくない | よかった | よくなかった | よくて |
+| Ii (`いい`), D3b | `いい` | いい; よい; 良い | よくない; 良くない | よかった; 良かった | よくなかった; 良くなかった | よくて; 良くて |
 | NaAdjective (not empty) | `""` | だ | じゃない; ではない | だった | じゃなかった; ではなかった | で |
 
 **Polite** (te-form: `—` for every group):
@@ -140,10 +151,10 @@ pub fn conjugate(written: &str, reading: &str, group: Group, form: Form, formali
 | Iku | きます | きません | きました | きませんでした |
 | Aru | あります | ありません | ありました | ありませんでした |
 | IAdjective | いです | くないです; くありません | かったです | くなかったです; くありませんでした |
-| Ii | いいです | よくないです; よくありません | よかったです | よくなかったです; よくありませんでした |
+| Ii, D3b | いいです; よいです; 良いです | よくないです; 良くないです; よくありません; 良くありません | よかったです; 良かったです | よくなかったです; 良くなかったです; よくありませんでした; 良くありませんでした |
 | NaAdjective | です | じゃないです; じゃありません; ではないです; ではありません | でした | じゃなかったです; じゃありませんでした; ではなかったです; ではありませんでした |
 
-For `Kuru`, `endings` checks `text.ends_with("来る")` first, then `text.ends_with("くる")`; neither → `None`. For `Iku`, the last kana must be `く`. For `Ii`, the text must end in `いい` (the word is stored in kana, D8).
+For `Kuru`, `endings` checks `text.ends_with("来る")` first, then `text.ends_with("くる")`; neither → `None`. For `Iku`, the last kana must be `く`. For `Ii`, both texts must end in `いい` (the word is stored in kana, D8), and the answers come from D3b, not from `endings`.
 
 **D3a. Godan.** The last kana *k* selects one row of a constant table (`const GODAN: [(&str, &str, &str, &str, &str); 9]`, columns *k*, *a* negative stem, *i* polite stem, *te*, *ta*); a last kana not in the table → `None`:
 
@@ -161,6 +172,27 @@ For `Kuru`, `endings` checks `text.ends_with("来る")` first, then `text.ends_w
 
 The reading of each example is its reading stem plus the same ending (かわない, かいます, かって, かった; およがない, ...). The full nine forms of the nine example verbs are in Appendix B; tests copy them from there.
 
+**D3b. いい** (owner decision: よい is accepted). `ii_endings` gives, for the asked form, these `(written ending, reading ending)` pairs, in this order; the stem (what comes before いい, empty for いい itself) is put in front of both. For each variant: the kana spelling first, then the 良 spelling of the same variant, read the same. いい itself has no kanji spelling (良い is read よい), so the いい variants have only the kana pair.
+
+| Form | Pairs (written, reading) |
+|---|---|
+| Plain non-past | (いい, いい), (よい, よい), (良い, よい) |
+| Plain negative | (よくない, よくない), (良くない, よくない) |
+| Plain past | (よかった, よかった), (良かった, よかった) |
+| Plain past negative | (よくなかった, よくなかった), (良くなかった, よくなかった) |
+| Te-form | (よくて, よくて), (良くて, よくて) |
+| Polite non-past | (いいです, いいです), (よいです, よいです), (良いです, よいです) |
+| Polite negative | (よくないです, よくないです), (良くないです, よくないです), (よくありません, よくありません), (良くありません, よくありません) |
+| Polite past | (よかったです, よかったです), (良かったです, よかったです) |
+| Polite past negative | (よくなかったです, よくなかったです), (良くなかったです, よくなかったです), (よくありませんでした, よくありませんでした), (良くありませんでした, よくありませんでした) |
+| Polite te-form | none (`pick` gives `None`) |
+
+- **Why the kana spelling first:** the word is stored and shown in kana (いい), and textbooks write its forms in kana (よくない); the 良 spelling is what an IME often produces, so it is accepted, but listed after.
+- **Why the 良 spellings are accepted** (default of Open Question 9): an IME converting `yokunai` often gives 良くない, which is correct Japanese; marking it wrong would punish a correct answer.
+- **The repeat rule:** the question shows only いい, in kana, so it blocks nothing (#18's rule); typing いい for the plain non-past is correct, as for any kana word.
+- **Why a table of pairs** rather than the word carrying an alternative spelling (`Word { also: Some(("良い", "よい")) }`): the 良 spelling belongs to the inflection (よくない and 良くない differ only in the ending), not to the word, and a field used by one word would be `None` for 48 others. Alternative considered: `Ii` endings in kana in `endings` and a step that rewrites the ending's よ to 良; rejected because it needs the stem length to find the right よ, while the pairs are plain data an implementer copies. Adding a later irregular whose written and read endings differ follows the same pattern: one `Group` variant, one pair table, its tests.
+- **Accepted answers** (D6: written then reading per answer, no duplicates) therefore are, for the plain non-past, `["いい", "よい", "良い"]`: いい first, as the main answer the feedback lists first. Appendix B lists all nine.
+
 ### D4. Irregulars: in scope and not
 
 | Verb | In scope | How |
@@ -175,7 +207,7 @@ The reading of each example is its reading stem plus the same ending (かわな�
 | 問う, 請う (te-form とうて) | **no** | rare; not in the list |
 | ～ずる / ～じる verbs (信ずる), 愛する (愛さない) | **no** | not in the list |
 | Compounds of 来る / 行く (持って来る, 出て行く) | **no** | `Kuru`/`Iku` would handle them if written ending in 来る/行く, but none is listed and none is tested |
-| よい / 良い as variants of いい | **no** | D5 |
+| よい / 良い as variants of いい | **yes** (owner decision) | `Group::Ii`, D3b |
 
 Adding an irregular later is one `Group` variant, one row or table in `endings`, its words, and its tests; no other code changes.
 
@@ -184,11 +216,11 @@ Adding an irregular later is one `Group` variant, one row or table in `endings`,
 - **"Polite" means the です/ます style** (丁寧語), the only polite style in scope.
 - **Every standard variant is accepted** (owner's recommendation), because a learner taught either textbook style must not be marked wrong:
   - i-adjectives: polite negative 高くないです **and** 高くありません; polite past negative 高くなかったです **and** 高くありませんでした. Polite non-past only 高いです; polite past only 高かったです (高いでした is a common learner error, not a variant).
-  - na-adjectives: plain negative じゃない **and** ではない (same for past negative); polite negative じゃないです, じゃありません, ではないです, ではありません; polite past negative じゃなかったです, じゃありませんでした, ではなかったです, ではありませんでした. Not accepted: 静かだったです and 静かでしたです (non-standard), でわ spellings (non-standard).
+  - na-adjectives: plain negative じゃない **and** ではない (same for past negative); polite negative じゃないです, じゃありません, ではないです, ではありません; polite past negative じゃなかったです, じゃありませんでした, ではなかったです, ではありませんでした. Not accepted: 静かだったです and 静かでしたです (non-standard). でわ is never an accepted answer (it is a misspelling); the romaji `dewa` is still accepted for では by answer checking (D18), without adding any answer.
 - **Order (what feedback lists first):** the `-ないです` form before the `-ありません` form, and じゃ before では. Reason: the `-ないです` forms are built from the plain negative the learner has just practised (高くない + です), which is how modern textbooks introduce them first; じゃ is the spoken form. The order matters only for reading feedback; all variants are equally correct.
 - **"Which is shown as the correct answer":** the feedback screen lists **all** accepted answers in order (the existing `text::expected`); there is no separate "shown answer". The first item is the written form of the first variant. D10 makes the long lists fit.
-- **Na-adjectives are stored without だ or な** (`静か`), the dictionary form, and shown that way in the prompt. **The plain non-past answer is the word with だ** (`静かだ`, `しずかだ`); the bare word is not accepted. Reason: the question is about the predicate form, and だ is what distinguishes it from the stem; accepting the bare word would also make the question "type the shown word". Open Question 3.
-- **いい:** non-past いい / いいです; every other form on よ. Stored in kana (いい is rarely written 良い, which is read よい). よい/良い forms are not accepted (Open Question 9).
+- **Na-adjectives are stored without だ or な** (`静か`), the dictionary form, and shown that way in the prompt. **The plain non-past answer is the word with だ** (`静かだ`, `しずかだ`); the bare word is not accepted. Reason: the question is about the predicate form, and だ is what distinguishes it from the stem; accepting the bare word would also make the question "type the shown word". Open Question 2.
+- **いい** (owner decision): non-past いい or よい, いいです or よいです; every other form on よ; each よ form also accepted with 良 (良い, 良くない, 良いです), D3b. Stored and shown in kana (いい has no kanji spelling; 良い is read よい). The いい variant comes first in the non-past, so feedback lists いい / いいです first.
 
 ### D6. The Grammar area
 
@@ -327,10 +359,10 @@ pub fn conjugation_prompt(written: &str, reading: &str, meaning: &str, form: For
 
 Examples (spec *The prompt*): `What is the polite past negative of 食べる (たべる, to eat)?`, `What is the plain negative of する (to do)?`, `What is the te-form of 行く (いく, to go)?`.
 
-- **The written form, its reading and the meaning are all shown.** The area practises conjugation, not kanji reading: a learner answering in romaji must know the reading (勉強する, 来る), and the meaning tells apart words with the same reading. Consequence: the plain non-past question of a verb or i-adjective is answered by typing the shown reading; the owner has decided all nine forms are asked and that typing the reading is correct. Open Question 1 offers hiding the reading.
+- **The written form, its reading and the meaning are all shown.** The area practises conjugation, not kanji reading: a learner answering in romaji must know the reading (勉強する, 来る), and the meaning tells apart words with the same reading. Consequence: the plain non-past question of a verb or i-adjective is answered by typing the shown reading; the owner has decided all nine forms are asked and that typing the reading is correct. **Owner decision:** the reading is always shown, for every question including the plain non-past.
 - **Te-form has no formality** in the prompt: there is only the plain one.
 - **Wording** is plain ASCII around the Japanese, with ASCII brackets and commas (no full-width or ambiguous-width characters). The longest prompt in the list is 72 columns (`What is the polite past negative of 勉強する (べんきょうする, to study)?`); a test keeps every prompt within 80 columns, so it fits on one row of an 80-column terminal; narrower terminals wrap it over the `PROMPT_ROWS = 3` rows.
-- **The area name lives in `src/text.rs`**, following that file's rule that every shown text lives there (#20's Open Question 5 left this to the first area). Alternative: a literal in `grammar.rs`, which would make adding an area touch one file fewer; rejected for consistency (Open Question 10).
+- **The area name lives in `src/text.rs`**, following that file's rule that every shown text lives there (#20's Open Question 5 left this to the first area). Alternative: a literal in `grammar.rs`, which would make adding an area touch one file fewer; rejected for consistency (Open Question 7).
 
 ### D8. The word list
 
@@ -362,7 +394,7 @@ Levels: 35 words at N5, 14 at N4. Ticking only N4 practises the 14; N3, N2 and N
 ### D9. JLPT levels and licensing
 
 - The **words** are common, basic vocabulary; their spelling, readings and meanings are written for this project. The **forms** are generated by the rules. Neither is copied from any list, dictionary or textbook, so the content is GPL-3.0-or-later like the code and needs no third-party row in `ATTRIBUTION.md`.
-- The **JLPT levels**: the JLPT has published no official vocabulary list since 2010. The levels here are **the project's own approximate judgment** (N5 for the most basic everyday words, N4 for the next ones), stated as approximate in `ATTRIBUTION.md` and `docs/architecture.md`. No published unofficial list was consulted or copied. If the owner prefers levels from a licensed source, a GPL-compatible one would have to be found and recorded first (Open Question 7); none is needed for this change.
+- The **JLPT levels**: the JLPT has published no official vocabulary list since 2010. The levels here are **the project's own approximate judgment** (N5 for the most basic everyday words, N4 for the next ones), stated as approximate in `ATTRIBUTION.md` and `docs/architecture.md`. No published unofficial list was consulted or copied. If the owner prefers levels from a licensed source, a GPL-compatible one would have to be found and recorded first (Open Question 5); none is needed for this change.
 - **`ATTRIBUTION.md`** gets a paragraph below the table (task 3.2): "Content written for this project is licensed under GPL-3.0-or-later, like the code, and is not listed in the table. This includes the Grammar word list in `src/areas/grammar.rs` (words, readings, English meanings). Its JLPT levels are the project's own approximate judgment; the JLPT publishes no official vocabulary list, and none of the unofficial lists was used." The table keeps `_None yet_`.
 
 ### D10. Long lists of accepted answers on the feedback screen
@@ -380,11 +412,12 @@ and is drawn with the existing `draw_prompt(frame, expected_row, &text::expected
 
 - **Why `ui.rs` changes in an area's change:** the feedback screen is the shared practice module, not another area, and the change is generic (Vocabulary's lists of meanings need it too). No area-specific code enters `ui.rs`.
 - **Why 4 rows:** the worst case in the list needs 3 rows at 80 columns, with the third row exactly full (fact 3); 4 leaves room for longer na-adjectives.
-- **Alternatives:** accept only one variant per form (no UI change, but marks correct textbook answers wrong, against the issue's intent); show only the first answer (changes `text::expected` and its existing test `text::tests::expected_answers` and `ui::tests::feedback_for_a_wrong_answer`, which is not allowed). Open Question 5.
+- **Rechecked after the owner decisions:** the `dewa` rule adds no accepted answer (D18), so no list grows. いい's longest lists (polite negative and polite past negative) have four answers: `Correct answers: よくなかったです, 良くなかったです, よくありませんでした, 良くありませんでした` is 17 + 16 + 16 + 20 + 20 + 3 × 2 = **95 columns**, two rows at 80 columns; its non-past lists (`いい, よい, 良い`) are short. The longest list is still the polite past negative of 簡単 (and of 大切, whose reading also has four kana): **223 columns**, 3 rows at 80 columns. 4 rows are still enough.
+- **Alternatives:** accept only one variant per form (no UI change, but marks correct textbook answers wrong, against the issue's intent); show only the first answer (changes `text::expected` and its existing test `text::tests::expected_answers` and `ui::tests::feedback_for_a_wrong_answer`, which is not allowed). Open Question 3.
 
 ### D11. What the change touches outside its own files, and why
 
-"Adding this module must not require changes to other modules": no other **area** is touched (there is none), and no part of the practice module, `session`, `keys`, `grading`, `romaji`, `kana` or `answer_field` changes. The edits outside the two new files are:
+"Adding this module must not require changes to other modules": no other **area** is touched (there is none), and no part of the practice module, `session`, `keys`, `romaji`, `kana` or `answer_field` changes. `grading` gains one private function and one step (D18), for the owner's `dewa` decision, which no area can implement on its own. The edits outside the two new files are:
 
 | File | Change | Why it is unavoidable |
 |---|---|---|
@@ -392,7 +425,8 @@ and is drawn with the existing `draw_prompt(frame, expected_row, &text::expected
 | `src/main.rs` | `mod conjugation;` | Declares the new component (D1) |
 | `src/text.rs` | `AREA_GRAMMAR`, `form_name`, `conjugation_prompt` | The rule that all wording lives in `text.rs` |
 | `src/practice/question.rs` | the expectation moves to `Kind::Meaning` | Its own comment asks the first real area to deal with it (D12) |
-| `src/ui.rs` | accepted answers wrap | D10; can be dropped if the owner prefers one variant per form |
+| `src/ui.rs` | accepted answers wrap; two new feedback tests for `dewa` | D10; can be dropped if the owner prefers one variant per form. The `dewa` tests only add tests (D18) |
+| `src/grading.rs` | `dewa_for_deha` and one step in `check` | Owner decision 1: an area only supplies accepted answers, so it cannot accept `dewa` without listing でわ as correct (D18) |
 
 ### D12. The unused-code marker on `Kind`
 
@@ -416,7 +450,7 @@ What clippy does (checked, fact 2): with Grammar constructing `Kind::Japanese` a
 
 - This is the same expectation the owner approved, with a narrower scope and an updated reason, not a new suppression: nothing else is suppressed, `Japanese` is now checked by the lint again, and clippy will report the expectation as unfulfilled as soon as #11 or #12 constructs `Meaning`, which tells that change to remove it.
 - Verified: `cargo clippy -- -D warnings` and `cargo clippy --all-targets -- -D warnings` clean, `cargo fmt --all -- --check` clean.
-- Alternative: leave the attribute on the enum and only update its comment and reason. Equivalent for clippy; less precise. Open Question 6.
+- Alternative: leave the attribute on the enum and only update its comment and reason. Equivalent for clippy; less precise. Open Question 4.
 - **If clippy reports anything else** (any unfulfilled expectation, any dead code), the implementer stops and reports; no `#[allow]` or new `expect` may be added.
 
 ### D13. Existing tests
@@ -425,7 +459,8 @@ Checked one by one against the code, and confirmed by fact 1 (all 379 pass with 
 
 | Tests | Uses the real list? | Effect |
 |---|---|---|
-| `answer_field::tests` (22), `grading::tests` (34), `kana::tests` (9), `romaji::tests` (34) | no | Unaffected: modules not edited. |
+| `answer_field::tests` (22), `kana::tests` (9), `romaji::tests` (34) | no | Unaffected: modules not edited. |
+| `grading::tests` (34) | no | Pass unchanged (fact 6). `check` changes only after the exact comparison has failed, only for romaji answers, and only toward `Correct` when an accepted answer contains では; no existing test has では in an accepted answer. Checked one by one, the tests that reach that point (a romaji answer that matches nothing) are `tokyo_without_long_vowels_is_wrong`, `readings_for_feedback`, `keyboard_reading_can_be_correct` (`konya`), `single_readings_stay_exact` (`kinen`), `wrong_answer_shows_the_textbook_reading` (`konnichiwa`, `konnichiha` and `onna` against こんばんは and おとこ), `readable_wrong_answer_is_never_a_warning`, `a_readable_submit_clears_the_memory`, `two_readings_are_never_a_warning`: their accepted answers (とうきょう, たかい, こんや, きんえん, こんばんは, おとこ, たべる) have no では, so each still gets the same `Wrong` with the same reading. `TypoGuard` is not edited. |
 | `app::tests` (8: `Ticker`, `seed_from`) | no | Unaffected. |
 | `practice::tests` (24), `practice::level::tests` (6), `practice::meaning::tests` (10), `practice::pool::tests` (5), `practice::rng::tests` (6) | no | Unaffected: `practice` code unchanged; `question.rs` changes only an attribute. |
 | `areas::sample::tests` (9) | no | Unaffected. |
@@ -448,6 +483,8 @@ Checked one by one against the code, and confirmed by fact 1 (all 379 pass with 
 | all other `ui::tests` | no | Unaffected. |
 | `text::tests` (21) | no | Unaffected: no existing constant or function changes. |
 
+**The `dewa` step and tests outside `grading`:** tests in `practice`, `session` and `ui` that submit a wrong romaji answer (`neko`, `takai` against another word, ...) go through `grading::check` too. No accepted answer anywhere in the existing code or tests contains では (checked with a search of `src/`), so each of them gets the same result as before; fact 6 confirms it for the whole suite.
+
 **No existing test is in conflict**, so no task edits a test and nothing waits for the owner's approval of a test edit. If the implementer finds an existing test failing, the code is wrong: stop and report (AGENTS.md §7).
 
 ### D14. Content format and ids
@@ -461,17 +498,17 @@ Checked one by one against the code, and confirmed by fact 1 (all 379 pass with 
 Each task is one commit that builds and passes `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` (AGENTS.md §5). Nothing may be unused in the non-test build at any commit, so a rule lands **together with the words that use it**, group by group, behind the already registered area:
 
 1. **Verbs.** 1.1: the area, registered, with the ichidan rule and the 7 ichidan words, the wording, the content tests. `Group` has only `Ichidan` here, `Form` and `Formality` are fully used through `ASKED`. 1.2: the `Kind` marker (D12). 1.3: godan (`Group::Godan`, `GODAN`) and 21 words. 1.4: `Suru` and `Kuru` and 4 words. 1.5: `Iku` and `Aru` and 2 words.
-2. **Adjectives.** 2.1: the feedback wrap (D10), before any question has several variants. 2.2: `IAdjective`, `Ii` and 8 words. 2.3: `NaAdjective`, 7 words, and the coverage test over every group.
+2. **Adjectives.** 2.1: the feedback wrap (D10), before any question has several variants. 2.2: `IAdjective`, `Ii` (with `ii_endings`, D3b) and 8 words. 2.3: the `dewa` rule in `grading` (D18), used by `check` at once, so nothing is unused; it comes before the na-adjectives so their tests can check `dewa` from the start. 2.4: `NaAdjective`, 7 words, and the coverage test over every group.
 3. **Docs.** 3.1: `docs/architecture.md`. 3.2: `CHANGELOG.md`, `README.md`, `ATTRIBUTION.md`.
 4. **Check.** 4.1: the scripted terminal check (no file changes).
 
 - A `Group` variant with no word would be "never constructed": that is why each variant arrives with its words.
-- Tests that hold for any list (validity, nine questions, prompt width, levels) are added in 1.1 and automatically cover later words. Tests that need the whole list (every group present) come with the last group (2.3), so no test is ever edited later in the branch.
+- Tests that hold for any list (validity, nine questions, prompt width, levels) are added in 1.1 and automatically cover later words. Tests that need the whole list (every group present) come with the last group (2.4), so no test is ever edited later in the branch.
 - No test asserts the exact number of words or entries, so adding words later never breaks a test.
 
 ### D16. Archive order
 
-All three capabilities are new (ADDED only), so `openspec archive` of this change does not depend on another change. Recommended: archive it after `add-generic-practice`, whose `practice-loop` *Feedback screen* requirement `accepted-answers-display` complements, so the main specs are created in build order. `area-selection`'s *Empty list of areas* requirement ("When the app has registered no area ...") stays true as written and is not modified.
+Three capabilities are new (`conjugation`, `grammar-area`, `accepted-answers-display`, ADDED only). The fourth, `answer-checking`, is **modified** (D18: two ADDED requirements and two MODIFIED ones, *Romaji is exact* and *Which reading is reported when romaji has several*). `answer-checking` is created by `add-japanese-answer-input`, which is merged but not archived, so `openspec/specs/answer-checking/` does not exist yet: `openspec validate --strict` passes, but notes that archive would refuse the MODIFIED delta until the spec exists. **Archive order is therefore required:** `add-japanese-answer-input` first, then `add-generic-practice` (whose `practice-loop` *Feedback screen* requirement `accepted-answers-display` complements), then this change. `area-selection`'s *Empty list of areas* requirement ("When the app has registered no area ...") stays true as written and is not modified.
 
 ### D17. End-to-end check, and what still needs a person
 
@@ -487,12 +524,91 @@ All three capabilities are new (ADDED only), so `openspec archive` of this chang
 
 Kana to romaji for step 6, by the app's own table: every kana by its first spelling there (し `shi`, ち `chi`, つ `tsu`, ふ `fu`, じ `ji`, を `wo`, ぢ `di`, づ `du`); a kana followed by small ゃ/ゅ/ょ as one syllable (きゃ `kya`, しゃ `sha`, じゃ `ja`, ちゃ `cha`, ...); っ as the first letter of the next syllable's romaji doubled (っち → `cchi`); ん always as `n'`. Any other character stops the script with an error. Record every step's result in the implementer's report; if a step fails, stop and report.
 
-**What still needs a person.** The real IME check, deferred by #18 and #21 to the first area with content: on Linux, macOS and Windows terminals and over SSH, the owner (or a contributor with that platform) opens Grammar, and on the question screen types the answer with the system IME in hiragana, in katakana and converted to kanji, types it in romaji, and uses Backspace on IME text. Expected: each is accepted as described in `answer-checking`, Backspace removes one whole character, and the field draws CJK text by width. It is recorded (terminal, OS, result) in the pull request for #13, as the "Workflow follow-up" of `tasks.md` says. Who does it: the owner by default (Open Question 11).
+**What still needs a person.** The real IME check, deferred by #18 and #21 to the first area with content: on Linux, macOS and Windows terminals and over SSH, the owner (or a contributor with that platform) opens Grammar, and on the question screen types the answer with the system IME in hiragana, in katakana and converted to kanji, types it in romaji, and uses Backspace on IME text. Expected: each is accepted as described in `answer-checking`, Backspace removes one whole character, and the field draws CJK text by width. It is recorded (terminal, OS, result) in the pull request for #13, as the "Workflow follow-up" of `tasks.md` says. Who does it: the owner by default (Open Question 8).
+
+### D18. `dewa` for では (owner decision 1)
+
+**Requirement.** Wherever an accepted answer contains では (the na-adjective negatives: 静かではない, 静かではなかった, 静かではないです, 静かではありません, 静かではなかったです, 静かではありませんでした, and their readings), the romaji `dewa` is accepted as well as `deha`. でわ is a misspelling: it must never be listed as a correct answer, and a correct `dewa` answer must not be shown as read でわ.
+
+**Facts that decide the mechanism.**
+- An area can only supply `Question { prompt, accepted, shown, kind }`. `grading::check` reads `dewa` as でわ and compares readings with the normalised `accepted`; the feedback lists `accepted` through `text::expected`. So the Grammar area alone cannot accept `dewa` without putting でわ into `accepted`, where it would be listed as a correct answer and would also accept でわ typed in kana. **A change in shared code is unavoidable.**
+- `Question` is built with struct literals in existing tests (`practice::tests::entry` and `question`, `areas::tests::Levelless`, `ui::tests::LongPrompt`, and the test helper `areas::sample::question`). A new field on `Question` (or `Entry`) does not compile without editing those tests, which AGENTS.md §7 forbids. So **no per-question carrier can be added**.
+
+**Options weighed.**
+
+| Option | What it needs | Verdict |
+|---|---|---|
+| (a) The area adds hidden alternates (accepted but not displayed) | A new `Question` field (breaks the five test literals above), or a convention inside `accepted` (a marker character, or "texts with でわ are hidden"), which `text::expected`, `grading` and every area would have to know, and which would accept でわ typed in kana | Rejected |
+| (b) `grading` gains a general "also accepted, not shown" list | The same carrier as (a), plus a new `check` signature; `check` and `TypoGuard::submit` are called with three arguments by 30+ existing tests, so a second function and a `Drill::submit` change would be needed | Rejected |
+| (c) A romaji reading hook scoped by the question | The same carrier, or a new `Kind` variant (`Kind::JapaneseDewa`): touches `question.rs`, `practice.rs`, `ui.rs` (both `match`es on `Kind`) and `grading.rs`, and complicates D12's unused-code expectation | Rejected: four shared files for one spelling |
+| (c') `romaji::to_hiragana` gives `dewa` a second reading では for everyone | Changes the `romaji-conversion` rule "letter for letter", uses up the 16-reading budget of `nn` forks, and applies even where no では is accepted | Rejected |
+| **(b') A rule in `grading` keyed on the accepted answers** | One private function and one step at the end of `check`, in one file; no carrier, no signature change, no `Question`, `practice`, `ui` or `romaji` change | **Chosen** |
+
+**The rule (task 2.3).** In `src/grading.rs`:
+
+```rust
+/// Whether the romaji reading `reading` is the accepted answer `answer` with
+/// some of its では typed as `dewa` (read でわ), the way では is pronounced.
+/// Only a は right after で may be read わ; everything else must be equal.
+fn dewa_for_deha(reading: &str, answer: &str) -> bool {
+    let reading: Vec<char> = reading.chars().collect();
+    let answer: Vec<char> = answer.chars().collect();
+    reading.len() == answer.len()
+        && reading.iter().zip(&answer).enumerate().all(|(i, (&r, &a))| {
+            r == a || (a == 'は' && r == 'わ' && i > 0 && answer[i - 1] == 'で')
+        })
+}
+```
+
+and in `check`: right after the `if text.is_empty() { .. }` block, `let from_romaji = text.chars().all(is_romaji_char);` (true exactly when the romaji branch is taken: a non-empty text of romaji characters has no Japanese character, so it is neither mixed nor Japanese); after the existing `if let Some(read_as) = readings.iter().find(..) { return .. }` and before the final `Outcome::Wrong { .. }`:
+
+```rust
+    if from_romaji {
+        for reading in &readings {
+            if let Some(answer) = accepted.iter().find(|a| dewa_for_deha(reading, a)) {
+                return Outcome::Correct {
+                    read_as: answer.clone(),
+                };
+            }
+        }
+    }
+```
+
+Nothing else in the file changes. The doc comment of `check` stays as it is.
+
+**Behaviour.**
+- An exact match always wins first, so `deha` behaves as before. The step only runs when no reading matched, only for romaji, and only turns `Wrong` into `Correct`.
+- `read_as` is the **accepted answer** that matched (normalised, so in hiragana, spelled では), never the literal でわ reading. A romaji reading has no kanji, so it can only match a kana accepted answer.
+- **Kana でわ** (IME) takes the Japanese branch, never reaches the step, and stays wrong (default of Open Question 10).
+- **Other は stay `ha`:** only a は directly after で in the accepted answer may be read わ. こんにちは (`konnichiwa`), わたしは (`watashiwa`) stay wrong (Open Question 11). The reverse (`deha` for an accepted でわ) is not accepted.
+- **`nn`:** the step tries every reading in order (textbook first), so `dewa` composes with both readings of `nn`: `konnichidewanai` matches こんにちではない through its textbook reading, `kinnendewanai` matches きんえんではない through its keyboard reading. No new fork, so the 16-reading bound is unchanged.
+- **Spaces** are removed before reading, as for every answer: `shizuka dewa nai` is correct.
+- **Several では:** each may be typed either way (`dewadewa`, `dehadewa` for ではでは).
+- **Wrong answers** keep their literal reading (`shizukadewaarimasu` against しずかではありません is wrong, read as しずかでわあります), as every wrong answer shows what was typed; the `Correct answers` line still lists only the accepted answers.
+- **Scope:** the rule applies to every question whose accepted answer contains では, not only Grammar's; today only Grammar has such answers (Open Question 12).
+
+**What the user sees** for the plain negative of 静か (accepted 静かじゃない, しずかじゃない, 静かではない, しずかではない; shown 静か, しずか). `Read as:` is omitted when the reading equals the typed answer (`practice::Drill::submit`, unchanged), and the `Correct answers` line appears only for a wrong answer (`ui::draw_feedback`, unchanged):
+
+| Typed | Verdict | `Read as:` line | `Correct answers` line |
+|---|---|---|---|
+| `shizukadehanai` | `Correct!` | `Read as: しずかではない` | none |
+| `shizukadewanai` | `Correct!` | `Read as: しずかではない` | none |
+| `しずかではない` | `Correct!` | none (same as typed) | none |
+| `静かではない` | `Correct!` (not a repeat: only `静か` is shown) | none (same as typed) | none |
+| `しずかでわない` (kana) | `Not quite.` | none (same as typed; `Your answer: しずかでわない` is the only でわ on screen) | `Correct answers: 静かじゃない, しずかじゃない, 静かではない, しずかではない` |
+| `shizukajanai` | `Correct!` | `Read as: しずかじゃない` | none |
+
+The same holds for the polite forms: `shizukadewaarimasen` is correct, read as しずかではありません; `shizukadewaarimasendeshita` and `shizukadewanakattadesu` are correct for the polite past negative.
+
+**Spec.** The rule changes `answer-checking` (created by `add-japanese-answer-input`): two ADDED requirements (*では may be typed dewa*, *The dewa rule is narrow*) and two MODIFIED ones (*Romaji is exact* now names the exception; *Which reading is reported* says a `dewa` match reports the accepted spelling). Archive order: D16. `docs/architecture.md`'s *Romaji is exact* bullet gets one sentence (task 3.1).
+
+**Tests checked** (fact 6 and D13): all 34 `grading::tests` and the rest of the 379 pass unchanged; none is in conflict.
 
 ## Risks / Trade-offs
 
-- [Typing the reading answers the plain non-past of a verb or i-adjective] → Owner decision (all nine forms asked, only kanji blocks a copy). It still checks that the learner knows the dictionary form is the plain non-past. Open Question 1 offers hiding the reading.
-- [では must be typed `deha` in romaji; `dewa` gives でわ and is wrong] → Same exact-romaji rule as everywhere (#18): it is how an IME reads it. A learner who types `dewa` sees `Read as: でわ` and the accepted forms. Open Question 4.
+- [Typing the reading answers the plain non-past of a verb or i-adjective] → Owner decision (all nine forms asked, only kanji blocks a copy). It still checks that the learner knows the dictionary form is the plain non-past. The owner confirmed the reading is always shown.
+- [The `dewa` rule lives in shared `grading`, so it also applies to では in other areas' answers] → Owner decision 1 cannot be done inside the area without listing でわ as correct, and a per-question switch needs a `Question` field that existing tests forbid (D18). Where では is the particle pair (ではない, それでは) `dewa` is how it is pronounced, so accepting it elsewhere is consistent; a word where では is read "deha" (出始め ではじめ) would also accept `dewajime`. None is in the content. Open Question 12.
+- [A wrong answer typed with `dewa` is shown `Read as: ...でわ...`] → It is what the user typed, next to `Not quite.` and the correct spellings; a correct `dewa` answer is always shown with では (D18).
 - [Feedback for a na-adjective lists up to eight answers] → D10 wraps them; they are grouped written/reading per variant so the pair is easy to spot.
 - [In terminals narrower than about 60 columns the longest lists need more than four rows and the last answers are clipped] → Accepted; nothing panics (spec scenario at small sizes). The question itself and the score stay visible.
 - [JLPT levels are approximate] → Stated as the project's judgment in `ATTRIBUTION.md` and the architecture; the picker still separates basic from less basic words.
@@ -504,19 +620,20 @@ Kana to romaji for step 6, by the app's own table: every kana by its first spell
 
 For the owner (each has a default that the specs and tasks already follow):
 
-1. **Show the reading in the prompt** (D7). Default: **yes**, `食べる (たべる, to eat)`. Alternative: only the written form and meaning; then romaji learners who cannot read 勉強 or 来 cannot answer, but the plain non-past is no longer "type the shown reading".
-2. **Adjective variants and their order** (D5). Default: all standard variants accepted; `-ないです` before `-ありません`, じゃ before では.
-3. **Na-adjective plain non-past** (D5). Default: **with だ only** (`静かだ`); the bare `静か` is not accepted.
-4. **`dewa` for では** (risks). Default: **not accepted**, consistent with exact romaji. Accepting it would mean adding でわ spellings to `accepted`, which the content rules (no non-standard spellings) reject, or changing `grading`, which is out of scope.
-5. **Wrapping the accepted answers in `ui.rs`** (D10). Default: **yes, up to 4 rows**. Alternative: accept only one variant per adjective form and leave `ui.rs` alone (task 2.1 is then dropped and D5's variant lists shrink to their first item).
-6. **The `Kind` marker** (D12). Default: **moved to `Kind::Meaning`** with an updated reason. Alternative: left on the enum, comment and reason updated only.
-7. **JLPT levels** (D9). Default: the project's own approximate judgment, stated as such. Alternative: a licensed source, to be found and recorded first.
-8. **The word list** (Appendix A). Please review the 49 words, their meanings and levels; any word can be swapped for another of the same group without changing the design or the tests, except the words the tests name (食べる, 見る, the nine godan examples, する, 勉強する, 来る, 行く, ある, 高い, いい, 静か, きれい).
-9. **よい / 良い for いい** (D5). Default: **not accepted**; いい is shown and its forms are asked.
-10. **Where area names live** (D7). Default: **`src/text.rs`** (`AREA_GRAMMAR`), like all other wording.
-11. **The real IME check** (D17). Default: **the owner**, on Linux, macOS, Windows and over SSH, recorded in the pull request for #13.
+1. **Adjective variants and their order** (D5). Default: all standard variants accepted; `-ないです` before `-ありません`, じゃ before では.
+2. **Na-adjective plain non-past** (D5). Default: **with だ only** (`静かだ`); the bare `静か` is not accepted.
+3. **Wrapping the accepted answers in `ui.rs`** (D10). Default: **yes, up to 4 rows**. Alternative: accept only one variant per adjective form and leave `ui.rs` alone (task 2.1 is then dropped and D5's variant lists shrink to their first item; the `dewa` feedback tests of task 2.3 do not depend on the wrap).
+4. **The `Kind` marker** (D12). Default: **moved to `Kind::Meaning`** with an updated reason. Alternative: left on the enum, comment and reason updated only.
+5. **JLPT levels** (D9). Default: the project's own approximate judgment, stated as such. Alternative: a licensed source, to be found and recorded first.
+6. **The word list** (Appendix A). Please review the 49 words, their meanings and levels; any word can be swapped for another of the same group without changing the design or the tests, except the words the tests name (食べる, 見る, the nine godan examples, する, 勉強する, 来る, 行く, ある, 高い, いい, 静か, きれい).
+7. **Where area names live** (D7). Default: **`src/text.rs`** (`AREA_GRAMMAR`), like all other wording.
+8. **The real IME check** (D17). Default: **the owner**, on Linux, macOS, Windows and over SSH, recorded in the pull request for #13.
+9. **良 spellings of いい's forms** (D3b). Default: **accepted** for every よ form (良い, 良くない, 良かった, 良くなかった, 良くて, 良いです, 良くないです, 良くありません, 良かったです, 良くなかったです, 良くありませんでした), listed after the kana spelling, because an IME often produces them and they are correct Japanese. いい itself has no kanji spelling. Alternative: kana only (the `ii_endings` table loses its 良 pairs; Appendix B and the いい tests shrink accordingly).
+10. **でわ typed in kana** (D18). Default: **wrong**. Only the romaji spelling `dewa` is a pronunciation-based alternative; でわ written in kana (IME) is a misspelling. Accepting it would need でわ in the accepted answers or a kana-side rule in `grading`.
+11. **`wa` for the particle は elsewhere** (D18). Default: **no**. Only the では of an accepted answer may be typed `dewa`; こんにちは typed `konnichiwa`, or a particle は typed `wa` in a later sentence question, stays wrong. If the owner wants the particle は typed `wa` in general, that needs the area to mark which は is a particle (a `Question` field, which needs approval to edit the existing tests that build `Question`, D18) and is better decided with the first area that asks for sentences.
+12. **Scope of the `dewa` rule** (D18). Default: **every question whose accepted answer contains では**, since `grading` cannot tell areas apart. Today only Grammar has such answers. Alternative: confine it to Grammar with a new `Kind` variant (touches `question.rs`, `practice.rs`, `ui.rs` and `grading.rs`, D18 option (c)); no existing test would need to change for that variant.
 
-**Existing tests:** none is in conflict (D13), so no test edit needs approval.
+**Existing tests:** none is in conflict (D13, and D18 for the `dewa` rule), so no test edit needs approval.
 
 ## Appendix A: the word list
 
@@ -566,13 +683,13 @@ In this order in `WORDS` (`word(written, reading, meaning, group, level)`):
 | 40 | いい | いい | good | Ii | N5 | 2.2 |
 | 41 | 優しい | やさしい | kind | IAdjective | N4 | 2.2 |
 | 42 | 悲しい | かなしい | sad | IAdjective | N4 | 2.2 |
-| 43 | 静か | しずか | quiet | NaAdjective | N5 | 2.3 |
-| 44 | きれい | きれい | pretty | NaAdjective | N5 | 2.3 |
-| 45 | 元気 | げんき | healthy | NaAdjective | N5 | 2.3 |
-| 46 | 好き | すき | liked | NaAdjective | N5 | 2.3 |
-| 47 | 便利 | べんり | convenient | NaAdjective | N4 | 2.3 |
-| 48 | 簡単 | かんたん | easy | NaAdjective | N4 | 2.3 |
-| 49 | 大切 | たいせつ | important | NaAdjective | N4 | 2.3 |
+| 43 | 静か | しずか | quiet | NaAdjective | N5 | 2.4 |
+| 44 | きれい | きれい | pretty | NaAdjective | N5 | 2.4 |
+| 45 | 元気 | げんき | healthy | NaAdjective | N5 | 2.4 |
+| 46 | 好き | すき | liked | NaAdjective | N5 | 2.4 |
+| 47 | 便利 | べんり | convenient | NaAdjective | N4 | 2.4 |
+| 48 | 簡単 | かんたん | easy | NaAdjective | N4 | 2.4 |
+| 49 | 大切 | たいせつ | important | NaAdjective | N4 | 2.4 |
 
 ## Appendix B: expected forms for the tests
 
@@ -605,7 +722,18 @@ Readings in full for two of them, as a check of the rule: かう, かわない, 
 
 **I-adjectives**
 - 高い / たかい: 高い/たかい, 高くない/たかくない, 高かった/たかかった, 高くなかった/たかくなかった, 高くて/たかくて, 高いです/たかいです, 高くないです/たかくないです; 高くありません/たかくありません, 高かったです/たかかったです, 高くなかったです/たかくなかったです; 高くありませんでした/たかくありませんでした
-- いい: いい, よくない, よかった, よくなかった, よくて, いいです, よくないです; よくありません, よかったです, よくなかったです; よくありませんでした
+- いい (D3b; written / reading where they differ, the 良 spelling right after its kana spelling): いい; よい; 良い/よい, よくない; 良くない/よくない, よかった; 良かった/よかった, よくなかった; 良くなかった/よくなかった, よくて; 良くて/よくて, いいです; よいです; 良いです/よいです, よくないです; 良くないです/よくないです; よくありません; 良くありません/よくありません, よかったです; 良かったです/よかったです, よくなかったです; 良くなかったです/よくなかったです; よくありませんでした; 良くありませんでした/よくありませんでした
+- いい, as `Answer`s for the test `ii_forms` (`a(written, reading)`), one line per form:
+  1. plain non-past: `a("いい", "いい")`, `a("よい", "よい")`, `a("良い", "よい")`
+  2. plain negative: `a("よくない", "よくない")`, `a("良くない", "よくない")`
+  3. plain past: `a("よかった", "よかった")`, `a("良かった", "よかった")`
+  4. plain past negative: `a("よくなかった", "よくなかった")`, `a("良くなかった", "よくなかった")`
+  5. te-form: `a("よくて", "よくて")`, `a("良くて", "よくて")`
+  6. polite non-past: `a("いいです", "いいです")`, `a("よいです", "よいです")`, `a("良いです", "よいです")`
+  7. polite negative: `a("よくないです", "よくないです")`, `a("良くないです", "よくないです")`, `a("よくありません", "よくありません")`, `a("良くありません", "よくありません")`
+  8. polite past: `a("よかったです", "よかったです")`, `a("良かったです", "よかったです")`
+  9. polite past negative: `a("よくなかったです", "よくなかったです")`, `a("良くなかったです", "よくなかったです")`, `a("よくありませんでした", "よくありませんでした")`, `a("良くありませんでした", "よくありませんでした")`
+- かっこいい (いい group, test of the stem only, not in the word list), plain negative: `a("かっこよくない", "かっこよくない")`, `a("かっこ良くない", "かっこよくない")`
 
 **Na-adjectives**
 - 静か / しずか: 静かだ/しずかだ, 静かじゃない/しずかじゃない; 静かではない/しずかではない, 静かだった/しずかだった, 静かじゃなかった/しずかじゃなかった; 静かではなかった/しずかではなかった, 静かで/しずかで, 静かです/しずかです, 静かじゃないです/しずかじゃないです; 静かじゃありません/しずかじゃありません; 静かではないです/しずかではないです; 静かではありません/しずかではありません, 静かでした/しずかでした, 静かじゃなかったです/しずかじゃなかったです; 静かじゃありませんでした/しずかじゃありませんでした; 静かではなかったです/しずかではなかったです; 静かではありませんでした/しずかではありませんでした
@@ -618,3 +746,16 @@ Readings in full for two of them, as a check of the rule: かう, かわない, 
 - する, polite non-past: `["します"]`; する, plain negative: `["しない"]`
 - 来る, plain negative: `["来ない", "こない"]`
 - 行く, te-form: `["行って", "いって"]`
+- 静か, plain negative: `["静かじゃない", "しずかじゃない", "静かではない", "しずかではない"]`
+- いい, accepted answers of all nine forms (in `ASKED` order):
+  1. plain non-past: `["いい", "よい", "良い"]`
+  2. plain negative: `["よくない", "良くない"]`
+  3. plain past: `["よかった", "良かった"]`
+  4. plain past negative: `["よくなかった", "良くなかった"]`
+  5. te-form: `["よくて", "良くて"]`
+  6. polite non-past: `["いいです", "よいです", "良いです"]`
+  7. polite negative: `["よくないです", "良くないです", "よくありません", "良くありません"]`
+  8. polite past: `["よかったです", "良かったです"]`
+  9. polite past negative: `["よくなかったです", "良くなかったです", "よくありませんでした", "良くありませんでした"]`
+
+No accepted answer of any question contains でわ.

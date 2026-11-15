@@ -2,7 +2,7 @@
 
 ## Purpose
 
-When an answer is wrong, the feedback screen lists the accepted answers; this capability keeps that list readable when it is wider than the terminal, as it is for adjective forms with several standard variants.
+When an answer is wrong, the feedback screen lists the accepted answers; this capability keeps that list readable when it is wider than the terminal, as it is for adjective forms with several standard variants, and makes sure a misspelling accepted through the romaji `dewa` is never shown as a correct answer.
 
 ## ADDED Requirements
 
@@ -22,3 +22,16 @@ On the feedback screen, the line of accepted answers (`Correct answer: X` or `Co
 #### Scenario: Small terminals
 - **WHEN** the feedback screen with the eight long answers is drawn at 1x1, 5x2, 20x3 and 200x60
 - **THEN** drawing finishes without a panic
+
+### Requirement: でわ is never shown as correct
+The feedback screen SHALL show only the question's accepted answers as correct answers, so a spelling with でわ never appears in the `Correct answer` line. When a romaji answer is correct because its では was typed `dewa`, its `Read as:` line SHALL show the accepted spelling with では. An answer typed with でわ in kana is wrong and SHALL be shown only as the user's own answer.
+
+#### Scenario: dewa typed in romaji
+- **WHEN** the question asks for the plain negative of 静か, its accepted answers are `静かじゃない`, `しずかじゃない`, `静かではない`, `しずかではない`, and the answer is `shizukadewanai` in a terminal of 80 columns by 24 rows
+- **THEN** the screen shows `Read as: しずかではない` and `Correct!`
+- **AND** no text on the screen contains でわ
+
+#### Scenario: でわ typed in kana
+- **WHEN** the same question is answered with `しずかでわない`
+- **THEN** the screen shows `Your answer: しずかでわない`, `Not quite.` and `Correct answers: 静かじゃない, しずかじゃない, 静かではない, しずかではない` on one row
+- **AND** there is no `Read as:` line, and the only row that contains でわ is the `Your answer:` row

@@ -115,14 +115,24 @@ An i-adjective's forms SHALL be its dictionary form without the final い, follo
 - **AND** the polite past is not 高いでした
 
 ### Requirement: いい
-The i-adjective いい SHALL keep いい in its non-past forms and use よ in all others: plain いい, よくない, よかった, よくなかった, よくて; polite いいです, then よくないです or よくありません, then よかったです, then よくなかったです or よくありませんでした.
+The i-adjective いい SHALL give, after whatever comes before its final いい: plain いい or よい, then よくない, よかった, よくなかった, よくて; polite いいです or よいです, then よくないです or よくありません, then よかったです, then よくなかったです or よくありませんでした. Every form that starts with よ SHALL also be an answer with よ written 良 (良い, 良くない, 良いです), read the same, right after its kana spelling. The いい variant SHALL come first; いい itself has no kanji spelling.
 
-#### Scenario: いい
-- **WHEN** the plain negative, plain past, te-form, polite non-past and polite past negative of いい are asked
-- **THEN** the answers are よくない; よかった; よくて; いいです; よくなかったです and よくありませんでした
+#### Scenario: いい, non-past
+- **WHEN** the plain non-past and the polite non-past of いい are asked
+- **THEN** the plain answers are いい (read いい), よい (read よい) and 良い (read よい), in this order
+- **AND** the polite answers are いいです, よいです and 良いです (read よいです), in this order
+
+#### Scenario: いい, other forms
+- **WHEN** the plain negative, plain past, te-form and polite past negative of いい are asked
+- **THEN** the answers are よくない and 良くない; よかった and 良かった; よくて and 良くて; よくなかったです, 良くなかったです, よくありませんでした and 良くありませんでした
+- **AND** each 良 spelling is read like the kana spelling before it
+
+#### Scenario: いい at the end of a longer word
+- **WHEN** the plain negative of かっこいい is asked as a word of the いい group
+- **THEN** the answers are かっこよくない and かっこ良くない, both read かっこよくない
 
 ### Requirement: Na-adjectives
-A na-adjective is stored without だ or な. Its forms SHALL be the word followed by: plain だ, then じゃない or ではない, then だった, then じゃなかった or ではなかった, then で; polite です, then じゃないです, じゃありません, ではないです or ではありません, then でした, then じゃなかったです, じゃありませんでした, ではなかったです or ではありませんでした. Every listed variant SHALL be an answer, in that order.
+A na-adjective is stored without だ or な. Its forms SHALL be the word followed by: plain だ, then じゃない or ではない, then だった, then じゃなかった or ではなかった, then で; polite です, then じゃないです, じゃありません, ではないです or ではありません, then でした, then じゃなかったです, じゃありませんでした, ではなかったです or ではありませんでした. Every listed variant SHALL be an answer, in that order. No answer SHALL be spelled with でわ: the romaji `dewa` is handled by answer checking, not by extra answers.
 
 #### Scenario: 静か, plain
 - **WHEN** the plain forms of 静か (しずか) are asked
@@ -138,9 +148,17 @@ A na-adjective is stored without だ or な. Its forms SHALL be the word followe
 - **WHEN** the plain negative of the na-adjective きれい is asked
 - **THEN** the answers are きれいじゃない and きれいではない, not きれくない
 
+#### Scenario: Never でわ
+- **WHEN** the nine forms of 静か (しずか) are asked
+- **THEN** no answer, written or read, contains でわ
+
 ### Requirement: Words that do not fit their group
-A word whose reading or written form does not end the way its group needs (an ichidan verb not ending in る, a godan verb not ending in one of う く ぐ す つ ぬ ぶ む る, an i-adjective not ending in い) SHALL give no answer for any form, instead of a wrong one.
+A word whose reading or written form does not end the way its group needs (an ichidan verb not ending in る, a godan verb not ending in one of う く ぐ す つ ぬ ぶ む る, an i-adjective not ending in い, a word of the いい group not ending in いい) SHALL give no answer for any form, instead of a wrong one.
 
 #### Scenario: A misfiled word
 - **WHEN** the plain negative of 静か is asked as if it were an ichidan verb
+- **THEN** there is no answer
+
+#### Scenario: A misfiled いい word
+- **WHEN** the plain negative of 高い (たかい) is asked as if it were in the いい group
 - **THEN** there is no answer
