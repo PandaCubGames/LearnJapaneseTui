@@ -3,10 +3,12 @@
 
 //! The practice areas the app knows about, listed in one place.
 
+mod grammar;
 #[cfg(test)]
 pub mod sample;
 
 use crate::practice::{self, Entry, Levels};
+use grammar::Grammar;
 
 /// One thing the user can practise.
 pub trait Area: std::fmt::Debug {
@@ -25,9 +27,9 @@ pub trait Area: std::fmt::Debug {
     }
 }
 
-/// Every area, in the order the list shows them. There are none yet. Adding
-/// an area adds its own file under `src/areas/` and one entry here.
-const ALL: &[&dyn Area] = &[];
+/// Every area, in the order the list shows them. Adding an area adds its own
+/// file under `src/areas/` and one entry here.
+const ALL: &[&dyn Area] = &[&Grammar];
 
 pub fn all() -> &'static [&'static dyn Area] {
     ALL

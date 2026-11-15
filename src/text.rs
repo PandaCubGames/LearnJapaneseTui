@@ -14,6 +14,7 @@
 use std::fmt::Display;
 use std::time::Duration;
 
+use crate::conjugation::{Form, Formality};
 use crate::practice::Level;
 
 /// The program's name, as shown in messages.
@@ -51,6 +52,41 @@ pub const NO_QUESTIONS: &str = "No questions in this area yet";
 
 /// How to leave the "no questions" screen.
 pub const NO_QUESTIONS_HINT: &str = "Press Enter to go back";
+
+/// Area selection: the name of the Grammar area.
+pub const AREA_GRAMMAR: &str = "Grammar";
+
+/// Grammar: how a form is named in a question.
+pub fn form_name(form: Form, formality: Formality) -> &'static str {
+    match (form, formality) {
+        (Form::NonPast, Formality::Plain) => "plain non-past",
+        (Form::Negative, Formality::Plain) => "plain negative",
+        (Form::Past, Formality::Plain) => "plain past",
+        (Form::PastNegative, Formality::Plain) => "plain past negative",
+        (Form::Te, _) => "te-form",
+        (Form::NonPast, Formality::Polite) => "polite non-past",
+        (Form::Negative, Formality::Polite) => "polite negative",
+        (Form::Past, Formality::Polite) => "polite past",
+        (Form::PastNegative, Formality::Polite) => "polite past negative",
+    }
+}
+
+/// Grammar: the question for one form of a word. A word written in kana shows
+/// only its meaning in brackets; any other word shows its reading too.
+pub fn conjugation_prompt(
+    written: &str,
+    reading: &str,
+    meaning: &str,
+    form: Form,
+    formality: Formality,
+) -> String {
+    let name = form_name(form, formality);
+    if written == reading {
+        format!("What is the {name} of {written} ({meaning})?")
+    } else {
+        format!("What is the {name} of {written} ({reading}, {meaning})?")
+    }
+}
 
 /// Level picker: the heading above the levels.
 pub const LEVEL_PICKER_TITLE: &str = "Which JLPT levels do you want to practise?";
@@ -355,5 +391,76 @@ mod tests {
     fn empty_area_list_wording_is_plain_ascii_text() {
         assert_eq!(AREA_SELECTION_EMPTY, "Nothing to practise yet");
         assert!(AREA_SELECTION_EMPTY.is_ascii());
+    }
+
+    #[test]
+    fn grammar_area_name_is_plain_ascii_text() {
+        assert_eq!(AREA_GRAMMAR, "Grammar");
+        assert!(AREA_GRAMMAR.is_ascii());
+    }
+
+    #[test]
+    fn form_names() {
+        let asked = [
+            (Form::NonPast, Formality::Plain),
+            (Form::Negative, Formality::Plain),
+            (Form::Past, Formality::Plain),
+            (Form::PastNegative, Formality::Plain),
+            (Form::Te, Formality::Plain),
+            (Form::NonPast, Formality::Polite),
+            (Form::Negative, Formality::Polite),
+            (Form::Past, Formality::Polite),
+            (Form::PastNegative, Formality::Polite),
+        ];
+        let names: Vec<_> = asked
+            .iter()
+            .map(|&(form, formality)| form_name(form, formality))
+            .collect();
+        assert_eq!(
+            names,
+            [
+                "plain non-past",
+                "plain negative",
+                "plain past",
+                "plain past negative",
+                "te-form",
+                "polite non-past",
+                "polite negative",
+                "polite past",
+                "polite past negative",
+            ]
+        );
+        assert_eq!(form_name(Form::Te, Formality::Polite), "te-form");
+        assert!(names.iter().all(|name| name.is_ascii()));
+    }
+
+    #[test]
+    fn conjugation_prompt_for_a_word_with_kanji() {
+        assert_eq!(
+            conjugation_prompt(
+                "食べる",
+                "たべる",
+                "to eat",
+                Form::PastNegative,
+                Formality::Polite
+            ),
+            "What is the polite past negative of 食べる (たべる, to eat)?"
+        );
+    }
+
+    #[test]
+    fn conjugation_prompt_for_a_word_in_kana() {
+        assert_eq!(
+            conjugation_prompt("する", "する", "to do", Form::Negative, Formality::Plain),
+            "What is the plain negative of する (to do)?"
+        );
+    }
+
+    #[test]
+    fn conjugation_prompt_for_the_te_form() {
+        assert_eq!(
+            conjugation_prompt("行く", "いく", "to go", Form::Te, Formality::Plain),
+            "What is the te-form of 行く (いく, to go)?"
+        );
     }
 }

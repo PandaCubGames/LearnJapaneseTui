@@ -22,7 +22,7 @@ Types, signatures, rule tables, the word list and the expected forms are in `des
 
 ## 1. Grammar area with the verbs
 
-- [ ] 1.1 Register the Grammar area with the ichidan rule and the ichidan verbs.
+- [x] 1.1 Register the Grammar area with the ichidan rule and the ichidan verbs.
   - **First, check:** `src/areas.rs` has `trait Area` with `name`, `questions(&self, levels: Levels) -> Vec<Entry>` and a default `has_questions`, and `const ALL: &[&dyn Area] = &[];`; `practice::{Entry, Level, Levels}` and `practice::question::{Kind, Question}` exist as in design.md Context; `grading::check(&str, &[&str], &[&str]) -> Outcome` is `pub`. If anything differs, stop and report.
   - `src/conjugation.rs` (new): module doc as in D2. `Group` with the doc comment of D2 and **only** the variant `Ichidan` (with its doc). `Form`, `Formality`, `Answer` and `pub fn conjugate` exactly as D2. Private `fn inflect(text: &str, group: Group, form: Form, formality: Formality) -> Vec<String>` and `fn pick<T>(form: Form, formality: Formality, plain: [T; 5], polite: [T; 4]) -> Option<T>` as D2. Private `fn endings(group: Group, form: Form, formality: Formality) -> Option<(&'static str, Vec<String>)>` (no `text` parameter yet; task 1.3 adds it) with the Ichidan rows of D3: cut `る`; plain `る`, `ない`, `た`, `なかった`, `て`; polite `ます`, `ません`, `ました`, `ませんでした`; `(Te, Polite)` → `None` through `pick`.
   - `src/main.rs`: add `mod conjugation;` right after `mod areas;`. Nothing else.
