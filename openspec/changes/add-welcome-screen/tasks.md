@@ -56,7 +56,7 @@ Types, signatures and wording are in `design.md` (D-numbers point there). Every 
 
 ## 4. Integration check
 
-- [ ] 4.1 Check the built binary in a pseudo-terminal (no person needed): build with `cargo build --release`, run `target/release/tui-learnjapanese` under a pty of 80x24 (for example with Python's `pty` module, script kept outside the repository), and confirm in order: the output contains `Press Enter to start`; after sending `\r` it contains `Area selection is coming soon.`; after sending `q` the process is still running; after sending `\x03` (Ctrl+C) it exits with status 0. Record each result in the report. This task changes no files; commit only the ticked checkbox, e.g. `chore(openspec): record the Welcome screen terminal check`. If Enter does not move to the placeholder in the pty, stop and report instead of changing the key table.
+- [x] 4.1 Check the built binary in a pseudo-terminal (no person needed): build with `cargo build --release`, run `target/release/tui-learnjapanese` under a pty of 80x24 (for example with Python's `pty` module, script kept outside the repository), and confirm in order: the output contains `Press Enter to start`; after sending `\r` it contains `Area selection is coming soon.`; after sending `q` the process is still running; after sending `\x03` (Ctrl+C) it exits with status 0. Record each result in the report. This task changes no files; commit only the ticked checkbox, e.g. `chore(openspec): record the Welcome screen terminal check`. If Enter does not move to the placeholder in the pty, stop and report instead of changing the key table.
 
 ## Workflow follow-up
 
